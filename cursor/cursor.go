@@ -14,6 +14,14 @@ type Cursor struct {
 	Server string
 }
 
+func NewWithoutServer(stream string, chunk int, offset int) *Cursor {
+	return &Cursor{
+		Stream: stream,
+		Chunk: chunk,
+		Offset: offset,
+	}
+}
+
 func (c *Cursor) Serialize() string {
 	if c.Server == "" {
 		return c.Stream + ":" + strconv.Itoa(c.Chunk) + ":" + strconv.Itoa(c.Offset)

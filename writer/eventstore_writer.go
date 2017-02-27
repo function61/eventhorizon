@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
@@ -70,7 +71,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) {
 	log.Printf("EventstoreWriter: CreateStream: %s", streamName)
 
 	// /tenants/foo/_/0.log
-	chunkName := streamName + "/_/0.log"
+	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
 
 	e.openChunkLocallyAndUploadToS3(chunkName, 0, streamName)
 }
@@ -115,7 +116,7 @@ func (e *EventstoreWriter) rotateStreamChunk(streamName string) {
 
 	nextChunkNumber := e.streamToChunkName[streamName].ChunkNumber + 1
 
-	nextChunkName := fmt.Sprintf("%s/_/%d.log", streamName, nextChunkNumber)
+	nextChunkName := cursor.NewWithoutServer(streamName, nextChunkNumber, 0).ToChunkPath()
 
 	log.Printf("EventstoreWriter: rotateStreamChunk: %s -> %s", currentChunkSpec.ChunkPath, nextChunkName)
 
