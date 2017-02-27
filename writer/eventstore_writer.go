@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
 	"os"
@@ -169,7 +170,13 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 		panic(err)
 	}
 
-	e.walManager.AppendToFile(chunkName, fmt.Sprintf("Chunk %d opened\n", chunkNumber))
+	// assign the chunk to us
+	peers := []string{e.ip}
+
+	createdMeta, _ := json.Marshal(metaevents.NewCreated())
+	authorityChange, _ := json.Marshal(metaevents.NewAuthorityChange(peers))
+
+	e.walManager.AppendToFile(chunkName, fmt.Sprintf(".%s\n.%s\n", createdMeta, authorityChange))
 }
 
 func (e *EventstoreWriter) Close() {
