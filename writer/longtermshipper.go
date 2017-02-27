@@ -115,36 +115,6 @@ func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore
 		panic(err)
 	}
 
-	/*
-		go func() {
-			if _, err := io.Copy(gzipWriter, ltsf.fd); err != nil {
-				panic(err)
-			}
-
-			if err := gzipWriter.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
-		fileKey := ltsf.chunkName
-
-		_, err2 := s3Manager.s3Client.PutObject(&s3.PutObjectInput{
-			Bucket: &s3Manager.bucketName,
-			Key:    &fileKey,
-			Body:   gzipPipeReader,
-		})
-		if err2 != nil {
-			panic(err2)
-		}
-	*/
-
-	// read from original file and pipe to gzip encoder (which in turn is piped to the output file)
-	/*
-		if _, err = io.Copy(gzipWriter, ltsf.fd); err != nil {
-			panic(err)
-		}
-	*/
-
 	log.Printf("LongTermShipperManager: completed %s in %s", ltsf.chunkName, time.Since(started))
 
 	if err := ltsf.fd.Close(); err != nil {
@@ -153,8 +123,6 @@ func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore
 }
 
 func LongTermShipperManager(work chan *LongTermShippableFile, done chan bool) {
-	// TODO: $ mkdir /longtermstorage
-
 	log.Printf("LongTermShipperManager: Started")
 
 	LongTermShipperManagerEnsureDirectoryExists()
