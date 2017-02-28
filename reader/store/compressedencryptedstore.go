@@ -34,10 +34,6 @@ func (c *CompressedEncryptedStore) Has(cursor *cursor.Cursor) bool {
 	return true
 }
 
-func (c *CompressedEncryptedStore) localPath(cursor *cursor.Cursor) string {
-	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cursor.ToChunkSafePath())
-}
-
 func (c *CompressedEncryptedStore) DownloadFromS3(cursor *cursor.Cursor, s3Manager *scalablestore.S3Manager) bool {
 	fileKey := cursor.ToChunkPath() // "/tenants/root/_/0.log"
 
@@ -76,4 +72,9 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor,
 	seekableStore.Save(cursor, gzipReader)
 
 	return true
+}
+
+
+func (c *CompressedEncryptedStore) localPath(cursor *cursor.Cursor) string {
+	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cursor.ToChunkSafePath())
 }
