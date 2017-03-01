@@ -13,6 +13,8 @@ const (
 
 	S3_BUCKET = "eventhorizon.fn61.net"
 
+	PUBSUB_PORT = 9091
+
 	WAL_SIZE_THRESHOLD = uint64(4 * 1024 * 1024)
 
 	CHUNK_ROTATE_THRESHOLD = 8 * 1024 * 1024

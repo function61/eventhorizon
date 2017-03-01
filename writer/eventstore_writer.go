@@ -8,9 +8,12 @@ import (
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
+	"github.com/function61/eventhorizon/pubsub/server"
+	"github.com/function61/eventhorizon/pubsub/client"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +29,8 @@ type EventstoreWriter struct {
 	walManager          *wal.WalManager
 	ip                  string
 	database            *bolt.DB
+	pubSubServer        *server.ESPubSubServer
+	pubSubClient        *client.PubSubClient
 	streamToChunkName   map[string]*ChunkSpec
 	longTermShipperWork chan *LongTermShippableFile
 	longTermShipperDone chan bool
@@ -40,6 +45,9 @@ func NewEventstoreWriter() *EventstoreWriter {
 	}
 
 	e.makeBoltDbDirIfNotExist()
+
+	e.startPubSubServer()
+	e.startPubSubClient()
 
 	// DB will be created if not exists
 
@@ -98,6 +106,9 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 	if err != nil {
 		panic(err)
 	}
+
+	// publish "@1235" to topic "stream:/foo"
+	e.pubSubClient.Publish("stream:" + streamName, fmt.Sprintf("@%d", nextOffset))
 
 	if nextOffset > config.CHUNK_ROTATE_THRESHOLD {
 		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
@@ -185,6 +196,10 @@ func (e *EventstoreWriter) Close() {
 
 	close(e.longTermShipperWork)
 
+	e.pubSubClient.Close()
+
+	e.pubSubServer.Close()
+
 	e.walManager.Close()
 
 	log.Printf("EventstoreWriter: Close: Closing BoltDB")
@@ -223,6 +238,22 @@ func (e *EventstoreWriter) scanOpenStreams() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (e *EventstoreWriter) startPubSubServer() {
+	serverPort := config.PUBSUB_PORT
+
+	log.Printf("EventstoreWriter: starting pub/sub server on port %d", serverPort)
+
+	e.pubSubServer = server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(serverPort))
+}
+
+func (e *EventstoreWriter) startPubSubClient() {
+	serverAddr := "127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT) // TODO: this is us. Will not always be
+
+	log.Printf("EventstoreWriter: connecting to pub/sub server at %s", serverAddr)
+
+	e.pubSubClient = client.NewPubSubClient(serverAddr)
 }
 
 func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {

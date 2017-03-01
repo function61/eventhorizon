@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 	"strconv"
+	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/pubsub/server"
 )
 
@@ -19,7 +20,8 @@ import (
 */
 
 func main() {
-	serverPort := flag.Int("port", 0, "server port (always required)")
+	// serverPort := flag.Int("port", 0, "server port (always required)")
+	serverPort := config.PUBSUB_PORT
 
 	subTopic := flag.String("sub-topic", "", "sub-topic")
 
@@ -29,11 +31,11 @@ func main() {
 	flag.Parse()
 
 	if *pubTopic != "" {
-		testPublish(*serverPort, *pubTopic, *pubMessage)
+		testPublish(serverPort, *pubTopic, *pubMessage)
 	} else if *subTopic != "" {
-		startSubscriber(*serverPort, *subTopic)
-	} else if *serverPort != 0 {
-		pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(*serverPort))
+		startSubscriber(serverPort, *subTopic)
+	} else if serverPort != 0 {
+		pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(serverPort))
 
 		ch := make(chan os.Signal)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
