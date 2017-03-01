@@ -1,71 +1,46 @@
 package main
 
 import (
-	"fmt"
-	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/importfromfile"
-	"github.com/function61/eventhorizon/reader"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/pubsub/server"
 	"github.com/function61/eventhorizon/writer"
 	"github.com/function61/eventhorizon/writer/writerhttp"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
-	"time"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Printf("Usage: %s foo", os.Args[0])
-		os.Exit(1)
-	}
-
 	checkForS3AccessKeys()
 
-	command := os.Args[1]
+	// start pub/sub server
+	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
 
 	esServer := writer.NewEventstoreWriter()
-	defer esServer.Close()
 
-	if command == "CreateStream" {
-		esServer.CreateStream("/tenants/foo")
-	} else if command == "read" {
-		reader := reader.NewEventstoreReader()
-
-		readResult, err := reader.Read(cursor.CursorFromserializedMust("/tenants/foo:0:0"))
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Printf("%v\n", readResult)
-	} else if command == "serve" {
-		httpCloser := make(chan bool)
-		httpCloserDone := make(chan bool)
-		writerhttp.HttpServe(esServer, httpCloser, httpCloserDone)
-		defer func() { <-httpCloserDone }() // defers are executed in reverse order
-		defer func() { httpCloser <- true }()
-	} else if command == "fill" {
-		// 16 MB chunks should yield 15 pieces for 237.6M
-
-		linesScanned := importfromfile.Run("/app/test-dump/export.txt", "/tenants/foo", esServer)
-		// linesScanned := CliLoadFromFile("/app/test-dump/1k.txt", "/tenants/foo", esServer)
-		// linesScanned := CliLoadFromFile("/app/test-dump/4k.txt", "/tenants/foo", esServer)
-
-		log.Printf("main: %d line(s) appended", linesScanned)
-	} else if command == "AppendToStream" {
-		contentToAppend := []string{fmt.Sprintf("time is %s", time.Now())}
-		if err := esServer.AppendToStream("/tenants/foo", contentToAppend); err != nil {
-			panic(err)
-		}
-	} else {
-		log.Printf("main: Unknown command: %s", command)
-	}
+	httpCloser := make(chan bool)
+	httpCloserDone := make(chan bool)
+	writerhttp.HttpServe(esServer, httpCloser, httpCloserDone)
 
 	log.Printf("main: waiting for stop signal")
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	log.Println(<-ch)
+
+	// stop serving HTTP
+
+	httpCloser <- true
+	<-httpCloserDone
+
+	// stop the main writer server
+
+	esServer.Close()
+
+	// stop pub/sub
+	pubSubServer.Close()
 }
 
 func checkForS3AccessKeys() {

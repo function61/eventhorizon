@@ -68,6 +68,8 @@ func NewESPubSubServer(bindAddr string) *ESPubSubServer {
 		panic(err)
 	}
 
+	log.Printf("ESPubSubServer: binding to %s", bindAddr)
+
 	e := &ESPubSubServer{
 		clientBySubscription: make(ClientsBySubscription),
 		listener:             listener,

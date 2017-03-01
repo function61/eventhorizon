@@ -9,7 +9,6 @@ import (
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/pubsub/client"
-	"github.com/function61/eventhorizon/pubsub/server"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
 	"os"
@@ -29,7 +28,6 @@ type EventstoreWriter struct {
 	walManager          *wal.WalManager
 	ip                  string
 	database            *bolt.DB
-	pubSubServer        *server.ESPubSubServer
 	pubSubClient        *client.PubSubClient
 	streamToChunkName   map[string]*ChunkSpec
 	longTermShipperWork chan *LongTermShippableFile
@@ -46,7 +44,6 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	e.makeBoltDbDirIfNotExist()
 
-	e.startPubSubServer()
 	e.startPubSubClient()
 
 	// DB will be created if not exists
@@ -235,8 +232,6 @@ func (e *EventstoreWriter) Close() {
 
 	e.pubSubClient.Close()
 
-	e.pubSubServer.Close()
-
 	e.walManager.Close()
 
 	log.Printf("EventstoreWriter: Close: Closing BoltDB")
@@ -277,14 +272,6 @@ func (e *EventstoreWriter) scanOpenStreams() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (e *EventstoreWriter) startPubSubServer() {
-	serverPort := config.PUBSUB_PORT
-
-	log.Printf("EventstoreWriter: starting pub/sub server on port %d", serverPort)
-
-	e.pubSubServer = server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(serverPort))
 }
 
 func (e *EventstoreWriter) startPubSubClient() {
