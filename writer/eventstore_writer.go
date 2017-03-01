@@ -78,6 +78,9 @@ func NewEventstoreWriter() *EventstoreWriter {
 func (e *EventstoreWriter) CreateStream(streamName string) error {
 	log.Printf("EventstoreWriter: CreateStream: %s", streamName)
 
+	// TODO: query scalablestore so that the stream does not already exist,
+	//       so we don't accidentally overwrite any data?
+
 	// /tenants/foo/_/0.log
 	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
 
