@@ -84,6 +84,32 @@ func (e *EventstoreWriter) CreateStream(streamName string) {
 	e.openChunkLocallyAndUploadToS3(chunkName, 0, streamName)
 }
 
+func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {
+	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
+
+	subscribed, _ := json.Marshal(metaevents.NewSubscribed(subscriptionId))
+
+	if err := e.AppendToStream(streamName, []string{fmt.Sprintf(".%s", subscribed)}); err != nil {
+		return err
+	}
+
+	// TODO: return richer response?
+
+	return nil
+}
+
+func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscriptionId string) error {
+	log.Printf("EventstoreWriter: UnsubscribeFromStream: %s", streamName)
+
+	unsubscribed, _ := json.Marshal(metaevents.NewUnsubscribed(subscriptionId))
+
+	if err := e.AppendToStream(streamName, []string{fmt.Sprintf(".%s", unsubscribed)}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
 	if len(contentArr) == 0 {
 		return nil // not an error to call with empty append
@@ -207,6 +233,8 @@ func (e *EventstoreWriter) Close() {
 	e.database.Close()
 
 	<-e.longTermShipperDone
+
+	log.Printf("EventstoreWriter: Closed")
 }
 
 func (e *EventstoreWriter) scanOpenStreams() {
