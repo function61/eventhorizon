@@ -40,6 +40,7 @@ func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done ch
 	})
 
 	CreateStreamHandlerInit(eventWriter)
+	AppendToStreamHandlerInit(eventWriter)
 	SubscribeToStreamHandlerInit(eventWriter)
 	UnsubscribeFromStreamHandlerInit(eventWriter)
 
