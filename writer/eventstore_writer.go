@@ -175,7 +175,7 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 	peers := []string{e.ip}
 
 	createdMeta, _ := json.Marshal(metaevents.NewCreated())
-	authorityChange, _ := json.Marshal(metaevents.NewAuthorityChange(peers))
+	authorityChange, _ := json.Marshal(metaevents.NewAuthorityChanged(peers))
 
 	e.walManager.AppendToFile(chunkName, fmt.Sprintf(".%s\n.%s\n", createdMeta, authorityChange))
 }
