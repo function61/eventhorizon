@@ -84,7 +84,9 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	// /tenants/foo/_/0.log
 	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
 
-	e.openChunkLocallyAndUploadToS3(chunkName, 0, streamName)
+	if err := e.openChunkLocallyAndUploadToS3(chunkName, 0, streamName); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -174,11 +176,13 @@ func (e *EventstoreWriter) rotateStreamChunk(streamName string) {
 		fd:        fd,
 	}
 
-	e.openChunkLocallyAndUploadToS3(nextChunkName, nextChunkNumber, streamName)
+	if err := e.openChunkLocallyAndUploadToS3(nextChunkName, nextChunkNumber, streamName); err != nil {
+		panic(err)
+	}
 }
 
 // TODO: subscriptions array
-func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunkNumber int, streamName string) {
+func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunkNumber int, streamName string) error {
 	chunkSpec := &ChunkSpec{
 		ChunkPath:   chunkName,
 		StreamName:  streamName,
@@ -201,7 +205,7 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 	})
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	e.streamToChunkName[streamName] = chunkSpec
@@ -210,7 +214,7 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 
 	err = e.walManager.AddActiveChunk(chunkName)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// assign the chunk to us
@@ -220,6 +224,8 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 	authorityChange, _ := json.Marshal(metaevents.NewAuthorityChanged(peers))
 
 	e.walManager.AppendToFile(chunkName, fmt.Sprintf(".%s\n.%s\n", createdMeta, authorityChange))
+
+	return nil
 }
 
 func (e *EventstoreWriter) Close() {
