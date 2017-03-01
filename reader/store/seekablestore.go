@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
-	"io"
 	"log"
 	"os"
 )
@@ -24,16 +23,10 @@ func NewSeekableStore() *SeekableStore {
 	return &SeekableStore{}
 }
 
-func (s *SeekableStore) Save(cursor *cursor.Cursor, reader io.Reader) {
-	localFile, openErr := os.OpenFile(s.localPath(cursor), os.O_RDWR|os.O_CREATE, 0755)
-	if openErr != nil {
-		panic(openErr)
-	}
-
-	defer localFile.Close()
-
-	_, err := io.Copy(localFile, reader)
-	if err != nil {
+// store a file in SeekableStore by renaming a file here from a temporary location,
+// so we can do this in an atomic way (= the second Has() reports true we have 100 % complete file)
+func (s *SeekableStore) SaveByRenaming(cursor *cursor.Cursor, fromPath string) {
+	if err := os.Rename(fromPath, s.localPath(cursor)); err != nil {
 		panic(err)
 	}
 }

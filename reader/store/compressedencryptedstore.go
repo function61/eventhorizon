@@ -42,7 +42,10 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cursor *cursor.Cursor, s3Manag
 		return false
 	}
 
-	localFile, openErr := os.OpenFile(c.localPath(cursor), os.O_RDWR|os.O_CREATE, 0755)
+	localPath := c.localPath(cursor)
+	localPathTemp := localPath + ".tmp"
+
+	localFile, openErr := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
 	if openErr != nil {
 		panic(openErr)
 	}
@@ -53,9 +56,14 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cursor *cursor.Cursor, s3Manag
 		panic(err)
 	}
 
+	if err := os.Rename(localPathTemp, localPath); err != nil {
+		panic(err)
+	}
+
 	return true
 }
 
+// extracts compressed file first to temporary filename and then atomically moves it to SeekableStore
 func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor, seekableStore *SeekableStore) bool {
 	localCompressedFile, openErr := os.Open(c.localPath(cursor))
 	if openErr != nil {
@@ -69,7 +77,21 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor,
 		panic(err)
 	}
 
-	seekableStore.Save(cursor, gzipReader)
+	localPath := c.localPath(cursor)
+	localPathTempForSeekable := localPath + ".tmp-seekable"
+
+	localTempFileForSeekable, openErr := os.OpenFile(localPathTempForSeekable, os.O_RDWR|os.O_CREATE, 0755)
+	if openErr != nil {
+		panic(openErr)
+	}
+
+	if _, err := io.Copy(localTempFileForSeekable, gzipReader); err != nil {
+		panic(err)
+	}
+
+	localTempFileForSeekable.Close()
+
+	seekableStore.SaveByRenaming(cursor, localPathTempForSeekable)
 
 	return true
 }
