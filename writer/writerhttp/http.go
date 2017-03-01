@@ -1,10 +1,11 @@
-package writer
+package writerhttp
 
 import (
 	"encoding/json"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/reader"
+	"github.com/function61/eventhorizon/writer"
 	"io"
 	"log"
 	"net/http"
@@ -29,7 +30,7 @@ type UnsubscribeFromStreamRequest struct {
 	SubscriptionId string
 }
 
-func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool) {
+func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool) {
 	reader := reader.NewEventstoreReader()
 
 	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WRITER_HTTP_PORT)}
@@ -102,22 +103,24 @@ func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool
 	})
 
 	go func() {
+		log.Printf("WriterHttp: binding to %s", srv.Addr)
+
 		if err := srv.ListenAndServe(); err != nil {
 			// cannot panic, because this probably is an intentional close
-			log.Printf("Httpserver: ListenAndServe() error: %s", err)
+			log.Printf("WriterHttp: ListenAndServe() error: %s", err)
 		}
 	}()
 
 	go func() {
 		<-shutdown
 
-		log.Printf("Httpserver: shutting down")
+		log.Printf("WriterHttp: shutting down")
 
 		if err := srv.Shutdown(nil); err != nil {
 			panic(err) // failed shutting down
 		}
 
-		log.Printf("Httpserver: shutting down done")
+		log.Printf("WriterHttp: shutting down done")
 
 		done <- true
 	}()

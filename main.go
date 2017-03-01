@@ -6,6 +6,7 @@ import (
 	"github.com/function61/eventhorizon/importfromfile"
 	"github.com/function61/eventhorizon/reader"
 	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/eventhorizon/writer/writerhttp"
 	"log"
 	"os"
 	"os/signal"
@@ -40,7 +41,7 @@ func main() {
 	} else if command == "serve" {
 		httpCloser := make(chan bool)
 		httpCloserDone := make(chan bool)
-		writer.HttpServe(esServer, httpCloser, httpCloserDone)
+		writerhttp.HttpServe(esServer, httpCloser, httpCloserDone)
 		defer func() { <-httpCloserDone }() // defers are executed in reverse order
 		defer func() { httpCloser <- true }()
 	} else if command == "fill" {
