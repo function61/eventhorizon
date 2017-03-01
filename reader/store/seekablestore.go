@@ -48,7 +48,7 @@ func (s *SeekableStore) Open(cursor *cursor.Cursor) (*os.File, error) {
 }
 
 func (s *SeekableStore) Has(cursor *cursor.Cursor) bool {
-	filePath := fmt.Sprintf("%s/%s", config.SEEKABLE_STORE_PATH, cursor.ToChunkSafePath())
+	filePath := s.localPath(cursor)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false
