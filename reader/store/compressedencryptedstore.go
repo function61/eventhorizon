@@ -74,7 +74,6 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor,
 	return true
 }
 
-
 func (c *CompressedEncryptedStore) localPath(cursor *cursor.Cursor) string {
 	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cursor.ToChunkSafePath())
 }

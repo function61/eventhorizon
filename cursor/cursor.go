@@ -17,7 +17,7 @@ type Cursor struct {
 func NewWithoutServer(stream string, chunk int, offset int) *Cursor {
 	return &Cursor{
 		Stream: stream,
-		Chunk: chunk,
+		Chunk:  chunk,
 		Offset: offset,
 	}
 }
