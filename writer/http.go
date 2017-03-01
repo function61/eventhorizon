@@ -59,7 +59,10 @@ func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool
 			return
 		}
 
-		eventWriter.CreateStream(createStreamRequest.Name)
+		if err := eventWriter.CreateStream(createStreamRequest.Name); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		io.WriteString(w, "OK\n")
 	})

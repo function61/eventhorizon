@@ -75,13 +75,15 @@ func NewEventstoreWriter() *EventstoreWriter {
 	return e
 }
 
-func (e *EventstoreWriter) CreateStream(streamName string) {
+func (e *EventstoreWriter) CreateStream(streamName string) error {
 	log.Printf("EventstoreWriter: CreateStream: %s", streamName)
 
 	// /tenants/foo/_/0.log
 	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
 
 	e.openChunkLocallyAndUploadToS3(chunkName, 0, streamName)
+
+	return nil
 }
 
 func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {
