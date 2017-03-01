@@ -71,12 +71,12 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 		conn, err := net.Dial("tcp", serverAddress)
 		if err != nil {
 			backoffDuration := reconnectBackoff.Duration()
-			log.Printf("manageConnectivity: reconnecting in %s: %s", backoffDuration, err)
+			log.Printf("PubSubClient: manageConnectivity: reconnecting in %s: %s", backoffDuration, err)
 			time.Sleep(backoffDuration)
 			continue
 		}
 
-		log.Printf("manageConnectivity: connected to %s", serverAddress)
+		log.Printf("PubSubClient: manageConnectivity: connected to %s", serverAddress)
 
 		reconnectBackoff.Reset()
 
@@ -101,13 +101,13 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 				stopWriting <- true
 
 				if errRead == io.EOF {
-					log.Printf("manageConnectivity: EOF encountered")
+					log.Printf("PubSubClient: manageConnectivity: EOF encountered")
 				} else {
-					log.Printf("manageConnectivity: error")
+					log.Printf("PubSubClient: manageConnectivity: error")
 				}
 
 				if this.quitting {
-					log.Printf("manageConnectivity: quitting: signalling done & stopping loop")
+					log.Printf("PubSubClient: manageConnectivity: quitting: signalling done & stopping loop")
 					this.done <- true
 					return
 				}
@@ -130,16 +130,16 @@ func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
 		case packet := <-this.writeCh:
 			conn.Write([]byte(packet))
 		case <-stop:
-			log.Printf("handleWrites: stop requested")
+			log.Printf("PubSubClient: handleWrites: stop requested")
 			shouldContinue = false
 		}
 	}
 
-	log.Printf("handleWrites: stopping")
+	log.Printf("PubSubClient: handleWrites: stopping")
 }
 
 func (this *PubSubClient) sendSubscriptionMessage(topic string) {
-	log.Printf("sendSubscriptionMessage: subscribing to %s", topic)
+	log.Printf("PubSubClient: sendSubscriptionMessage: subscribing to %s", topic)
 
 	packet := pubsub.MsgformatEncode([]string{"SUB", topic})
 
