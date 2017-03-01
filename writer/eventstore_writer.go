@@ -118,13 +118,13 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 }
 
 func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
-	if len(contentArr) == 0 {
-		return nil // not an error to call with empty append
-	}
-
 	chunkSpec, streamExists := e.streamToChunkName[streamName]
 	if !streamExists {
 		return errors.New("EventstoreWriter.AppendToStream: stream does not exist")
+	}
+
+	if len(contentArr) == 0 {
+		return nil // not an error to call with empty append
 	}
 
 	for _, c := range contentArr {
