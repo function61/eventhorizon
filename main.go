@@ -31,13 +31,18 @@ func main() {
 	} else if command == "read" {
 		reader := reader.NewEventstoreReader()
 
-		reader.Read(cursor.CursorFromserializedMust("/tenants/foo:0:0"))
+		readResult, err := reader.Read(cursor.CursorFromserializedMust("/tenants/foo:0:0"))
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%v\n", readResult)
 	} else if command == "serve" {
 		httpCloser := make(chan bool)
 		httpCloserDone := make(chan bool)
 		writer.HttpServe(esServer, httpCloser, httpCloserDone)
-		defer func () { <- httpCloserDone }() // defers are executed in reverse order
-		defer func () { httpCloser <- true }()
+		defer func() { <-httpCloserDone }() // defers are executed in reverse order
+		defer func() { httpCloser <- true }()
 	} else if command == "fill" {
 		// 16 MB chunks should yield 15 pieces for 237.6M
 

@@ -1,11 +1,17 @@
 package writer
 
 import (
-	"log"
-	"io"
 	"encoding/json"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/reader"
+	"io"
+	"log"
 	"net/http"
 )
+
+type ReadRequest struct {
+	Cursor string
+}
 
 type CreateStreamRequest struct {
 	Name string
@@ -22,7 +28,28 @@ type UnsubscribeFromStreamRequest struct {
 }
 
 func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool) {
+	reader := reader.NewEventstoreReader()
+
 	srv := &http.Server{Addr: ":8080"}
+
+	// $ curl -d '{"Cursor": "/tenants/foo:0:0"} http://localhost:8080/read
+	http.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
+		var readRequest ReadRequest
+		if err := json.NewDecoder(r.Body).Decode(&readRequest); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		cur := cursor.CursorFromserializedMust(readRequest.Cursor)
+		readResult, err := reader.Read(cur)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			panic(err)
+		}
+
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "    ")
+		encoder.Encode(readResult)
+	})
 
 	// $ curl -d '{"Name": "/foostream"}' http://localhost:8080/create_stream
 	http.HandleFunc("/create_stream", func(w http.ResponseWriter, r *http.Request) {
