@@ -1,8 +1,8 @@
 package main
 
 import (
-	"strconv"
 	"github.com/function61/eventhorizon/pubsub/client"
+	"strconv"
 )
 
 func testPublish(serverPort int, topic string, message string) {

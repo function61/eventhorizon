@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/function61/eventhorizon/pubsub/client"
 	"log"
 	"strconv"
 	"time"
-	"github.com/function61/eventhorizon/pubsub/client"
 )
 
 type Stats struct {

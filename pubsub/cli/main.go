@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/pubsub/server"
 	"log"
 	"os"
 	"os/signal"
-	"syscall"
 	"strconv"
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/pubsub/server"
+	"syscall"
 )
 
 /*	Pub/sub, requirements:

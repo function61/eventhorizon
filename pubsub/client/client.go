@@ -2,11 +2,11 @@ package client
 
 import (
 	"bufio"
+	"github.com/function61/eventhorizon/pubsub"
 	"github.com/jpillora/backoff"
 	"io"
 	"log"
 	"net"
-	"github.com/function61/eventhorizon/pubsub"
 	"time"
 )
 

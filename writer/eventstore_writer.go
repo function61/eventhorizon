@@ -8,8 +8,8 @@ import (
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
-	"github.com/function61/eventhorizon/pubsub/server"
 	"github.com/function61/eventhorizon/pubsub/client"
+	"github.com/function61/eventhorizon/pubsub/server"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
 	"os"
@@ -108,7 +108,7 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 	}
 
 	// publish "@1235" to topic "stream:/foo"
-	e.pubSubClient.Publish("stream:" + streamName, fmt.Sprintf("@%d", nextOffset))
+	e.pubSubClient.Publish("stream:"+streamName, fmt.Sprintf("@%d", nextOffset))
 
 	if nextOffset > config.CHUNK_ROTATE_THRESHOLD {
 		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
