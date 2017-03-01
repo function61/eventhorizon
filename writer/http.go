@@ -2,11 +2,13 @@ package writer
 
 import (
 	"encoding/json"
+	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/reader"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type ReadRequest struct {
@@ -30,9 +32,9 @@ type UnsubscribeFromStreamRequest struct {
 func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool) {
 	reader := reader.NewEventstoreReader()
 
-	srv := &http.Server{Addr: ":8080"}
+	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WRITER_HTTP_PORT)}
 
-	// $ curl -d '{"Cursor": "/tenants/foo:0:0"} http://localhost:8080/read
+	// $ curl -d '{"Cursor": "/tenants/foo:0:0"} http://localhost:9092/read
 	http.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
 		var readRequest ReadRequest
 		if err := json.NewDecoder(r.Body).Decode(&readRequest); err != nil {
@@ -51,7 +53,7 @@ func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool
 		encoder.Encode(readResult)
 	})
 
-	// $ curl -d '{"Name": "/foostream"}' http://localhost:8080/create_stream
+	// $ curl -d '{"Name": "/foostream"}' http://localhost:9092/create_stream
 	http.HandleFunc("/create_stream", func(w http.ResponseWriter, r *http.Request) {
 		var createStreamRequest CreateStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&createStreamRequest); err != nil {
@@ -67,7 +69,7 @@ func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool
 		io.WriteString(w, "OK\n")
 	})
 
-	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:8080/subscribe
+	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/subscribe
 	http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
 		var subscribeToStreamRequest SubscribeToStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&subscribeToStreamRequest); err != nil {
@@ -83,7 +85,7 @@ func HttpServe(eventWriter *EventstoreWriter, shutdown chan bool, done chan bool
 		io.WriteString(w, "OK\n")
 	})
 
-	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:8080/unsubscribe
+	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/unsubscribe
 	http.HandleFunc("/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
 		var unsubscribeFromStreamRequest UnsubscribeFromStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&unsubscribeFromStreamRequest); err != nil {
