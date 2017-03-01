@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type ChunkSpec struct {
@@ -27,6 +28,7 @@ type ChunkSpec struct {
 type EventstoreWriter struct {
 	walManager          *wal.WalManager
 	ip                  string
+	mu                  sync.Mutex
 	database            *bolt.DB
 	pubSubClient        *client.PubSubClient
 	streamToChunkName   map[string]*ChunkSpec
@@ -40,6 +42,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 		streamToChunkName:   make(map[string]*ChunkSpec),
 		longTermShipperWork: make(chan *LongTermShippableFile),
 		longTermShipperDone: make(chan bool),
+		mu:                  sync.Mutex{},
 	}
 
 	e.makeBoltDbDirIfNotExist()
@@ -73,6 +76,9 @@ func NewEventstoreWriter() *EventstoreWriter {
 }
 
 func (e *EventstoreWriter) CreateStream(streamName string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	log.Printf("EventstoreWriter: CreateStream: %s", streamName)
 
 	// TODO: query scalablestore so that the stream does not already exist,
@@ -89,6 +95,8 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 }
 
 func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {
+	// AppendToStream() acquires lock
+
 	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
 
 	subscribed, _ := json.Marshal(metaevents.NewSubscribed(subscriptionId))
@@ -103,6 +111,8 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 }
 
 func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscriptionId string) error {
+	// AppendToStream() acquires lock
+
 	log.Printf("EventstoreWriter: UnsubscribeFromStream: %s", streamName)
 
 	unsubscribed, _ := json.Marshal(metaevents.NewUnsubscribed(subscriptionId))
@@ -115,6 +125,9 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 }
 
 func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	chunkSpec, streamExists := e.streamToChunkName[streamName]
 	if !streamExists {
 		return errors.New("EventstoreWriter.AppendToStream: stream does not exist")
@@ -223,6 +236,9 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 }
 
 func (e *EventstoreWriter) Close() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	log.Printf("EventstoreWriter: Closing. Requesting stop from LongTermShipperManager")
 
 	close(e.longTermShipperWork)
