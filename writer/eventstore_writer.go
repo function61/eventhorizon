@@ -124,15 +124,12 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		return nil // not an error to call with empty append
 	}
 
-	for _, c := range contentArr {
-		if strings.Contains(c, "\n") {
-			return errors.New("EventstoreWriter.AppendToStream: content cannot contain \n")
-		}
+	rawLines, err := stringArrayToRawLines(contentArr)
+	if err != nil {
+		return err
 	}
 
-	contentWithNewline := strings.Join(contentArr, "\n") + "\n"
-
-	nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, contentWithNewline)
+	nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines)
 	if err != nil {
 		panic(err)
 	}
@@ -290,4 +287,14 @@ func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
 			panic(err)
 		}
 	}
+}
+
+func stringArrayToRawLines(contentArr []string) (string, error) {
+	for _, c := range contentArr {
+		if strings.Contains(c, "\n") {
+			return "", errors.New("EventstoreWriter.AppendToStream: content cannot contain \n")
+		}
+	}
+
+	return strings.Join(contentArr, "\n") + "\n", nil
 }
