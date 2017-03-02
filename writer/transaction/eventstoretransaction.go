@@ -4,15 +4,41 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-type EventstoreTransaction struct {
-	BoltTx    *bolt.Tx
-	NewChunks []*ChunkSpec
-	// WALs to compact (per file)
-	// WriteOps (per file)
+type Write struct {
+	Filename string
+	Buffer   []byte
+	Position int64
 }
 
-func NewEventstoreTransaction() *EventstoreTransaction {
+type EventstoreTransaction struct {
+	BoltTx                 *bolt.Tx
+	Bolt                   *bolt.DB
+	NewChunks              []*ChunkSpec
+	ShipFiles              []*LongTermShippableFile
+	FilesToDisengageWalFor []string
+	NeedsWALCompaction     []string
+	FilesToOpen            []string
+	WriteOps               []*Write
+}
+
+func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {
 	return &EventstoreTransaction{
-		NewChunks: []*ChunkSpec{},
+		Bolt:                   bolt,
+		NewChunks:              []*ChunkSpec{},
+		ShipFiles:              []*LongTermShippableFile{},
+		FilesToDisengageWalFor: []string{},
+		NeedsWALCompaction:     []string{},
+		FilesToOpen:            []string{},
+		WriteOps:               []*Write{},
 	}
+}
+
+func (e *EventstoreTransaction) QueueWrite(filename string, buffer []byte, position int64) {
+	write := &Write{
+		Filename: filename,
+		Buffer:   buffer,
+		Position: position,
+	}
+
+	e.WriteOps = append(e.WriteOps, write)
 }

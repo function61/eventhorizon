@@ -25,7 +25,7 @@ type EventstoreWriter struct {
 	database            *bolt.DB
 	pubSubClient        *client.PubSubClient
 	streamToChunkName   map[string]*transaction.ChunkSpec
-	longTermShipperWork chan *LongTermShippableFile
+	longTermShipperWork chan *transaction.LongTermShippableFile
 	longTermShipperDone chan bool
 }
 
@@ -33,7 +33,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 	e := &EventstoreWriter{
 		ip:                  "127.0.0.1",
 		streamToChunkName:   make(map[string]*transaction.ChunkSpec),
-		longTermShipperWork: make(chan *LongTermShippableFile),
+		longTermShipperWork: make(chan *transaction.LongTermShippableFile),
 		longTermShipperDone: make(chan bool),
 		mu:                  sync.Mutex{},
 	}
@@ -62,12 +62,16 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	e.database = db
 
-	tx := transaction.NewEventstoreTransaction()
+	tx := transaction.NewEventstoreTransaction(e.database)
 
 	if err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
 		e.walManager = wal.NewWalManager(tx)
+
+		if err := e.recoverOpenStreams(tx); err != nil {
+			return err
+		}
 
 		return nil
 	}); err != nil {
@@ -76,15 +80,34 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	e.applySideEffects(tx)
 
-	e.scanOpenStreams()
-
 	return e
 }
 
+// these happen after COMMIT, i.e. transaction is not in effect.
+// in rare cases WAL manager starts a transaction (for compaction)
 func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) {
+	// - forget files from the WAL table.
+	//
+	// fd is not actually closed by WAL manager (long term shipper does it instead),
+	// but that's ok because it promises not to write into the fd anymore.
+	e.walManager.ApplySideEffects(tx)
+
+	// New chunks (CreateStream() and rotate produce new chunks)
 	for _, spec := range tx.NewChunks {
 		// either first chunk for the stream OR continuation chunk (replaces old spec)
 		e.streamToChunkName[spec.StreamName] = spec
+	}
+
+	// Write all committed WAL entries to the actual files
+
+	// Queued WAL compactions:
+	// - Must ensure fsync() for the above queued writes because after we have purged
+	//   WAL, failed writes cannot be reconstructed.
+	// - These happen in a new transaction. It is not the end of the world if this fails,
+	//   That just means that the WAL compaction will be triggered again on next Append.
+
+	for _, ltsf := range tx.ShipFiles {
+		e.longTermShipperWork <- ltsf
 	}
 }
 
@@ -100,7 +123,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	// /tenants/foo/_/0.log
 	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
 
-	tx := transaction.NewEventstoreTransaction()
+	tx := transaction.NewEventstoreTransaction(e.database)
 
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
@@ -165,7 +188,6 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 	}
 
 	/*
-		lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
 		if err != nil {
 			return err // should not happen
 		}
@@ -178,17 +200,28 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 
 	nextOffsetSideEffect := 0
 
-	tx := transaction.NewEventstoreTransaction()
+	tx := transaction.NewEventstoreTransaction(e.database)
 
 	err2 := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
+
+		lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
+		lengthAfterAppend := lengthBeforeAppend + len(rawLines)
+
+		shouldRotate := lengthAfterAppend > config.CHUNK_ROTATE_THRESHOLD
+
+		if shouldRotate {
+			rotatedMeta, _ := json.Marshal(metaevents.NewRotated())
+
+			rawLines += string(rotatedMeta) + "\n"
+		}
 
 		nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines, tx)
 		if err != nil {
 			panic(err)
 		}
 
-		if nextOffset > config.CHUNK_ROTATE_THRESHOLD {
+		if shouldRotate {
 			log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
 
 			e.rotateStreamChunk(streamName, tx)
@@ -224,17 +257,23 @@ func (e *EventstoreWriter) rotateStreamChunk(streamName string, tx *transaction.
 
 	log.Printf("EventstoreWriter: rotateStreamChunk: %s -> %s", currentChunkSpec.ChunkPath, nextChunkName)
 
+	// rotatedMeta, _ := json.Marshal(metaevents.NewRotated())
+
+	// e.AppendToStream(streamName, []string{rotatedMeta})
+
 	// this will never be written to again
-	err, fd := e.walManager.SealActiveFile(currentChunkSpec.ChunkPath, tx)
+	err, fd := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
 	if err != nil {
 		panic(err)
 	}
 
-	// longTermShipper has responsibility of closing the file
-	e.longTermShipperWork <- &LongTermShippableFile{
-		chunkName: currentChunkSpec.ChunkPath,
-		fd:        fd,
+	fileToShip := &transaction.LongTermShippableFile{
+		ChunkName: currentChunkSpec.ChunkPath,
+		Fd:        fd,
 	}
+
+	// longTermShipper has responsibility of closing the file
+	tx.ShipFiles = append(tx.ShipFiles, fileToShip)
 
 	if err := e.openChunkLocallyAndUploadToS3(nextChunkName, nextChunkNumber, streamName, tx); err != nil {
 		panic(err)
@@ -266,7 +305,7 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkName string, chunk
 		return err
 	}
 
-	if err := e.walManager.AddActiveChunk(chunkName, tx); err != nil {
+	if err := e.walManager.OpenNewFile(chunkName, tx); err != nil {
 		return err
 	}
 
@@ -297,7 +336,7 @@ func (e *EventstoreWriter) Close() {
 
 	// FIXME: basically we could just crash as well,
 	//        because that's what we are designed for
-	tx := transaction.NewEventstoreTransaction()
+	tx := transaction.NewEventstoreTransaction(e.database)
 
 	if err := e.database.Update(func(boltTx *bolt.Tx) error { // FIXME: disregarding retval
 		tx.BoltTx = boltTx
@@ -320,40 +359,29 @@ func (e *EventstoreWriter) Close() {
 	log.Printf("EventstoreWriter: Closed")
 }
 
-func (e *EventstoreWriter) scanOpenStreams() {
-	tx := transaction.NewEventstoreTransaction()
+func (e *EventstoreWriter) recoverOpenStreams(tx *transaction.EventstoreTransaction) error {
+	streamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
+	if err != nil {
+		return err
+	}
 
-	err := e.database.Update(func(boltTx *bolt.Tx) error {
-		tx.BoltTx = boltTx
+	streamsBucket.ForEach(func(key, value []byte) error {
+		// streamName := string(key)
 
-		streamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
-		if err != nil {
-			return err
+		chunkSpec := &transaction.ChunkSpec{}
+
+		if err := json.Unmarshal(value, chunkSpec); err != nil {
+			panic(err)
 		}
 
-		streamsBucket.ForEach(func(key, value []byte) error {
-			// streamName := string(key)
+		log.Printf("EventstoreWriter: recoverOpenStreams: stream=%s chunk=%s", chunkSpec.StreamName, chunkSpec.ChunkPath)
 
-			chunkSpec := &transaction.ChunkSpec{}
-
-			if err := json.Unmarshal(value, chunkSpec); err != nil {
-				panic(err)
-			}
-
-			log.Printf("EventstoreWriter: scanOpenStreams: stream=%s chunk=%s", chunkSpec.StreamName, chunkSpec.ChunkPath)
-
-			tx.NewChunks = append(tx.NewChunks, chunkSpec)
-
-			return nil
-		})
+		tx.NewChunks = append(tx.NewChunks, chunkSpec)
 
 		return nil
 	})
-	if err != nil {
-		panic(err)
-	}
 
-	e.applySideEffects(tx)
+	return nil
 }
 
 func (e *EventstoreWriter) startPubSubClient() {

@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/scalablestore"
+	"github.com/function61/eventhorizon/writer/transaction"
 	"io"
 	"log"
 	"os"
@@ -34,21 +35,16 @@ import (
 // http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
 // http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
 
-type LongTermShippableFile struct {
-	chunkName string // '/tenants/foo/_/28.log'
-	fd        *os.File
-}
-
-func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
+func LongTermShipperWorker(ltsf *transaction.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	started := time.Now()
 
-	safeName := strings.Replace(ltsf.chunkName, "/", "_", -1)
+	safeName := strings.Replace(ltsf.ChunkName, "/", "_", -1)
 
 	storageFullPath := config.LONGTERMSHIPPER_PATH + "/" + safeName
 
-	log.Printf("LongTermShipperManager: compressing %s -> %s", ltsf.chunkName, ltsf.chunkName) // storageFullPath)
+	log.Printf("LongTermShipperManager: compressing %s -> %s", ltsf.ChunkName, ltsf.ChunkName) // storageFullPath)
 
 	storageFile, err := os.OpenFile(storageFullPath, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
@@ -86,14 +82,14 @@ func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore
 
 	*/
 	// TODO: is this required? probably
-	if _, err := ltsf.fd.Seek(0, io.SeekStart); err != nil {
+	if _, err := ltsf.Fd.Seek(0, io.SeekStart); err != nil {
 		panic(err)
 	}
 
 	// gzipPipeReader, gzipPipeWriter := io.Pipe()
 	gzipWriter := gzip.NewWriter(storageFile)
 
-	if _, err := io.Copy(gzipWriter, ltsf.fd); err != nil {
+	if _, err := io.Copy(gzipWriter, ltsf.Fd); err != nil {
 		panic(err)
 	}
 
@@ -105,7 +101,7 @@ func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore
 		panic(err)
 	}
 
-	fileKey := ltsf.chunkName
+	fileKey := ltsf.ChunkName
 
 	if err := s3Manager.Put(fileKey, storageFile); err != nil {
 		panic(err)
@@ -115,14 +111,14 @@ func LongTermShipperWorker(ltsf *LongTermShippableFile, s3Manager *scalablestore
 		panic(err)
 	}
 
-	log.Printf("LongTermShipperManager: completed %s in %s", ltsf.chunkName, time.Since(started))
+	log.Printf("LongTermShipperManager: completed %s in %s", ltsf.ChunkName, time.Since(started))
 
-	if err := ltsf.fd.Close(); err != nil {
+	if err := ltsf.Fd.Close(); err != nil {
 		panic(err)
 	}
 }
 
-func LongTermShipperManager(work chan *LongTermShippableFile, done chan bool) {
+func LongTermShipperManager(work chan *transaction.LongTermShippableFile, done chan bool) {
 	log.Printf("LongTermShipperManager: Started")
 
 	LongTermShipperManagerEnsureDirectoryExists()
