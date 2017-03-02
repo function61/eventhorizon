@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/writer/transaction"
 	"io"
 	"log"
 	"os"
@@ -22,11 +22,10 @@ import (
 // Only supports WAL for append-only files.
 
 type WalManager struct {
-	bolt      *bolt.DB
 	openFiles map[string]*WalGuardedFile
 }
 
-func NewWalManager(bolt *bolt.DB) *WalManager {
+func NewWalManager(tx *transaction.EventstoreTransaction) *WalManager {
 	w := &WalManager{
 		openFiles: make(map[string]*WalGuardedFile),
 	}
@@ -40,34 +39,30 @@ func NewWalManager(bolt *bolt.DB) *WalManager {
 
 	*/
 
-	w.bolt = bolt
-
 	w.ensureDataDirectoryExists()
-	w.scanAndRecoverActiveWalStores()
+	w.scanAndRecoverActiveWalStores(tx)
 
 	return w
 }
 
-func (w *WalManager) AppendToFile(fileName string, content string) (int, error) {
+func (w *WalManager) AppendToFile(fileName string, content string, tx *transaction.EventstoreTransaction) (int, error) {
 	contentLen := uint64(len(content)) // is safe because length is in bytes, not runes
 
-	// log.Printf("WalManager: AppendToFile: record %s", walRecord.Serialize())
-
 	// Append write to WAL before writing to actual file
-	err := w.bolt.Update(func(tx *bolt.Tx) error {
-		chunkWalBucket := tx.Bucket([]byte(fileName))
+	chunkWalBucket := tx.BoltTx.Bucket([]byte(fileName))
 
-		if chunkWalBucket == nil {
-			return errors.New(fmt.Sprintf("WalManager: AppendToFile: chunk %s does not exist", fileName))
-		}
+	if chunkWalBucket == nil {
+		return 0, errors.New(fmt.Sprintf("WalManager: AppendToFile: chunk %s does not exist", fileName))
+	}
 
-		return chunkWalBucket.Put(itob(w.openFiles[fileName].nextFreePosition), []byte(content))
-	})
-	if err != nil {
+	if err := chunkWalBucket.Put(itob(w.openFiles[fileName].nextFreePosition), []byte(content)); err != nil {
 		return 0, err
 	}
 
-	w.applyWalEntryToFile(w.openFiles[fileName], int64(w.openFiles[fileName].nextFreePosition), []byte(content))
+	// TODO: side effects
+	if err := w.applyWalEntryToFile(w.openFiles[fileName], int64(w.openFiles[fileName].nextFreePosition), []byte(content)); err != nil {
+		panic(err)
+	}
 
 	w.openFiles[fileName].nextFreePosition += contentLen
 	w.openFiles[fileName].walSize += contentLen
@@ -76,7 +71,9 @@ func (w *WalManager) AppendToFile(fileName string, content string) (int, error) 
 
 	if w.openFiles[fileName].walSize > config.WAL_SIZE_THRESHOLD {
 		// log.Printf("WalManager: AppendToFile: WAL size %d exceeded for chunk %s", config.WAL_SIZE_THRESHOLD, fileName)
-		w.compactWriteAheadLog(w.openFiles[fileName])
+		if err := w.compactWriteAheadLog(w.openFiles[fileName], tx); err != nil {
+			panic(err)
+		}
 	}
 
 	return int(w.openFiles[fileName].nextFreePosition), nil
@@ -84,26 +81,22 @@ func (w *WalManager) AppendToFile(fileName string, content string) (int, error) 
 
 // Bucket("activechunks").Put(fileName, fileName)
 // CreateBucket(fileName).Put(fileName, fileName)
-func (w *WalManager) AddActiveChunk(fileName string) error {
-	err := w.bolt.Update(func(tx *bolt.Tx) error {
-		activeFilesBucket := tx.Bucket([]byte("activechunks"))
+func (w *WalManager) AddActiveChunk(fileName string, tx *transaction.EventstoreTransaction) error {
+	activeFilesBucket := tx.BoltTx.Bucket([]byte("activechunks"))
 
-		existsCheck := activeFilesBucket.Get([]byte(fileName))
-		if existsCheck != nil {
-			return errors.New(fmt.Sprintf("WalManager: AddActiveChunk: chunk %s already exists", fileName))
-		}
+	existsCheck := activeFilesBucket.Get([]byte(fileName))
+	if existsCheck != nil {
+		return errors.New(fmt.Sprintf("WalManager: AddActiveChunk: chunk %s already exists", fileName))
+	}
 
-		_, err := tx.CreateBucketIfNotExists([]byte(fileName))
-		if err != nil {
-			return err
-		}
-
-		err = activeFilesBucket.Put([]byte(fileName), []byte(fileName))
-
-		return err
-	})
-
+	// create bucket for file
+	_, err := tx.BoltTx.CreateBucketIfNotExists([]byte(fileName))
 	if err != nil {
+		return err
+	}
+
+	// list file in active files bucket
+	if err := activeFilesBucket.Put([]byte(fileName), []byte(fileName)); err != nil {
 		return err
 	}
 
@@ -116,68 +109,68 @@ func (w *WalManager) AddActiveChunk(fileName string) error {
 
 // this file will never be written into again
 // it is the caller's responsibility to call Close() on the returned file (only if function not errored)
-func (w *WalManager) SealActiveFile(fileName string) (error, *os.File) {
+func (w *WalManager) SealActiveFile(fileName string, tx *transaction.EventstoreTransaction) (error, *os.File) {
 	guardedFile := w.openFiles[fileName]
 
 	log.Printf("WalManager: SealActiveFile: compacting %s", fileName)
 
 	// destroys WAL bucket for file
-	w.compactWriteAheadLog(guardedFile)
+	if err := w.compactWriteAheadLog(guardedFile, tx); err != nil {
+		panic(err)
+	}
 
 	log.Printf("WalManager: SealActiveFile: closing %s", fileName)
 
 	// delete file from activechunks
-	err := w.bolt.Update(func(tx *bolt.Tx) error {
-		activeFilesBucket := tx.Bucket([]byte("activechunks"))
+	activeFilesBucket := tx.BoltTx.Bucket([]byte("activechunks"))
 
-		existsCheck := activeFilesBucket.Get([]byte(fileName))
-		if existsCheck == nil {
-			return errors.New(fmt.Sprintf("WalManager: SealActiveFile: file %s does not exist", fileName))
-		}
+	existsCheck := activeFilesBucket.Get([]byte(fileName))
+	if existsCheck == nil {
+		return errors.New(fmt.Sprintf("WalManager: SealActiveFile: file %s does not exist", fileName)), nil
+	}
 
-		_, err := tx.CreateBucketIfNotExists([]byte(fileName))
-		if err != nil {
-			return err
-		}
-
-		return activeFilesBucket.Delete([]byte(fileName))
-	})
-
-	if err != nil {
+	if err := activeFilesBucket.Delete([]byte(fileName)); err != nil {
 		return err, nil
 	}
 
-	delete(w.openFiles, fileName)
+	delete(w.openFiles, fileName) // TODO: side effect must be done outside of TX
 
 	return nil, guardedFile.fd
 }
 
-func (w *WalManager) Close() {
+func (w *WalManager) Close(tx *transaction.EventstoreTransaction) {
 	log.Printf("WalManager: Close: closing all open WAL guarded files")
 
 	for _, openFile := range w.openFiles {
 		if openFile.walSize > 0 { // call fsync() so we can purge the WAL before exiting
-			w.compactWriteAheadLog(openFile)
+			if err := w.compactWriteAheadLog(openFile, tx); err != nil {
+				panic(err)
+			}
 		}
 
 		openFile.Close() // logs itself
 	}
 }
 
-func (w *WalManager) scanAndRecoverActiveWalStores() {
-	err := w.bolt.Update(func(tx *bolt.Tx) error {
-		activeFilesBucket, err := tx.CreateBucketIfNotExists([]byte("activechunks"))
-		if err != nil {
-			return err
-		}
+func (w *WalManager) GetCurrentFileLength(fileName string) (int, error) {
+	wgf, exists := w.openFiles[fileName]
+	if !exists {
+		return 0, errors.New(fmt.Sprintf("WalManager: file %s does not exist", fileName))
+	}
 
-		activeFilesBucket.ForEach(func(key, value []byte) error {
-			fileName := string(key)
+	return int(wgf.nextFreePosition), nil
+}
 
-			w.openFiles[fileName] = w.recoverFileStateFromWal(fileName, tx)
+func (w *WalManager) scanAndRecoverActiveWalStores(tx *transaction.EventstoreTransaction) {
+	activeFilesBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("activechunks"))
+	if err != nil {
+		panic(err)
+	}
 
-			return nil
-		})
+	activeFilesBucket.ForEach(func(key, value []byte) error {
+		fileName := string(key)
+
+		w.openFiles[fileName] = w.recoverFileStateFromWal(fileName, tx)
 
 		return nil
 	})
@@ -187,12 +180,12 @@ func (w *WalManager) scanAndRecoverActiveWalStores() {
 	}
 }
 
-func (w *WalManager) recoverFileStateFromWal(fileName string, tx *bolt.Tx) *WalGuardedFile {
+func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.EventstoreTransaction) *WalGuardedFile {
 	log.Printf("WalManager: recoverFileStateFromWal: start %s", fileName)
 
 	walFile := WalGuardedFileOpen(config.WALMANAGER_DATADIR, fileName)
 
-	chunkWalBucket := tx.Bucket([]byte(fileName))
+	chunkWalBucket := tx.BoltTx.Bucket([]byte(fileName))
 	if chunkWalBucket == nil {
 		panic(errors.New("No WAL bucket: " + fileName))
 	}
@@ -205,7 +198,9 @@ func (w *WalManager) recoverFileStateFromWal(fileName string, tx *bolt.Tx) *WalG
 
 		// log.Printf("WalManager: record: @%d [%s]", filePosition, string(value))
 
-		w.applyWalEntryToFile(walFile, int64(filePosition), value)
+		if err := w.applyWalEntryToFile(walFile, int64(filePosition), value); err != nil {
+			panic(err)
+		}
 
 		walValueSize := uint64(len(value))
 
@@ -224,60 +219,57 @@ func (w *WalManager) recoverFileStateFromWal(fileName string, tx *bolt.Tx) *WalG
 	// FIXME: cannot use (without refactoring) as we're already inside a transaction
 	/*
 		if walRecordsWritten > 0 {
-			w.compactWriteAheadLog(walFile)
+			if err := w.compactWriteAheadLog(walFile); err != nil {
+				panic(err)
+			}
 		}
 	*/
 
 	return walFile
 }
 
-func (w *WalManager) applyWalEntryToFile(walFile *WalGuardedFile, position int64, buffer []byte) {
+func (w *WalManager) applyWalEntryToFile(walFile *WalGuardedFile, position int64, buffer []byte) error {
 	// log.Printf("WalManager: applyWalEntryToFile: %s@%d: %s", walFile.fileNameFictional, position, string(buffer))
 
 	if _, err := walFile.fd.Seek(position, io.SeekStart); err != nil {
-		panic(err)
+		return err
 	}
 	if _, err := walFile.fd.Write(buffer); err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 // Compacts WAL for a given chunk by fsync()'ing the active chunk and only
 // after that purging the WAL entries
-func (w *WalManager) compactWriteAheadLog(walFile *WalGuardedFile) {
+func (w *WalManager) compactWriteAheadLog(walFile *WalGuardedFile, tx *transaction.EventstoreTransaction) error {
 	syncStarted := time.Now()
 
 	log.Printf("WalManager: compactWriteAheadLog: %s fsync() starting", walFile.fileNameFictional)
 
 	err := walFile.fd.Sync()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// after sync is done, it's ok to clear WAL records
 
-	err = w.bolt.Update(func(tx *bolt.Tx) error {
-		err := tx.DeleteBucket([]byte(walFile.fileNameFictional))
+	if err := tx.BoltTx.DeleteBucket([]byte(walFile.fileNameFictional)); err != nil {
+		log.Printf("WalManager: compactWriteAheadLog: No bucket found for %s", walFile.fileNameFictional)
+		return err
+	}
 
-		if err != nil {
-			log.Printf("WalManager: compactWriteAheadLog: No bucket found for %s", walFile.fileNameFictional)
-			return err
-		}
-
-		_, err = tx.CreateBucket([]byte(walFile.fileNameFictional))
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	_, err = tx.BoltTx.CreateBucket([]byte(walFile.fileNameFictional))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	log.Printf("WalManager: compactWriteAheadLog: WAL entries purged in %s for %s", time.Since(syncStarted), walFile.fileNameFictional)
 
 	walFile.walSize = 0
+
+	return nil
 }
 
 func (w *WalManager) ensureDataDirectoryExists() {
