@@ -374,6 +374,7 @@ func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
 	}
 }
 
+// do not call with empty contentArr
 func stringArrayToRawLines(contentArr []string) (string, error) {
 	for _, c := range contentArr {
 		if strings.Contains(c, "\n") {
