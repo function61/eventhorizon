@@ -45,14 +45,14 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager 
 	localPath := c.localPath(cur)
 	localPathTemp := localPath + ".tmp"
 
-	localFile, openErr := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
+	localFileTemp, openErr := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
 	if openErr != nil {
 		panic(openErr)
 	}
 
-	defer localFile.Close()
+	defer localFileTemp.Close()
 
-	if _, err := io.Copy(localFile, response.Body); err != nil {
+	if _, err := io.Copy(localFileTemp, response.Body); err != nil {
 		panic(err)
 	}
 
