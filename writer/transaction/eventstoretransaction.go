@@ -18,6 +18,7 @@ type EventstoreTransaction struct {
 	FilesToDisengageWalFor []string
 	NeedsWALCompaction     []string
 	FilesToOpen            []string
+	FilesToClose           []string
 	WriteOps               []*Write
 }
 
@@ -29,6 +30,7 @@ func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {
 		FilesToDisengageWalFor: []string{},
 		NeedsWALCompaction:     []string{},
 		FilesToOpen:            []string{},
+		FilesToClose:           []string{},
 		WriteOps:               []*Write{},
 	}
 }

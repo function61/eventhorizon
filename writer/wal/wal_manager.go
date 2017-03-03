@@ -176,6 +176,13 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 		delete(w.openFiles, fileName)
 	}
 
+	for _, fileName := range tx.FilesToClose {
+		// close logs itself
+		if err := w.openFiles[fileName].Close(); err != nil {
+			panic(err)
+		}
+	}
+
 	return nil
 }
 
@@ -214,7 +221,8 @@ func (w *WalManager) Close(tx *transaction.EventstoreTransaction) {
 			tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, openFile.fileNameFictional)
 		}
 
-		openFile.Close() // logs itself
+		// cannot close yet, because WAL compaction is done as a side effect and needs the open file
+		tx.FilesToClose = append(tx.FilesToClose, openFile.fileNameFictional)
 	}
 }
 

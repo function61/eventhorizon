@@ -33,20 +33,16 @@ func WalGuardedFileOpen(directory string, fileName string) *WalGuardedFile {
 		panic(err)
 	}
 
-	o := &WalGuardedFile{
+	return &WalGuardedFile{
 		nextFreePosition:  uint64(stats.Size()),
 		fd:                fd,
 		walSize:           0, // filled on WAL scanning
 		fileNameFictional: fileName,
 	}
-
-	return o
 }
 
-func (o *WalGuardedFile) Close() {
-	log.Printf("WalGuardedFile: closing %s", o.fileNameFictional)
+func (w *WalGuardedFile) Close() error {
+	log.Printf("WalGuardedFile: closing %s", w.fileNameFictional)
 
-	if err := o.fd.Close(); err != nil {
-		panic(err)
-	}
+	return w.fd.Close()
 }

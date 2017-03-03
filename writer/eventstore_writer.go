@@ -348,18 +348,11 @@ func (e *EventstoreWriter) Close() {
 	//        because that's what we are designed for
 	tx := transaction.NewEventstoreTransaction(e.database)
 
-	if err := e.database.Update(func(boltTx *bolt.Tx) error { // FIXME: disregarding retval
-		tx.BoltTx = boltTx
+	// Close doesn't need an active transaction, but only the database reference
+	e.walManager.Close(tx)
 
-		e.walManager.Close(tx)
-
-		return nil
-	}); err == nil {
-		if err := e.applySideEffects(tx); err != nil {
-			panic(err)
-		}
-	} else {
-		log.Printf("EventstoreWriter: WALManager close failed")
+	if err := e.applySideEffects(tx); err != nil {
+		panic(err)
 	}
 
 	log.Printf("EventstoreWriter: Close: Closing BoltDB")
