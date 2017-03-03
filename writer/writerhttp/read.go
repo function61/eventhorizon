@@ -34,8 +34,9 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 
 		readResult, err := esReader.Read(readOpts)
 		if err != nil {
+			// TODO: not always server error, might be bad user input so should be bad req
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-			panic(err)
+			return
 		}
 
 		encoder := json.NewEncoder(w)
