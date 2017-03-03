@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/reader/store"
 	"github.com/function61/eventhorizon/scalablestore"
 	"io"
@@ -118,25 +119,29 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 	previousCursor := opts.Cursor
 
 	for linesRead := 0; linesRead < opts.MaxLinesToRead && scanner.Scan(); linesRead++ {
-		line := scanner.Text()
-		lineLen := len(line) + 1 // +1 for newline that we just right-trimmed
+		rawLine := scanner.Text()
+		rawLineLen := len(rawLine) + 1 // +1 for newline that we just right-trimmed
 
 		newCursor := cursor.New(
 			previousCursor.Stream,
 			previousCursor.Chunk,
-			previousCursor.Offset+lineLen,
-			"")
+			previousCursor.Offset+rawLineLen,
+			previousCursor.Server)
 
-		isMeta := false
-		if len(line) > 0 && line[0:1] == "." {
-			isMeta = true
+		isMetaEvent, parsedLine, event := metaevents.Parse(rawLine)
+
+		if isMetaEvent {
+			rotated, isRotated := event.(metaevents.Rotated)
+
+			if isRotated {
+				newCursor = cursor.CursorFromserializedMust(rotated.Next)
+			}
 		}
 
 		readResultLine := ReadResultLine{
-			IsMeta: isMeta,
-			// PtrAfter: newCursor,
+			IsMeta:   isMetaEvent,
 			PtrAfter: newCursor.Serialize(),
-			Content:  line,
+			Content:  parsedLine,
 		}
 
 		readResult.Lines = append(readResult.Lines, readResultLine)
