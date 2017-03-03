@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 type CompressedEncryptedStore struct {
@@ -37,6 +38,8 @@ func (c *CompressedEncryptedStore) Has(cur *cursor.Cursor) bool {
 func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager *scalablestore.S3Manager) bool {
 	fileKey := cur.ToChunkPath() // "/tenants/root/_/0.log"
 
+	downloadStarted := time.Now()
+
 	response, err := s3Manager.Get(fileKey)
 	if err != nil { // FIXME: assuming 404, not any other error like network error..
 		return false
@@ -60,6 +63,8 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager 
 		panic(err)
 	}
 
+	log.Printf("CompressedEncryptedStore: %s download & save took %s", cur.Serialize(), time.Since(downloadStarted))
+
 	return true
 }
 
@@ -71,6 +76,8 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 	}
 
 	defer localCompressedFile.Close()
+
+	decryptionAndExtractionStarted := time.Now()
 
 	gzipReader, err := gzip.NewReader(localCompressedFile)
 	if err != nil {
@@ -92,6 +99,8 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 	localTempFileForSeekable.Close()
 
 	seekableStore.SaveByRenaming(cur, localPathTempForSeekable)
+
+	log.Printf("CompressedEncryptedStore: %s decrypt & extract took %s", cur.Serialize(), time.Since(decryptionAndExtractionStarted))
 
 	return true
 }
