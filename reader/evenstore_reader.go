@@ -60,13 +60,13 @@ func (e *EventstoreReader) Read(cur *cursor.Cursor) (*ReadResult, error) {
 	// log.Printf("EventstoreReader: starting read from %s", cur.Serialize())
 
 	if !e.seekableStore.Has(cur) { // copy from compressed&encrypted store
-		log.Printf("EventstoreReader: miss from SeekableStore")
+		log.Printf("EventstoreReader: %s miss from SeekableStore", cur.Serialize())
 
 		if !e.compressedEncryptedStore.Has(cur) { // copy from S3
-			log.Printf("EventstoreReader: miss from CompressedEncryptedStore")
+			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", cur.Serialize())
 
 			if !e.compressedEncryptedStore.DownloadFromS3(cur, e.s3manager) {
-				log.Printf("EventstoreReader: miss from S3")
+				log.Printf("EventstoreReader: %s miss from S3", cur.Serialize())
 
 				return nil, errors.New("Did not find from S3")
 			}
