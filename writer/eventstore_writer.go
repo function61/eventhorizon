@@ -207,6 +207,9 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		tx.BoltTx = boltTx
 
 		lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
+		if err != nil {
+			panic(err)
+		}
 		lengthAfterAppend := lengthBeforeAppend + len(rawLines)
 
 		var rotatedCursor *cursor.Cursor
