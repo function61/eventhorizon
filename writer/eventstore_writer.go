@@ -78,19 +78,23 @@ func NewEventstoreWriter() *EventstoreWriter {
 		panic(err)
 	}
 
-	e.applySideEffects(tx)
+	if err := e.applySideEffects(tx); err != nil {
+		panic(err)
+	}
 
 	return e
 }
 
 // these happen after COMMIT, i.e. transaction is not in effect.
 // in rare cases WAL manager starts a transaction (for compaction)
-func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) {
+func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) error {
 	// - forget files from the WAL table.
 	//
 	// fd is not actually closed by WAL manager (long term shipper does it instead),
 	// but that's ok because it promises not to write into the fd anymore.
-	e.walManager.ApplySideEffects(tx)
+	if err := e.walManager.ApplySideEffects(tx); err != nil {
+		return err
+	}
 
 	// New chunks (CreateStream() and rotate produce new chunks)
 	for _, spec := range tx.NewChunks {
@@ -109,6 +113,8 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 	for _, ltsf := range tx.ShipFiles {
 		e.longTermShipperWork <- ltsf
 	}
+
+	return nil
 }
 
 func (e *EventstoreWriter) CreateStream(streamName string) error {
@@ -134,7 +140,9 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 		return err
 	}
 
-	e.applySideEffects(tx)
+	if err := e.applySideEffects(tx); err != nil {
+		panic(err)
+	}
 
 	return nil
 }
@@ -237,7 +245,9 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		return err2
 	}
 
-	e.applySideEffects(tx)
+	if err := e.applySideEffects(tx); err != nil {
+		panic(err)
+	}
 
 	// publish "@1235" to topic "stream:/foo"
 	e.pubSubClient.Publish("stream:"+streamName, fmt.Sprintf("@%d", nextOffsetSideEffect))
@@ -345,7 +355,9 @@ func (e *EventstoreWriter) Close() {
 
 		return nil
 	}); err == nil {
-		e.applySideEffects(tx)
+		if err := e.applySideEffects(tx); err != nil {
+			panic(err)
+		}
 	} else {
 		log.Printf("EventstoreWriter: WALManager close failed")
 	}
