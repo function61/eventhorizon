@@ -3,6 +3,7 @@ package reader
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/reader/store"
 	"github.com/function61/eventhorizon/scalablestore"
@@ -94,6 +95,15 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 	}
 
 	defer fd.Close()
+
+	fileInfo, errStat := fd.Stat()
+	if errStat != nil {
+		return nil, errStat
+	}
+
+	if int64(opts.Cursor.Offset) > fileInfo.Size() {
+		return nil, errors.New(fmt.Sprintf("Attempt to seek past EOF"))
+	}
 
 	_, errSeek := fd.Seek(int64(opts.Cursor.Offset), io.SeekStart)
 	if errSeek != nil {
