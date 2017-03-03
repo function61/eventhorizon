@@ -23,20 +23,24 @@ func NewPusher() *Pusher {
 func (p *Pusher) Run() {
 	stream := "/tenants/foo"
 
-	offset, err := p.receiver.QueryOffset(stream)
+	receiverInitialOffset, err := p.receiver.QueryOffset(stream)
 	if err != nil {
 		log.Printf("Pusher: error querying receiver offset %s", err.Error())
 		return
 	}
 
-	log.Printf("Pusher: receiver's starting offset for %s is %s", stream, offset)
+	log.Printf("Pusher: receiver's starting offset for %s is %s", stream, receiverInitialOffset)
 
-	cur := cursor.CursorFromserializedMust(offset)
+	previousCursor := cursor.CursorFromserializedMust(receiverInitialOffset)
 
-	p.pushOne(cur)
+	for {
+		acceptedOffset, _ := p.pushOne(previousCursor)
+
+		previousCursor = cursor.CursorFromserializedMust(acceptedOffset)
+	}
 }
 
-func (p *Pusher) pushOne(cur *cursor.Cursor) {
+func (p *Pusher) pushOne(cur *cursor.Cursor) (string, int) {
 	readReq := reader.NewReadOptions()
 	readReq.Cursor = cur
 
@@ -45,10 +49,17 @@ func (p *Pusher) pushOne(cur *cursor.Cursor) {
 		panic(err)
 	}
 
+	if len(readResult.Lines) == 0 {
+		panic("nope")
+	}
+
 	pushResult, err := p.receiver.PushReadResult(readResult)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("Pusher: receiver ACKed until %s", pushResult.AcceptedOffset)
+	// log.Printf("Pusher: receiver ACKed until %s", pushResult.AcceptedOffset)
+
+	// FIXME: take into account accepted item count
+	return pushResult.AcceptedOffset, len(readResult.Lines)
 }

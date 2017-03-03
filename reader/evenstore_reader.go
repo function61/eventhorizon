@@ -32,7 +32,7 @@ type ReadOptions struct {
 
 func NewReadOptions() *ReadOptions {
 	return &ReadOptions{
-		MaxLinesToRead: 5,
+		MaxLinesToRead: 1000,
 	}
 }
 

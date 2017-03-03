@@ -15,6 +15,7 @@ type ReceiverState struct {
 
 type Receiver struct {
 	state *ReceiverState
+	eventsRead int
 }
 
 func NewReceiver() *Receiver {
@@ -26,6 +27,7 @@ func NewReceiver() *Receiver {
 
 	return &Receiver{
 		state: state,
+		eventsRead: 0,
 	}
 }
 
@@ -44,12 +46,17 @@ func (r *Receiver) PushReadResult(result *reader.ReadResult) (*endpoint.PushResu
 	acceptedOffset := ourOffset
 
 	for _, line := range result.Lines {
-		log.Printf("Receiver: accepted %s", line.Content)
+		if (r.eventsRead % 10000) == 0 {
+			log.Printf("Receiver: %d events read", r.eventsRead)
+		}
+
+		r.eventsRead++
+		// log.Printf("Receiver: accepted %s", line.Content)
 
 		acceptedOffset = line.PtrAfter
 	}
 
-	log.Printf("Receiver: saving ACKed offset %s", acceptedOffset)
+	// log.Printf("Receiver: saving ACKed offset %s", acceptedOffset)
 
 	r.state.offset[streamName] = acceptedOffset
 
