@@ -26,23 +26,23 @@ func NewCompressedEncryptedStore() *CompressedEncryptedStore {
 	return &CompressedEncryptedStore{}
 }
 
-func (c *CompressedEncryptedStore) Has(cursor *cursor.Cursor) bool {
-	if _, err := os.Stat(c.localPath(cursor)); os.IsNotExist(err) {
+func (c *CompressedEncryptedStore) Has(cur *cursor.Cursor) bool {
+	if _, err := os.Stat(c.localPath(cur)); os.IsNotExist(err) {
 		return false
 	}
 
 	return true
 }
 
-func (c *CompressedEncryptedStore) DownloadFromS3(cursor *cursor.Cursor, s3Manager *scalablestore.S3Manager) bool {
-	fileKey := cursor.ToChunkPath() // "/tenants/root/_/0.log"
+func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager *scalablestore.S3Manager) bool {
+	fileKey := cur.ToChunkPath() // "/tenants/root/_/0.log"
 
 	response, err := s3Manager.Get(fileKey)
 	if err != nil { // FIXME: assuming 404, not any other error like network error..
 		return false
 	}
 
-	localPath := c.localPath(cursor)
+	localPath := c.localPath(cur)
 	localPathTemp := localPath + ".tmp"
 
 	localFile, openErr := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
@@ -64,8 +64,8 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cursor *cursor.Cursor, s3Manag
 }
 
 // extracts compressed file first to temporary filename and then atomically moves it to SeekableStore
-func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor, seekableStore *SeekableStore) bool {
-	localCompressedFile, openErr := os.Open(c.localPath(cursor))
+func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, seekableStore *SeekableStore) bool {
+	localCompressedFile, openErr := os.Open(c.localPath(cur))
 	if openErr != nil {
 		panic(openErr)
 	}
@@ -77,7 +77,7 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor,
 		panic(err)
 	}
 
-	localPath := c.localPath(cursor)
+	localPath := c.localPath(cur)
 	localPathTempForSeekable := localPath + ".tmp-seekable"
 
 	localTempFileForSeekable, openErr := os.OpenFile(localPathTempForSeekable, os.O_RDWR|os.O_CREATE, 0755)
@@ -91,11 +91,11 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cursor *cursor.Cursor,
 
 	localTempFileForSeekable.Close()
 
-	seekableStore.SaveByRenaming(cursor, localPathTempForSeekable)
+	seekableStore.SaveByRenaming(cur, localPathTempForSeekable)
 
 	return true
 }
 
-func (c *CompressedEncryptedStore) localPath(cursor *cursor.Cursor) string {
-	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cursor.ToChunkSafePath())
+func (c *CompressedEncryptedStore) localPath(cur *cursor.Cursor) string {
+	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cur.ToChunkSafePath())
 }
