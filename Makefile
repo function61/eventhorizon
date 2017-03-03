@@ -4,4 +4,4 @@ all: build
 
 build:
 	go fmt ./...
-	go build
+	cd cli/writer/ && go build
