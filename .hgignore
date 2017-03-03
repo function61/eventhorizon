@@ -1,0 +1,10 @@
+syntax: glob
+
+# binaries
+cli/writer/writer
+cli/writer/pusher
+cli/importfromfile/importfromfile
+
+# temp stuff
+simulator3
+test-dump
