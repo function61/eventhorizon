@@ -223,7 +223,7 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		}
 
 		if rotatedCursor != nil {
-			rotatedMeta, _ := json.Marshal(metaevents.NewRotated())
+			rotatedMeta, _ := json.Marshal(metaevents.NewRotated(rotatedCursor.Serialize()))
 
 			rawLines += string(rotatedMeta) + "\n"
 		}
