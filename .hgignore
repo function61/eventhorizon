@@ -2,7 +2,7 @@ syntax: glob
 
 # binaries
 cli/writer/writer
-cli/writer/pusher
+cli/pusher/pusher
 cli/importfromfile/importfromfile
 
 # temp stuff
