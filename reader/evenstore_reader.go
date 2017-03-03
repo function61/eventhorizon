@@ -23,6 +23,17 @@ type ReadResultLine struct {
 	Content  string
 }
 
+type ReadOptions struct {
+	MaxLinesToRead int
+	Cursor         *cursor.Cursor
+}
+
+func NewReadOptions() *ReadOptions {
+	return &ReadOptions{
+		MaxLinesToRead: 2,
+	}
+}
+
 type ReadResult struct {
 	Lines []ReadResultLine
 }
@@ -52,51 +63,49 @@ func NewEventstoreReader() *EventstoreReader {
 		(only if required)
 	Read from store:seekable
 */
-func (e *EventstoreReader) Read(cur *cursor.Cursor) (*ReadResult, error) {
+func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 	/*	Read from S3 as long as we're not encountering EOF.
 
 		If we encounter EOF and chunk is not closed, move to reading from advertised server.
 	*/
-	// log.Printf("EventstoreReader: starting read from %s", cur.Serialize())
+	// log.Printf("EventstoreReader: starting read from %s", opts.Cursor.Serialize())
 
-	if !e.seekableStore.Has(cur) { // copy from compressed&encrypted store
-		log.Printf("EventstoreReader: %s miss from SeekableStore", cur.Serialize())
+	if !e.seekableStore.Has(opts.Cursor) { // copy from compressed&encrypted store
+		log.Printf("EventstoreReader: %s miss from SeekableStore", opts.Cursor.Serialize())
 
-		if !e.compressedEncryptedStore.Has(cur) { // copy from S3
-			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", cur.Serialize())
+		if !e.compressedEncryptedStore.Has(opts.Cursor) { // copy from S3
+			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", opts.Cursor.Serialize())
 
-			if !e.compressedEncryptedStore.DownloadFromS3(cur, e.s3manager) {
-				log.Printf("EventstoreReader: %s miss from S3", cur.Serialize())
+			if !e.compressedEncryptedStore.DownloadFromS3(opts.Cursor, e.s3manager) {
+				log.Printf("EventstoreReader: %s miss from S3", opts.Cursor.Serialize())
 
 				return nil, errors.New("Did not find from S3")
 			}
 		}
 
 		// the file is now at CompressedEncryptedStore, but not in SeekableStore
-		e.compressedEncryptedStore.ExtractToSeekableStore(cur, e.seekableStore)
+		e.compressedEncryptedStore.ExtractToSeekableStore(opts.Cursor, e.seekableStore)
 	}
 
-	fd, err := e.seekableStore.Open(cur)
+	fd, err := e.seekableStore.Open(opts.Cursor)
 	if err != nil {
 		return nil, err
 	}
 
 	defer fd.Close()
 
-	_, errSeek := fd.Seek(int64(cur.Offset), io.SeekStart)
+	_, errSeek := fd.Seek(int64(opts.Cursor.Offset), io.SeekStart)
 	if errSeek != nil {
 		panic(errSeek)
 	}
 
 	scanner := bufio.NewScanner(fd)
 
-	maxLinesToRead := 5
-
 	readResult := NewReadResult()
 
-	previousCursor := cur
+	previousCursor := opts.Cursor
 
-	for linesRead := 0; linesRead < maxLinesToRead && scanner.Scan(); linesRead++ {
+	for linesRead := 0; linesRead < opts.MaxLinesToRead && scanner.Scan(); linesRead++ {
 		line := scanner.Text()
 		lineLen := len(line) + 1 // +1 for newline that we just right-trimmed
 
