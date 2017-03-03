@@ -127,7 +127,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	//       so we don't accidentally overwrite any data?
 
 	// /tenants/foo/_/0.log
-	chunkName := cursor.NewWithoutServer(streamName, 0, 0).ToChunkPath()
+	chunkName := cursor.New(streamName, 0, 0, "").ToChunkPath()
 
 	tx := transaction.NewEventstoreTransaction(e.database)
 

@@ -14,11 +14,12 @@ type Cursor struct {
 	Server string
 }
 
-func NewWithoutServer(stream string, chunk int, offset int) *Cursor {
+func New(stream string, chunk int, offset int, server string) *Cursor {
 	return &Cursor{
 		Stream: stream,
 		Chunk:  chunk,
 		Offset: offset,
+		Server: server,
 	}
 }
 

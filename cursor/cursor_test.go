@@ -16,7 +16,13 @@ func EqualInt(t *testing.T, actual int, expected int) {
 	}
 }
 
-func TestCursor(t *testing.T) {
+func TestNew(t *testing.T) {
+	cursor := New("/tenants/foo", 3, 42, "poop")
+
+	EqualString(t, cursor.Serialize(), "/tenants/foo:3:42:poop")
+}
+
+func TestCursorWithoutServer(t *testing.T) {
 	cursor := CursorFromserializedMust("/tenants/foo:3:42")
 
 	EqualString(t, cursor.Serialize(), "/tenants/foo:3:42")

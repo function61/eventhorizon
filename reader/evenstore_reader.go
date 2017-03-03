@@ -121,10 +121,11 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 		line := scanner.Text()
 		lineLen := len(line) + 1 // +1 for newline that we just right-trimmed
 
-		newCursor := cursor.NewWithoutServer(
+		newCursor := cursor.New(
 			previousCursor.Stream,
 			previousCursor.Chunk,
-			previousCursor.Offset+lineLen)
+			previousCursor.Offset+lineLen,
+			"")
 
 		isMeta := false
 		if len(line) > 0 && line[0:1] == "." {
