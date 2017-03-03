@@ -23,7 +23,11 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
-		cur := cursor.CursorFromserializedMust(readRequest.Cursor)
+		cur, errCursor := cursor.CursorFromserialized(readRequest.Cursor)
+		if errCursor != nil {
+			http.Error(w, errCursor.Error(), http.StatusBadRequest)
+			return
+		}
 
 		readOpts := reader.NewReadOptions()
 		readOpts.Cursor = cur
