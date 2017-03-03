@@ -1,7 +1,15 @@
-.PHONY: all build
+.PHONY: all fmt writer pusher importfromfile
 
-all: build
+all: fmt writer
 
-build:
+fmt:
 	go fmt ./...
+
+writer:
 	cd cli/writer/ && go build
+
+pusher:
+	cd cli/pusher/ && go build
+
+importfromfile:
+	cd cli/importfromfile/ && go build

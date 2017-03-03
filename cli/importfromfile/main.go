@@ -1,4 +1,4 @@
-package importfromfile
+package main
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func Run(filename string, stream string, esServer *writer.EventstoreWriter) int {
+func importLinesFromFile(filename string, stream string, esServer *writer.EventstoreWriter) int {
 	exportFile, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -54,4 +54,11 @@ func Run(filename string, stream string, esServer *writer.EventstoreWriter) int 
 	evaluateBatch()
 
 	return linesScanned
+}
+
+func main() {
+	esWriter := writer.NewEventstoreWriter()
+	defer esWriter.Close()
+
+	importLinesFromFile("/app/test-dump/export.txt", "/tenants/foo", esWriter)
 }
