@@ -1,4 +1,4 @@
-.PHONY: all fmt writer pusher importfromfile
+.PHONY: all fmt writer pusher importfromfile test
 
 all: fmt writer
 
@@ -13,3 +13,6 @@ pusher:
 
 importfromfile:
 	cd cli/importfromfile/ && go build
+
+test:
+	go test ./...
