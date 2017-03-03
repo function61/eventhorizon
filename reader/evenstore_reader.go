@@ -30,12 +30,13 @@ type ReadOptions struct {
 
 func NewReadOptions() *ReadOptions {
 	return &ReadOptions{
-		MaxLinesToRead: 2,
+		MaxLinesToRead: 5,
 	}
 }
 
 type ReadResult struct {
-	Lines []ReadResultLine
+	FromOffset string
+	Lines      []ReadResultLine
 }
 
 func NewReadResult() *ReadResult {
@@ -102,6 +103,7 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 	scanner := bufio.NewScanner(fd)
 
 	readResult := NewReadResult()
+	readResult.FromOffset = opts.Cursor.Serialize()
 
 	previousCursor := opts.Cursor
 
