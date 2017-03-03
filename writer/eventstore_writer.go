@@ -148,13 +148,13 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 }
 
 func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {
-	// AppendToStream() acquires lock
+	// appendToStreamInternal() acquires lock
 
 	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
 
-	subscribed, _ := json.Marshal(metaevents.NewSubscribed(subscriptionId))
+	subscribedEvent := metaevents.NewSubscribed(subscriptionId)
 
-	if err := e.AppendToStream(streamName, []string{fmt.Sprintf(".%s", subscribed)}); err != nil {
+	if err := e.appendToStreamInternal(streamName, nil, subscribedEvent.Serialize()); err != nil {
 		return err
 	}
 
@@ -164,13 +164,13 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 }
 
 func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscriptionId string) error {
-	// AppendToStream() acquires lock
+	// appendToStreamInternal() acquires lock
 
 	log.Printf("EventstoreWriter: UnsubscribeFromStream: %s", streamName)
 
-	unsubscribed, _ := json.Marshal(metaevents.NewUnsubscribed(subscriptionId))
+	unsubscribedEvent := metaevents.NewUnsubscribed(subscriptionId)
 
-	if err := e.AppendToStream(streamName, []string{fmt.Sprintf(".%s", unsubscribed)}); err != nil {
+	if err := e.appendToStreamInternal(streamName, nil, unsubscribedEvent.Serialize()); err != nil {
 		return err
 	}
 
@@ -178,6 +178,10 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 }
 
 func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
+	return e.appendToStreamInternal(streamName, contentArr, "")
+}
+
+func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -186,7 +190,7 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		return errors.New("EventstoreWriter.AppendToStream: stream does not exist")
 	}
 
-	if len(contentArr) == 0 {
+	if len(contentArr) == 0 && metaEventsRaw == "" {
 		return nil // not an error to call with empty append
 	}
 
@@ -194,17 +198,6 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 	if err != nil {
 		return err
 	}
-
-	/*
-		if err != nil {
-			return err // should not happen
-		}
-
-		lengthAfterAppend := lengthBeforeAppend + len(rawLines)
-		if lengthAfterAppend > config.CHUNK_ROTATE_THRESHOLD {
-			log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
-		}
-	*/
 
 	nextOffsetSideEffect := 0
 
@@ -223,12 +216,13 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		}
 
 		if rotatedCursor != nil {
-			rotatedMeta, _ := json.Marshal(metaevents.NewRotated(rotatedCursor.Serialize()))
+			// contains pointer to next chunk
+			rotatedEvent := metaevents.NewRotated(rotatedCursor.Serialize())
 
-			rawLines += string(rotatedMeta) + "\n"
+			metaEventsRaw += rotatedEvent.Serialize()
 		}
 
-		nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines, tx)
+		nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines+metaEventsRaw, tx)
 		if err != nil {
 			panic(err)
 		}
@@ -318,10 +312,12 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cur
 	// assign the chunk to us
 	peers := []string{e.ip}
 
-	createdMeta, _ := json.Marshal(metaevents.NewCreated())
-	authorityChange, _ := json.Marshal(metaevents.NewAuthorityChanged(peers))
+	created := metaevents.NewCreated()
+	authorityChange := metaevents.NewAuthorityChanged(peers)
 
-	if _, err := e.walManager.AppendToFile(chunkCursor.ToChunkPath(), fmt.Sprintf(".%s\n.%s\n", createdMeta, authorityChange), tx); err != nil {
+	metaEventsRaw := created.Serialize() + authorityChange.Serialize()
+
+	if _, err := e.walManager.AppendToFile(chunkCursor.ToChunkPath(), metaEventsRaw, tx); err != nil {
 		return err
 	}
 
@@ -407,13 +403,16 @@ func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *transa
 	return cursor.New(chunkSpec.StreamName, chunkSpec.ChunkNumber+1, 0, e.ip)
 }
 
-// do not call with empty contentArr
 func stringArrayToRawLines(contentArr []string) (string, error) {
-	for _, c := range contentArr {
-		if strings.Contains(c, "\n") {
+	buf := ""
+
+	for _, line := range contentArr {
+		if strings.Contains(line, "\n") {
 			return "", errors.New("EventstoreWriter.AppendToStream: content cannot contain \n")
 		}
+
+		buf += metaevents.EscapeRegularLine(line) + "\n"
 	}
 
-	return strings.Join(contentArr, "\n") + "\n", nil
+	return buf, nil
 }
