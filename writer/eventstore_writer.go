@@ -316,9 +316,8 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cur
 	peers := []string{e.ip}
 
 	created := metaevents.NewCreated()
-	authorityChange := metaevents.NewAuthorityChanged(peers)
 
-	metaEventsRaw := created.Serialize() + authorityChange.Serialize()
+	metaEventsRaw := created.Serialize()
 
 	if _, err := e.walManager.AppendToFile(chunkCursor.ToChunkPath(), metaEventsRaw, tx); err != nil {
 		return err
