@@ -85,38 +85,6 @@ func NewEventstoreWriter() *EventstoreWriter {
 	return e
 }
 
-// these happen after COMMIT, i.e. transaction is not in effect.
-// in rare cases WAL manager starts a transaction (for compaction)
-func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) error {
-	// - forget files from the WAL table.
-	//
-	// fd is not actually closed by WAL manager (long term shipper does it instead),
-	// but that's ok because it promises not to write into the fd anymore.
-	if err := e.walManager.ApplySideEffects(tx); err != nil {
-		return err
-	}
-
-	// New chunks (CreateStream() and rotate produce new chunks)
-	for _, spec := range tx.NewChunks {
-		// either first chunk for the stream OR continuation chunk (replaces old spec)
-		e.streamToChunkName[spec.StreamName] = spec
-	}
-
-	// Write all committed WAL entries to the actual files
-
-	// Queued WAL compactions:
-	// - Must ensure fsync() for the above queued writes because after we have purged
-	//   WAL, failed writes cannot be reconstructed.
-	// - These happen in a new transaction. It is not the end of the world if this fails,
-	//   That just means that the WAL compaction will be triggered again on next Append.
-
-	for _, ltsf := range tx.ShipFiles {
-		e.longTermShipperWork <- ltsf
-	}
-
-	return nil
-}
-
 func (e *EventstoreWriter) CreateStream(streamName string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -324,6 +292,38 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cur
 	}
 
 	tx.NewChunks = append(tx.NewChunks, chunkSpec)
+
+	return nil
+}
+
+// these happen after COMMIT, i.e. transaction is not in effect.
+// in rare cases WAL manager starts a transaction (for compaction)
+func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) error {
+	// - forget files from the WAL table.
+	//
+	// fd is not actually closed by WAL manager (long term shipper does it instead),
+	// but that's ok because it promises not to write into the fd anymore.
+	if err := e.walManager.ApplySideEffects(tx); err != nil {
+		return err
+	}
+
+	// New chunks (CreateStream() and rotate produce new chunks)
+	for _, spec := range tx.NewChunks {
+		// either first chunk for the stream OR continuation chunk (replaces old spec)
+		e.streamToChunkName[spec.StreamName] = spec
+	}
+
+	// Write all committed WAL entries to the actual files
+
+	// Queued WAL compactions:
+	// - Must ensure fsync() for the above queued writes because after we have purged
+	//   WAL, failed writes cannot be reconstructed.
+	// - These happen in a new transaction. It is not the end of the world if this fails,
+	//   That just means that the WAL compaction will be triggered again on next Append.
+
+	for _, ltsf := range tx.ShipFiles {
+		e.longTermShipperWork <- ltsf
+	}
 
 	return nil
 }
