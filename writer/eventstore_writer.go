@@ -78,6 +78,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 		panic(err)
 	}
 
+	// Recovered writes from WAL, WAL compactions etc.
 	if err := e.applySideEffects(tx); err != nil {
 		panic(err)
 	}
@@ -109,20 +110,32 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	}
 
 	if err := e.applySideEffects(tx); err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil
 }
 
 func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {
-	// appendToStreamInternal() acquires lock
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
 	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
 
 	subscribedEvent := metaevents.NewSubscribed(subscriptionId)
 
-	if err := e.appendToStreamInternal(streamName, nil, subscribedEvent.Serialize()); err != nil {
+	tx := transaction.NewEventstoreTransaction(e.database)
+
+	err := e.database.Update(func(boltTx *bolt.Tx) error {
+		tx.BoltTx = boltTx
+
+		return e.appendToStreamInternal(streamName, nil, subscribedEvent.Serialize(), tx)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := e.applySideEffects(tx); err != nil {
 		return err
 	}
 
@@ -132,13 +145,25 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 }
 
 func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscriptionId string) error {
-	// appendToStreamInternal() acquires lock
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
 	log.Printf("EventstoreWriter: UnsubscribeFromStream: %s", streamName)
 
 	unsubscribedEvent := metaevents.NewUnsubscribed(subscriptionId)
 
-	if err := e.appendToStreamInternal(streamName, nil, unsubscribedEvent.Serialize()); err != nil {
+	tx := transaction.NewEventstoreTransaction(e.database)
+
+	err := e.database.Update(func(boltTx *bolt.Tx) error {
+		tx.BoltTx = boltTx
+
+		return e.appendToStreamInternal(streamName, nil, unsubscribedEvent.Serialize(), tx)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := e.applySideEffects(tx); err != nil {
 		return err
 	}
 
@@ -146,13 +171,28 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 }
 
 func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
-	return e.appendToStreamInternal(streamName, contentArr, "")
-}
-
-func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	tx := transaction.NewEventstoreTransaction(e.database)
+
+	err := e.database.Update(func(boltTx *bolt.Tx) error {
+		tx.BoltTx = boltTx
+
+		return e.appendToStreamInternal(streamName, contentArr, "", tx)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := e.applySideEffects(tx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string, tx *transaction.EventstoreTransaction) error {
 	chunkSpec, streamExists := e.streamToChunkName[streamName]
 	if !streamExists {
 		return errors.New("EventstoreWriter.AppendToStream: stream does not exist")
@@ -167,53 +207,38 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		return err
 	}
 
-	tx := transaction.NewEventstoreTransaction(e.database)
-
-	err2 := e.database.Update(func(boltTx *bolt.Tx) error {
-		tx.BoltTx = boltTx
-
-		lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
-		if err != nil {
-			panic(err)
-		}
-		lengthAfterAppend := lengthBeforeAppend + len(rawLines)
-
-		var rotatedCursor *cursor.Cursor
-
-		if lengthAfterAppend > config.CHUNK_ROTATE_THRESHOLD {
-			rotatedCursor = e.nextChunkCursorFromCurrentChunkSpec(chunkSpec)
-		}
-
-		if rotatedCursor != nil {
-			// contains pointer to next chunk
-			rotatedEvent := metaevents.NewRotated(rotatedCursor.Serialize())
-
-			metaEventsRaw += rotatedEvent.Serialize()
-		}
-
-		nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines+metaEventsRaw, tx)
-		if err != nil {
-			panic(err)
-		}
-
-		if rotatedCursor != nil {
-			log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
-
-			e.rotateStreamChunk(rotatedCursor, tx)
-		}
-
-		tx.PublishAffectedStream = streamName
-		tx.PublishLargestOffset = nextOffset
-
-		return nil
-	})
-	if err2 != nil {
-		return err2
-	}
-
-	if err := e.applySideEffects(tx); err != nil {
+	lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
+	if err != nil {
 		panic(err)
 	}
+	lengthAfterAppend := lengthBeforeAppend + len(rawLines)
+
+	var rotatedCursor *cursor.Cursor
+
+	if lengthAfterAppend > config.CHUNK_ROTATE_THRESHOLD {
+		rotatedCursor = e.nextChunkCursorFromCurrentChunkSpec(chunkSpec)
+	}
+
+	if rotatedCursor != nil {
+		// contains pointer to next chunk
+		rotatedEvent := metaevents.NewRotated(rotatedCursor.Serialize())
+
+		metaEventsRaw += rotatedEvent.Serialize()
+	}
+
+	nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines+metaEventsRaw, tx)
+	if err != nil {
+		panic(err)
+	}
+
+	if rotatedCursor != nil {
+		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
+
+		e.rotateStreamChunk(rotatedCursor, tx)
+	}
+
+	tx.PublishAffectedStream = streamName
+	tx.PublishLargestOffset = nextOffset
 
 	return nil
 }
