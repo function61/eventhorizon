@@ -3,6 +3,7 @@ syntax: glob
 # binaries
 cli/writer/writer
 cli/pusher/pusher
+cli/pubsub-subscribe/pubsub-subscribe
 cli/importfromfile/importfromfile
 
 # temp stuff
