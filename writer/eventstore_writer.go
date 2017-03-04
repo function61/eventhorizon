@@ -167,8 +167,6 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		return err
 	}
 
-	nextOffsetSideEffect := 0
-
 	tx := transaction.NewEventstoreTransaction(e.database)
 
 	err2 := e.database.Update(func(boltTx *bolt.Tx) error {
@@ -204,9 +202,8 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 			e.rotateStreamChunk(rotatedCursor, tx)
 		}
 
-		// TODO: deliver this via tx
-		// FIXME: rotateStreamChunk() should affect this as well
-		nextOffsetSideEffect = nextOffset // TODO: need this?
+		tx.PublishAffectedStream = streamName
+		tx.PublishLargestOffset = nextOffset
 
 		return nil
 	})
@@ -217,9 +214,6 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 	if err := e.applySideEffects(tx); err != nil {
 		panic(err)
 	}
-
-	// publish "@1235" to topic "stream:/foo"
-	e.pubSubClient.Publish("stream:"+streamName, fmt.Sprintf("@%d", nextOffsetSideEffect))
 
 	return nil
 }
@@ -323,6 +317,11 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 
 	for _, ltsf := range tx.ShipFiles {
 		e.longTermShipperWork <- ltsf
+	}
+
+	if tx.PublishAffectedStream != "" {
+		// publish "@1235" to topic "stream:/foo"
+		e.pubSubClient.Publish("stream:"+tx.PublishAffectedStream, fmt.Sprintf("@%d", tx.PublishLargestOffset))
 	}
 
 	return nil

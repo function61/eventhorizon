@@ -20,6 +20,8 @@ type EventstoreTransaction struct {
 	FilesToOpen            []string
 	FilesToClose           []string
 	WriteOps               []*Write
+	PublishAffectedStream  string
+	PublishLargestOffset   int
 }
 
 func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {
