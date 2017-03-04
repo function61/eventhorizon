@@ -90,6 +90,7 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 		e.compressedEncryptedStore.ExtractToSeekableStore(opts.Cursor, e.seekableStore)
 	}
 
+	// TODO: open fd cache
 	fd, err := e.seekableStore.Open(opts.Cursor)
 	if err != nil {
 		return nil, err

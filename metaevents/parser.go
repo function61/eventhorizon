@@ -38,6 +38,10 @@ func Parse(line string) (bool, string, interface{}) {
 	typ := parsed[1]
 	payload := parsed[2]
 
+	// yes, unfortunately we must repeat even the JSON unmarshaling to every case,
+	// because if we'd declar "obj" *here* as interface{}, unmarshal would not
+	// know the concrete type
+
 	if typ == "Rotated" {
 		obj := Rotated{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
