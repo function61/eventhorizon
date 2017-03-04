@@ -345,6 +345,8 @@ func (e *EventstoreWriter) Close() {
 	// Close doesn't need an active transaction, but only the database reference
 	e.walManager.Close(tx)
 
+	// WAL's applySideEffects() might start a transaction in the case
+	// if we've got WAL logs to compact
 	if err := e.applySideEffects(tx); err != nil {
 		panic(err)
 	}
