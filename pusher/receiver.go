@@ -14,7 +14,7 @@ type ReceiverState struct {
 }
 
 type Receiver struct {
-	state *ReceiverState
+	state      *ReceiverState
 	eventsRead int
 }
 
@@ -26,7 +26,7 @@ func NewReceiver() *Receiver {
 	state.offset["/tenants/foo"] = "/tenants/foo:0:0"
 
 	return &Receiver{
-		state: state,
+		state:      state,
 		eventsRead: 0,
 	}
 }
@@ -46,6 +46,10 @@ func (r *Receiver) PushReadResult(result *reader.ReadResult) (*endpoint.PushResu
 	acceptedOffset := ourOffset
 
 	for _, line := range result.Lines {
+		if line.IsMeta {
+			log.Printf("Receiver: meta event rcvd: %s", line.Content)
+		}
+
 		if (r.eventsRead % 10000) == 0 {
 			log.Printf("Receiver: %d events read", r.eventsRead)
 		}
