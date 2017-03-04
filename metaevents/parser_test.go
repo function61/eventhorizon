@@ -17,9 +17,9 @@ func EqualInt(t *testing.T, actual int, expected int) {
 }
 
 func TestUnknown(t *testing.T) {
-	is, line, event := Parse(".poop {\"foo\": \"bar\"}")
+	isMeta, line, event := Parse(".poop {\"foo\": \"bar\"}")
 
-	if !is {
+	if !isMeta {
 		t.Fatalf("Expecting is meta event")
 	}
 
@@ -33,9 +33,9 @@ func TestUnknown(t *testing.T) {
 }
 
 func TestRegularText(t *testing.T) {
-	is, line, _ := Parse("foobar")
+	isMeta, line, _ := Parse("foobar")
 
-	if is {
+	if isMeta {
 		t.Fatalf("Must not be meta line")
 	}
 
@@ -43,9 +43,9 @@ func TestRegularText(t *testing.T) {
 }
 
 func TestEmptyLine(t *testing.T) {
-	is, line, _ := Parse("")
+	isMeta, line, _ := Parse("")
 
-	if is {
+	if isMeta {
 		t.Fatalf("Must not be meta line")
 	}
 
@@ -53,9 +53,9 @@ func TestEmptyLine(t *testing.T) {
 }
 
 func TestDotEscapedRegularLine(t *testing.T) {
-	is, line, _ := Parse("\\.Rotated")
+	isMeta, line, _ := Parse("\\.Rotated")
 
-	if is {
+	if isMeta {
 		t.Fatalf("Must not be meta line")
 	}
 
@@ -63,9 +63,9 @@ func TestDotEscapedRegularLine(t *testing.T) {
 }
 
 func TestBackslashEscapedRegularLine(t *testing.T) {
-	is, line, _ := Parse("\\\\foo")
+	isMeta, line, _ := Parse("\\\\foo")
 
-	if is {
+	if isMeta {
 		t.Fatalf("Must not be meta line")
 	}
 
@@ -73,9 +73,9 @@ func TestBackslashEscapedRegularLine(t *testing.T) {
 }
 
 func TestNotMetaEvent(t *testing.T) {
-	is, line, _ := Parse("yes oh hai")
+	isMeta, line, _ := Parse("yes oh hai")
 
-	if is {
+	if isMeta {
 		t.Fatalf("Must not be detected as meta event")
 	}
 

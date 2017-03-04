@@ -5,9 +5,9 @@ import (
 )
 
 func TestCreated(t *testing.T) {
-	is, _, event := Parse(".Created {\"ts\":\"2017-02-27T17:12:31.446Z\"}")
+	isMeta, _, event := Parse(".Created {\"ts\":\"2017-02-27T17:12:31.446Z\"}")
 
-	if !is {
+	if !isMeta {
 		t.Fatalf("Expecting is meta event")
 	}
 
