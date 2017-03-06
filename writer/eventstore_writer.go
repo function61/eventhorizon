@@ -106,6 +106,18 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
+		// "/tenants/foo" => "/tenants"
+		parentStream := parentStreamName(streamName)
+
+		if parentStream != streamName { // only equal when "/" (root stream)
+			childStreamCreated := metaevents.NewChildStreamCreated(streamFirstChunkCursor.Serialize())
+
+			// errors also if parent stream does not exist
+			if err := e.appendToStreamInternal(parentStream, nil, childStreamCreated.Serialize(), tx); err != nil {
+				return err
+			}
+		}
+
 		return e.openChunkLocallyAndUploadToS3(streamFirstChunkCursor, tx)
 	})
 	if err != nil {
