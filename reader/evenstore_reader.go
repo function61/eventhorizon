@@ -10,6 +10,7 @@ import (
 	"github.com/function61/eventhorizon/scalablestore"
 	"io"
 	"log"
+	"os"
 )
 
 type EventstoreReader struct {
@@ -20,7 +21,6 @@ type EventstoreReader struct {
 
 type ReadResultLine struct {
 	IsMeta bool
-	// PtrAfter *cursor.Cursor
 	PtrAfter string
 	Content  string
 }
@@ -96,8 +96,14 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 		return nil, err
 	}
 
+	// happens after ReadFromFD()
 	defer fd.Close()
 
+	return ReadFromFD(fd, opts)
+}
+
+// used from LiveReader as well
+func ReadFromFD(fd *os.File, opts *ReadOptions) (*ReadResult, error) {
 	fileInfo, errStat := fd.Stat()
 	if errStat != nil {
 		return nil, errStat

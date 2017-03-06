@@ -83,6 +83,18 @@ func (w *WalManager) AppendToFile(fileName string, content string, tx *transacti
 	return int(positionAfterWrite), nil
 }
 
+// - the file is actually open in write mode. you are responsible for not writing to it.
+// - and you are responsible for abandoning the use of the descriptor once you release the Writer's guarding mutex.
+// - seeks are OK as we'll seek at the correct position on every write.
+func (w *WalManager) BorrowFileForReading(fileName string) (*os.File, error) {
+	walFile, has := w.openFiles[fileName]
+	if !has {
+		return nil, errors.New("No file: " + fileName)
+	}
+
+	return walFile.fd, nil
+}
+
 // Bucket("activechunks").Put(fileName, fileName)
 // CreateBucket(fileName).Put(fileName, fileName)
 func (w *WalManager) OpenNewFile(fileName string, tx *transaction.EventstoreTransaction) error {

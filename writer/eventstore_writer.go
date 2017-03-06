@@ -28,6 +28,7 @@ type EventstoreWriter struct {
 	longTermShipperWork chan *transaction.LongTermShippableFile
 	longTermShipperDone chan bool
 	subAct              *SubscriptionActivityTask
+	LiveReader          *LiveReader
 }
 
 func NewEventstoreWriter() *EventstoreWriter {
@@ -92,6 +93,8 @@ func NewEventstoreWriter() *EventstoreWriter {
 	}
 
 	e.subAct = NewSubscriptionActivityTask(e)
+
+	e.LiveReader = NewLiveReader(e)
 
 	return e
 }

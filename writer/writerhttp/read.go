@@ -13,10 +13,8 @@ type ReadRequest struct {
 }
 
 func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
-	esReader := reader.NewEventstoreReader()
-
-	// $ curl -d '{"Cursor": "/tenants/foo:0:0"}' http://localhost:9092/read
-	http.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
+	// $ curl -d '{"Cursor": "/tenants/foo:0:0"}' http://localhost:9092/liveread
+	http.HandleFunc("/liveread", func(w http.ResponseWriter, r *http.Request) {
 		var readRequest ReadRequest
 		if err := json.NewDecoder(r.Body).Decode(&readRequest); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -32,7 +30,7 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 		readOpts := reader.NewReadOptions()
 		readOpts.Cursor = cur
 
-		readResult, err := esReader.Read(readOpts)
+		readResult, err := eventWriter.LiveReader.Read(readOpts)
 		if err != nil {
 			// TODO: not always server error, might be bad user input so should be bad req
 			http.Error(w, err.Error(), http.StatusInternalServerError)
