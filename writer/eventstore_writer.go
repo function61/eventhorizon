@@ -27,6 +27,7 @@ type EventstoreWriter struct {
 	streamToChunkName   map[string]*transaction.ChunkSpec
 	longTermShipperWork chan *transaction.LongTermShippableFile
 	longTermShipperDone chan bool
+	subAct              *SubscriptionActivityTask
 }
 
 func NewEventstoreWriter() *EventstoreWriter {
@@ -52,9 +53,12 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	/*	Bolt buckets:
 
+		_dirtystreams:
+			/tenants/foo => /tenants/foo:2:450
+
 		_streamsubscriptions:
-			stream_name_1 => subId1,subId2
-			stream_name_2 => subId2
+			/tenants/foo => subId1,subId2
+			/tenants/bar => subId2
 
 		_streams:
 			stream_name
@@ -86,6 +90,8 @@ func NewEventstoreWriter() *EventstoreWriter {
 	if err := e.applySideEffects(tx); err != nil {
 		panic(err)
 	}
+
+	e.subAct = NewSubscriptionActivityTask(e)
 
 	return e
 }
@@ -280,16 +286,27 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		return err
 	}
 
+	cursorAfter := cursor.New(streamName, chunkSpec.ChunkNumber, nextOffset, e.ip)
+
 	if rotatedCursor != nil {
 		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
 
+		// FIXME: this affects cursor as well
 		if err := e.rotateStreamChunk(rotatedCursor, tx); err != nil {
 			return err
 		}
 	}
 
-	tx.PublishAffectedStream = streamName
-	tx.PublishLargestOffset = nextOffset
+	dirtyStreamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_dirtystreams"))
+	if err != nil {
+		return err
+	}
+
+	if err := dirtyStreamsBucket.Put([]byte(streamName), []byte(cursorAfter.Serialize())); err != nil {
+		return err
+	}
+
+	tx.AffectedStreams[cursorAfter.Stream] = cursorAfter.Serialize()
 
 	return nil
 }
@@ -395,9 +412,8 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 		e.longTermShipperWork <- ltsf
 	}
 
-	if tx.PublishAffectedStream != "" {
-		// publish "@1235" to topic "stream:/foo"
-		e.pubSubClient.Publish("stream:"+tx.PublishAffectedStream, fmt.Sprintf("@%d", tx.PublishLargestOffset))
+	for streamName, latestCursorSerialized := range tx.AffectedStreams {
+		e.pubSubClient.Publish("stream:"+streamName, latestCursorSerialized)
 	}
 
 	return nil
@@ -410,6 +426,8 @@ func (e *EventstoreWriter) Close() {
 	log.Printf("EventstoreWriter: Closing. Requesting stop from LongTermShipperManager")
 
 	close(e.longTermShipperWork)
+
+	e.subAct.Close()
 
 	e.pubSubClient.Close()
 
