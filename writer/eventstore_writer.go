@@ -52,6 +52,10 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	/*	Bolt buckets:
 
+		_streamsubscriptions:
+			stream_name_1 => subId1,subId2
+			stream_name_2 => subId2
+
 		_streams:
 			stream_name
 	*/
@@ -129,6 +133,18 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
+		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
+
+		if stringSliceItemIndex(subscriptionId, existingSubscriptions) != -1 {
+			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s already subscribed", subscriptionId))
+		}
+
+		newSubscriptions := append(existingSubscriptions, subscriptionId)
+
+		if err := saveSubscriptionsForStream(streamName, newSubscriptions, tx.BoltTx); err != nil {
+			return err
+		}
+
 		return e.appendToStreamInternal(streamName, nil, subscribedEvent.Serialize(), tx)
 	})
 	if err != nil {
@@ -156,6 +172,20 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
+
+		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
+
+		idxInSlice := stringSliceItemIndex(subscriptionId, existingSubscriptions)
+
+		if idxInSlice == -1 {
+			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s is not subscribed", subscriptionId))
+		}
+
+		newSubscriptions := append(existingSubscriptions[:idxInSlice], existingSubscriptions[idxInSlice+1:]...)
+
+		if err := saveSubscriptionsForStream(streamName, newSubscriptions, tx.BoltTx); err != nil {
+			return err
+		}
 
 		return e.appendToStreamInternal(streamName, nil, unsubscribedEvent.Serialize(), tx)
 	})
@@ -270,7 +300,6 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	}
 }
 
-// TODO: subscriptions array
 func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
 	chunkSpec := &transaction.ChunkSpec{
 		ChunkPath:   chunkCursor.ToChunkPath(),
@@ -299,10 +328,9 @@ func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cur
 		return err
 	}
 
-	// assign the chunk to us
-	peers := []string{e.ip}
+	streamsActiveSubscriptions := getSubscriptionsForStream(chunkCursor.Stream, tx.BoltTx)
 
-	created := metaevents.NewCreated()
+	created := metaevents.NewCreated(streamsActiveSubscriptions)
 
 	metaEventsRaw := created.Serialize()
 
