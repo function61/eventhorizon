@@ -56,13 +56,6 @@ func Parse(line string) (bool, string, interface{}) {
 		}
 
 		return true, line, obj
-	} else if typ == "AuthorityChanged" {
-		obj := AuthorityChanged{}
-		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
-			panic(errors.New("Unable to parse meta line: " + typ))
-		}
-
-		return true, line, obj
 	} else if typ == "Subscribed" {
 		obj := Subscribed{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
