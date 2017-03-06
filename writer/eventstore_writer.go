@@ -224,7 +224,7 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string, tx *transaction.EventstoreTransaction) error {
 	chunkSpec, streamExists := e.streamToChunkName[streamName]
 	if !streamExists {
-		return errors.New("EventstoreWriter.AppendToStream: stream does not exist")
+		return errors.New(fmt.Sprintf("EventstoreWriter.AppendToStream: stream %s does not exist", streamName))
 	}
 
 	if len(contentArr) == 0 && metaEventsRaw == "" {
