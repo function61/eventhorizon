@@ -60,5 +60,5 @@ func main() {
 	esWriter := writer.NewEventstoreWriter()
 	defer esWriter.Close()
 
-	importLinesFromFile("/app/test-dump/export.txt", "/tenants/foo", esWriter)
+	importLinesFromFile("/app/test-dump/export.txt", "/foostream", esWriter)
 }
