@@ -36,13 +36,3 @@ func saveSubscriptionsForStream(streamName string, subscriptions []string, tx *b
 
 	return streamSubscriptionsBucket.Put([]byte(streamName), []byte(subscriptionsSerialized))
 }
-
-func stringSliceItemIndex(item string, slice []string) int {
-	for idx, val := range slice {
-		if val == item {
-			return idx
-		}
-	}
-
-	return -1
-}

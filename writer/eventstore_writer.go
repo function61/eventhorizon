@@ -14,7 +14,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -457,18 +456,4 @@ func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
 
 func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *transaction.ChunkSpec) *cursor.Cursor {
 	return cursor.New(chunkSpec.StreamName, chunkSpec.ChunkNumber+1, 0, e.ip)
-}
-
-func stringArrayToRawLines(contentArr []string) (string, error) {
-	buf := ""
-
-	for _, line := range contentArr {
-		if strings.Contains(line, "\n") {
-			return "", errors.New("EventstoreWriter.AppendToStream: content cannot contain \n")
-		}
-
-		buf += metaevents.EscapeRegularLine(line) + "\n"
-	}
-
-	return buf, nil
 }
