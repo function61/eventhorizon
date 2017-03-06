@@ -8,6 +8,23 @@ import (
 	"time"
 )
 
+// - Every 5 seconds
+// - For each stream that have new events
+// - See which subscribers have subscribed to changes for those streams
+// - Deliver notification as a SubscriptionActivity meta event to the respective
+//   subscribers streams (implemented as regular streams).
+// - All activity for the tracked streams are aggregated in 5 second intervals and all it does
+//   is contain the latest offset, so no perf difference in 1 or millions of events/sec.
+//
+// Therefore, a subscriber can just listen to its own stream to get aggregate
+// notifications for all the streams it its following, whether it's 1 or millions of streams.
+//
+// This design does not impose 5 second delay on events because the pub/sub subsystem delivers
+// the change notifications in realtime, so in practice all subscribed events are delivered instantly.
+//
+// But the pub/sub system does not guarantee delivery (connection problem or at-times-offline subscribers),
+// so we need this mechanism to guarantee that all events will be delivered when subscriber comes back online.
+
 type SubscriptionActivityTask struct {
 	writer                   *EventstoreWriter
 	subscriptionActivityStop chan bool
