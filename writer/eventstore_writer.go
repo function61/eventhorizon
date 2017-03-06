@@ -250,7 +250,7 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 
 	lengthBeforeAppend, err := e.walManager.GetCurrentFileLength(chunkSpec.ChunkPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	lengthAfterAppend := lengthBeforeAppend + len(rawLines)
 
@@ -269,13 +269,15 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 
 	nextOffset, err := e.walManager.AppendToFile(chunkSpec.ChunkPath, rawLines+metaEventsRaw, tx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if rotatedCursor != nil {
 		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
 
-		e.rotateStreamChunk(rotatedCursor, tx)
+		if err := e.rotateStreamChunk(rotatedCursor, tx); err != nil {
+			return err
+		}
 	}
 
 	tx.PublishAffectedStream = streamName
@@ -284,10 +286,10 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 	return nil
 }
 
-func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) {
+func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
 	currentChunkSpec, ok := e.streamToChunkName[nextChunkCursor.Stream]
 	if !ok {
-		panic(errors.New("Stream to chunk not found")) // should not happen
+		return errors.New("Stream to chunk not found") // should not happen
 	}
 
 	log.Printf("EventstoreWriter: rotateStreamChunk: %s -> %s", currentChunkSpec.ChunkPath, nextChunkCursor.ToChunkPath())
@@ -295,7 +297,7 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	// this will never be written to again
 	err, fd := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fileToShip := &transaction.LongTermShippableFile{
@@ -307,8 +309,10 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	tx.ShipFiles = append(tx.ShipFiles, fileToShip)
 
 	if err := e.openChunkLocallyAndUploadToS3(nextChunkCursor, tx); err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
