@@ -39,7 +39,7 @@ func Parse(line string) (bool, string, interface{}) {
 	payload := parsed[2]
 
 	// yes, unfortunately we must repeat even the JSON unmarshaling to every case,
-	// because if we'd declar "obj" *here* as interface{}, unmarshal would not
+	// because if we'd declare "obj" *here* as interface{}, Unmarshal() would not
 	// know the concrete type
 
 	if typ == "Rotated" {
