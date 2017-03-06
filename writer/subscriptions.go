@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+func subscriptionStreamPath(subscriptionId string) string {
+	return "/_subscriptions/" + subscriptionId
+}
+
 func getSubscriptionsForStream(streamName string, tx *bolt.Tx) []string {
 	streamSubscriptionsBucket, err := tx.CreateBucketIfNotExists([]byte("_streamsubscriptions"))
 	if err != nil {

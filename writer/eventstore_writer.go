@@ -145,6 +145,10 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
+		if !e.streamExists(subscriptionStreamPath(subscriptionId), tx) {
+			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s does not exist", subscriptionId))
+		}
+
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
 
 		if stringSliceItemIndex(subscriptionId, existingSubscriptions) != -1 {
@@ -184,6 +188,9 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
+
+		// intentionally not checking if subscription stream exists here, because it was
+		// already checked on subscription
 
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
 
@@ -469,6 +476,12 @@ func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
 			panic(err)
 		}
 	}
+}
+
+func (e *EventstoreWriter) streamExists(streamName string, tx *transaction.EventstoreTransaction) bool {
+	_, streamExists := e.streamToChunkName[streamName]
+
+	return streamExists
 }
 
 func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *transaction.ChunkSpec) *cursor.Cursor {
