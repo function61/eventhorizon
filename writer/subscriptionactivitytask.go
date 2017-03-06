@@ -54,6 +54,8 @@ func (t *SubscriptionActivityTask) loopUntilStopped() {
 			break
 		}
 
+		t.writer.mu.Lock()
+
 		tx := transaction.NewEventstoreTransaction(t.writer.database)
 
 		err := t.writer.database.Update(func(boltTx *bolt.Tx) error {
@@ -68,6 +70,8 @@ func (t *SubscriptionActivityTask) loopUntilStopped() {
 		if err := t.writer.applySideEffects(tx); err != nil {
 			panic(err)
 		}
+
+		t.writer.mu.Unlock()
 	}
 }
 
