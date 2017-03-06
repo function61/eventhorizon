@@ -1,4 +1,4 @@
-package writer
+package longtermshipper
 
 import (
 	"compress/gzip"
@@ -35,7 +35,7 @@ import (
 // http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
 // http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
 
-func LongTermShipperWorker(ltsf *transaction.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
+func shipOne(ltsf *transaction.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	started := time.Now()
@@ -118,10 +118,10 @@ func LongTermShipperWorker(ltsf *transaction.LongTermShippableFile, s3Manager *s
 	}
 }
 
-func LongTermShipperManager(work chan *transaction.LongTermShippableFile, done chan bool) {
+func RunManager(work chan *transaction.LongTermShippableFile, done chan bool) {
 	log.Printf("LongTermShipperManager: Started")
 
-	LongTermShipperManagerEnsureDirectoryExists()
+	ensureDirectoryExists()
 
 	s3Manager := scalablestore.NewS3Manager()
 
@@ -130,7 +130,7 @@ func LongTermShipperManager(work chan *transaction.LongTermShippableFile, done c
 	for ltsf := range work {
 		wg.Add(1)
 
-		go LongTermShipperWorker(ltsf, s3Manager, wg)
+		go shipOne(ltsf, s3Manager, wg)
 	}
 
 	log.Printf("LongTermShipperManager: stopping; waiting for WaitGroup")
@@ -142,7 +142,7 @@ func LongTermShipperManager(work chan *transaction.LongTermShippableFile, done c
 	done <- true
 }
 
-func LongTermShipperManagerEnsureDirectoryExists() {
+func ensureDirectoryExists() {
 	if _, err := os.Stat(config.LONGTERMSHIPPER_PATH); os.IsNotExist(err) {
 		log.Printf("LongTermShipperManager: mkdir %s", config.LONGTERMSHIPPER_PATH)
 

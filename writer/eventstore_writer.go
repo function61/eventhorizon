@@ -9,6 +9,7 @@ import (
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/pubsub/client"
+	"github.com/function61/eventhorizon/writer/longtermshipper"
 	"github.com/function61/eventhorizon/writer/transaction"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
@@ -41,7 +42,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 	e.startPubSubClient()
 
-	go LongTermShipperManager(e.longTermShipperWork, e.longTermShipperDone)
+	go longtermshipper.RunManager(e.longTermShipperWork, e.longTermShipperDone)
 
 	// DB will be created if not exists
 
