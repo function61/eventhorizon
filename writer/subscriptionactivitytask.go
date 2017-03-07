@@ -2,6 +2,7 @@ package writer
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/writer/transaction"
 	"log"
@@ -41,6 +42,19 @@ func NewSubscriptionActivityTask(writer *EventstoreWriter) *SubscriptionActivity
 	go t.loopUntilStopped()
 
 	return t
+}
+
+func (t *SubscriptionActivityTask) MarkOneDirty(cursorAfter *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
+	dirtyStreamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_dirtystreams"))
+	if err != nil {
+		return err
+	}
+
+	if err := dirtyStreamsBucket.Put([]byte(cursorAfter.Stream), []byte(cursorAfter.Serialize())); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *SubscriptionActivityTask) loopUntilStopped() {

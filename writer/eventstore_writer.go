@@ -300,14 +300,7 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		}
 	}
 
-	dirtyStreamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_dirtystreams"))
-	if err != nil {
-		return err
-	}
-
-	if err := dirtyStreamsBucket.Put([]byte(streamName), []byte(cursorAfter.Serialize())); err != nil {
-		return err
-	}
+	e.subAct.MarkOneDirty(cursorAfter, tx)
 
 	tx.AffectedStreams[cursorAfter.Stream] = cursorAfter.Serialize()
 
