@@ -26,6 +26,7 @@ func AppendToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
+		w.WriteHeader(http.StatusCreated)
 		io.WriteString(w, "OK\n")
 	})
 }
