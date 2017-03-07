@@ -16,6 +16,8 @@ import (
 // Uses BoltDB as a backing store for the write-ahead-log.
 // Only supports WAL for append-only files.
 
+// TODO: since there is not much state, merge WALGuardedFile and WalManager
+
 type WalManager struct {
 	openFiles map[string]*WalGuardedFile
 }
@@ -276,31 +278,23 @@ func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.Ev
 		panic(errors.New("No WAL bucket: " + fileName))
 	}
 
-	walRecordsWritten := 0
+	walRecordsQueued := 0
 
 	// these are in order from low to high, since the EventStore is append-only
 	chunkWalBucket.ForEach(func(key, value []byte) error {
 		filePosition := btoi(key) // this is the absolute truth and cannot be questioned
 
-		// log.Printf("WalManager: record: @%d [%s]", filePosition, string(value))
-
 		tx.QueueWrite(walFile.fileNameFictional, value, int64(filePosition))
 
-		walValueSize := uint64(len(value))
-
-		walFile.nextFreePosition = filePosition + walValueSize
-
-		walFile.walSize += walValueSize
-
-		walRecordsWritten++
+		walRecordsQueued++
 
 		return nil
 	})
 
-	log.Printf("WalManager: recoverFileStateFromWal: %d record(s) written", walRecordsWritten)
+	log.Printf("WalManager: recoverFileStateFromWal: %d record(s) queued for recovery", walRecordsQueued)
 
 	// compact the WAL entries
-	if walRecordsWritten > 0 {
+	if walRecordsQueued > 0 {
 		tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, walFile.fileNameFictional)
 	}
 
