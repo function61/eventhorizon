@@ -130,7 +130,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 			}
 		}
 
-		return e.openChunkLocallyAndUploadToS3(streamFirstChunkCursor, tx)
+		return e.openChunkLocally(streamFirstChunkCursor, tx)
 	})
 	if err != nil {
 		return err
@@ -341,21 +341,21 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	// longTermShipper has responsibility of closing the file
 	tx.ShipFiles = append(tx.ShipFiles, fileToShip)
 
-	if err := e.openChunkLocallyAndUploadToS3(nextChunkCursor, tx); err != nil {
+	if err := e.openChunkLocally(nextChunkCursor, tx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (e *EventstoreWriter) openChunkLocallyAndUploadToS3(chunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
+func (e *EventstoreWriter) openChunkLocally(chunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
 	chunkSpec := &transaction.ChunkSpec{
 		ChunkPath:   chunkCursor.ToChunkPath(),
 		StreamName:  chunkCursor.Stream,
 		ChunkNumber: chunkCursor.Chunk,
 	}
 
-	log.Printf("EventstoreWriter: openChunkLocallyAndUploadToS3: Opening %s", chunkCursor.ToChunkPath())
+	log.Printf("EventstoreWriter: openChunkLocally: Opening %s", chunkCursor.ToChunkPath())
 
 	streamsBucket := tx.BoltTx.Bucket([]byte("_streams"))
 
