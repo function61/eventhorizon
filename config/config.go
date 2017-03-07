@@ -1,13 +1,13 @@
 package config
 
 const (
-	WALMANAGER_DATADIR = "/eventhorizon/wal"
+	WALMANAGER_DATADIR = "/eventhorizon/store-live"
 
-	LONGTERMSHIPPER_PATH = "/eventhorizon/store/longterm"
+	LONGTERMSHIPPER_PATH = "/eventhorizon/store-longterm"
 
-	SEEKABLE_STORE_PATH = "/eventhorizon/store/seekable"
+	SEEKABLE_STORE_PATH = "/eventhorizon/store-seekable"
 
-	COMPRESSED_ENCRYPTED_STORE_PATH = "/eventhorizon/store/compressed_and_encrypted"
+	COMPRESSED_ENCRYPTED_STORE_PATH = "/eventhorizon/store-compressed_and_encrypted"
 
 	BOLTDB_DIR = "/eventhorizon"
 
