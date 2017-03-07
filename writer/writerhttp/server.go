@@ -11,6 +11,7 @@ import (
 func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool) {
 	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WRITER_HTTP_PORT)}
 
+	MetricsHandlerInit(eventWriter)
 	ReadHandlerInit(eventWriter)
 	CreateStreamHandlerInit(eventWriter)
 	AppendToStreamHandlerInit(eventWriter)

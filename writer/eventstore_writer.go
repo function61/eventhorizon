@@ -29,6 +29,7 @@ type EventstoreWriter struct {
 	longTermShipperDone chan bool
 	subAct              *SubscriptionActivityTask
 	LiveReader          *LiveReader
+	metrics             *Metrics
 }
 
 func NewEventstoreWriter() *EventstoreWriter {
@@ -38,6 +39,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 		longTermShipperWork: make(chan *transaction.LongTermShippableFile),
 		longTermShipperDone: make(chan bool),
 		mu:                  sync.Mutex{},
+		metrics:             NewMetrics(),
 	}
 
 	e.makeBoltDbDirIfNotExist()
@@ -138,6 +140,8 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 		return err
 	}
 
+	e.metrics.CreateStreamOps.Inc()
+
 	return nil
 }
 
@@ -182,6 +186,8 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 
 	// TODO: return richer response?
 
+	e.metrics.SubscribeToStreamOps.Inc()
+
 	return nil
 }
 
@@ -225,6 +231,8 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 		return err
 	}
 
+	e.metrics.UnsubscribeFromStreamOps.Inc()
+
 	return nil
 }
 
@@ -247,6 +255,8 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		return err
 	}
 
+	e.metrics.AppendToStreamOps.Inc()
+
 	return nil
 }
 
@@ -259,6 +269,8 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 	if len(contentArr) == 0 && metaEventsRaw == "" {
 		return nil // not an error to call with empty append
 	}
+
+	tx.NonMetaLinesAdded += len(contentArr)
 
 	rawLines, err := stringArrayToRawLines(contentArr)
 	if err != nil {
@@ -405,12 +417,15 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 	//   That just means that the WAL compaction will be triggered again on next Append.
 
 	for _, ltsf := range tx.ShipFiles {
+		e.metrics.ChunkShippedToLongTermStorage.Inc()
 		e.longTermShipperWork <- ltsf
 	}
 
 	for streamName, latestCursorSerialized := range tx.AffectedStreams {
 		e.pubSubClient.Publish("stream:"+streamName, latestCursorSerialized)
 	}
+
+	e.metrics.AppendedLinesExclMeta.Add(float64(tx.NonMetaLinesAdded))
 
 	return nil
 }

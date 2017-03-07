@@ -18,6 +18,8 @@ func (l *LiveReader) Read(opts *reader.ReadOptions) (*reader.ReadResult, error) 
 	l.writer.mu.Lock()
 	defer l.writer.mu.Unlock()
 
+	l.writer.metrics.LiveReaderReadOps.Inc()
+
 	// borrowing must be done completely within the above mutex
 	fd, err := l.writer.walManager.BorrowFileForReading(opts.Cursor.ToChunkPath())
 	if err != nil {

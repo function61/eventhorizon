@@ -118,6 +118,8 @@ func (t *SubscriptionActivityTask) broadcastSubscriptionActivities(tx *transacti
 	for subscription, subscriptionActivityEvent := range activityBySubscription {
 		log.Printf("SubscriptionActivityTask: %s: %v", subscription, subscriptionActivityEvent.Activity)
 
+		t.writer.metrics.SubscriptionActivityEventsRaised.Inc()
+
 		// FIXME: this will fail all subscriptions if even one subscription stream is deleted later.
 		//        automatically unsubscribe if subscription stream does not exist?
 
