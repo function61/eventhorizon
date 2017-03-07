@@ -3,10 +3,19 @@ package main
 import (
 	"bufio"
 	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/eventhorizon/writer/writerclient"
+	"github.com/function61/eventhorizon/writer/writerhttp"
+	"log"
 	"os"
 )
 
-func importLinesFromFile(filename string, stream string, esServer *writer.EventstoreWriter) int {
+type batchImporter func([]string) error
+
+const (
+	batchAmount = 1000
+)
+
+func importLinesFromFile(filename string, importFn batchImporter) int {
 	exportFile, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -19,46 +28,65 @@ func importLinesFromFile(filename string, stream string, esServer *writer.Events
 
 	batch := []string{}
 
-	evaluateBatch := func() {
-		if len(batch) == 0 {
-			return
-		}
-
-		if err := esServer.AppendToStream(stream, batch); err != nil {
-			panic(err)
-		}
-
-		batch = []string{}
-	}
-
 	for exportFileScanner.Scan() {
 		line := exportFileScanner.Text()
-
-		// fmt.Println(line)
 
 		linesScanned++
 
 		batch = append(batch, line)
 
-		if len(batch) >= 100 {
-			evaluateBatch()
-		}
-
-		/*
-			if linesScanned >= 10 {
-				break
+		if len(batch) >= batchAmount {
+			if err := importFn(batch); err != nil {
+				panic(err)
 			}
-		*/
+			batch = []string{}
+		}
 	}
 
-	evaluateBatch()
+	if len(batch) > 0 {
+		if err := importFn(batch); err != nil {
+			panic(err)
+		}
+	}
 
 	return linesScanned
 }
 
+func printUsageAndExit() {
+	log.Fatalf("Usage: %s <mode=server|client> <stream> <filename>", os.Args[0])
+}
 func main() {
-	esWriter := writer.NewEventstoreWriter()
-	defer esWriter.Close()
+	if len(os.Args) != 4 {
+		printUsageAndExit()
+	}
 
-	importLinesFromFile("/app/test-dump/export.txt", "/foostream", esWriter)
+	mode := os.Args[1]
+	stream := os.Args[2]
+	filename := os.Args[3]
+
+	if mode == "server" {
+		esWriter := writer.NewEventstoreWriter()
+		defer esWriter.Close()
+
+		evaluateBatch := func(batch []string) error {
+			return esWriter.AppendToStream(stream, batch)
+		}
+
+		importLinesFromFile(filename, evaluateBatch)
+	} else if mode == "client" {
+		client := writerclient.NewClient()
+
+		evaluateBatch := func(batch []string) error {
+			appendRequest := &writerhttp.AppendToStreamRequest{
+				Stream: stream,
+				Lines:  batch,
+			}
+
+			return client.Append(appendRequest)
+		}
+
+		importLinesFromFile(filename, evaluateBatch)
+	} else {
+		printUsageAndExit()
+	}
 }
