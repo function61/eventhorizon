@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"github.com/function61/eventhorizon/writer"
 	"github.com/function61/eventhorizon/writer/writerclient"
-	"github.com/function61/eventhorizon/writer/writerhttp"
+	"github.com/function61/eventhorizon/writer/writerhttp/types"
 	"log"
 	"os"
 )
@@ -77,7 +77,7 @@ func main() {
 		client := writerclient.NewClient()
 
 		evaluateBatch := func(batch []string) error {
-			appendRequest := &writerhttp.AppendToStreamRequest{
+			appendRequest := &types.AppendToStreamRequest{
 				Stream: stream,
 				Lines:  batch,
 			}

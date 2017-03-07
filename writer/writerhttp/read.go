@@ -3,7 +3,7 @@ package writerhttp
 import (
 	"encoding/json"
 	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/reader"
+	"github.com/function61/eventhorizon/reader/types"
 	"github.com/function61/eventhorizon/writer"
 	"net/http"
 )
@@ -27,7 +27,7 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
-		readOpts := reader.NewReadOptions()
+		readOpts := types.NewReadOptions()
 		readOpts.Cursor = cur
 
 		readResult, err := eventWriter.LiveReader.Read(readOpts)

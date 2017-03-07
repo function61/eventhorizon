@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/writer/writerhttp"
+	writertypes "github.com/function61/eventhorizon/writer/writerhttp/types"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,7 +19,7 @@ func NewClient() *Client {
 	return &Client{}
 }
 
-func (c *Client) Append(asr *writerhttp.AppendToStreamRequest) error {
+func (c *Client) Append(asr *writertypes.AppendToStreamRequest) error {
 	url := fmt.Sprintf("http://127.0.0.1:%d/append", config.WRITER_HTTP_PORT)
 
 	asJson, _ := json.Marshal(asr)

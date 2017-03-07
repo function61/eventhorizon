@@ -7,7 +7,9 @@ import (
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/reader/store"
+	"github.com/function61/eventhorizon/reader/types"
 	"github.com/function61/eventhorizon/scalablestore"
+	"github.com/function61/eventhorizon/writer/writerclient"
 	"io"
 	"log"
 	"os"
@@ -17,34 +19,6 @@ type EventstoreReader struct {
 	s3manager                *scalablestore.S3Manager
 	seekableStore            *store.SeekableStore
 	compressedEncryptedStore *store.CompressedEncryptedStore
-}
-
-type ReadResultLine struct {
-	IsMeta bool
-	PtrAfter string
-	Content  string
-}
-
-type ReadOptions struct {
-	MaxLinesToRead int
-	Cursor         *cursor.Cursor
-}
-
-func NewReadOptions() *ReadOptions {
-	return &ReadOptions{
-		MaxLinesToRead: 1000,
-	}
-}
-
-type ReadResult struct {
-	FromOffset string
-	Lines      []ReadResultLine
-}
-
-func NewReadResult() *ReadResult {
-	return &ReadResult{
-		Lines: []ReadResultLine{},
-	}
 }
 
 func NewEventstoreReader() *EventstoreReader {
@@ -66,7 +40,7 @@ func NewEventstoreReader() *EventstoreReader {
 		(only if required)
 	Read from store:seekable
 */
-func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
+func (e *EventstoreReader) Read(opts *types.ReadOptions) (*types.ReadResult, error) {
 	/*	Read from S3 as long as we're not encountering EOF.
 
 		If we encounter EOF and chunk is not closed, move to reading from advertised server.
@@ -103,7 +77,7 @@ func (e *EventstoreReader) Read(opts *ReadOptions) (*ReadResult, error) {
 }
 
 // used from LiveReader as well
-func ReadFromFD(fd *os.File, opts *ReadOptions) (*ReadResult, error) {
+func ReadFromFD(fd *os.File, opts *types.ReadOptions) (*types.ReadResult, error) {
 	fileInfo, errStat := fd.Stat()
 	if errStat != nil {
 		return nil, errStat
@@ -120,7 +94,7 @@ func ReadFromFD(fd *os.File, opts *ReadOptions) (*ReadResult, error) {
 
 	scanner := bufio.NewScanner(fd)
 
-	readResult := NewReadResult()
+	readResult := types.NewReadResult()
 	readResult.FromOffset = opts.Cursor.Serialize()
 
 	previousCursor := opts.Cursor
@@ -145,7 +119,7 @@ func ReadFromFD(fd *os.File, opts *ReadOptions) (*ReadResult, error) {
 			}
 		}
 
-		readResultLine := ReadResultLine{
+		readResultLine := types.ReadResultLine{
 			IsMeta:   isMetaEvent,
 			PtrAfter: newCursor.Serialize(),
 			Content:  parsedLine,

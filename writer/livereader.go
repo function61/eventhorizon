@@ -2,6 +2,7 @@ package writer
 
 import (
 	"github.com/function61/eventhorizon/reader"
+	"github.com/function61/eventhorizon/reader/types"
 )
 
 type LiveReader struct {
@@ -14,7 +15,7 @@ func NewLiveReader(writer *EventstoreWriter) *LiveReader {
 	}
 }
 
-func (l *LiveReader) Read(opts *reader.ReadOptions) (*reader.ReadResult, error) {
+func (l *LiveReader) Read(opts *types.ReadOptions) (*types.ReadResult, error) {
 	l.writer.mu.Lock()
 	defer l.writer.mu.Unlock()
 
