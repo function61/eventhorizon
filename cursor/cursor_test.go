@@ -16,10 +16,26 @@ func EqualInt(t *testing.T, actual int, expected int) {
 	}
 }
 
+func True(t *testing.T, actual bool) {
+	if !actual {
+		t.Fatalf("Expecting true; got false")
+	}
+}
+
+func False(t *testing.T, actual bool) {
+	if actual {
+		t.Fatalf("Expecting true; got false")
+	}
+}
+
 func TestNew(t *testing.T) {
 	cursor := New("/tenants/foo", 3, 42, "poop")
 
 	EqualString(t, cursor.Serialize(), "/tenants/foo:3:42:poop")
+}
+
+func TestBeginningOfStream(t *testing.T) {
+	EqualString(t, BeginningOfStream("/foo", NoServer).Serialize(), "/foo:0:0")
 }
 
 func TestCursorWithoutServer(t *testing.T) {
@@ -31,6 +47,52 @@ func TestCursorWithoutServer(t *testing.T) {
 	EqualInt(t, cursor.Chunk, 3)
 	EqualInt(t, cursor.Offset, 42)
 	EqualString(t, cursor.Server, "")
+}
+
+func TestIsAheadComparedTo(t *testing.T) {
+	// ------- intra-chunk tests
+
+	True(t, CursorFromserializedMust("/:0:123").IsAheadComparedTo(CursorFromserializedMust("/:0:42")))
+	False(t, CursorFromserializedMust("/:0:42").IsAheadComparedTo(CursorFromserializedMust("/:0:123")))
+
+	// equal => false
+	False(t, CursorFromserializedMust("/:0:42").IsAheadComparedTo(CursorFromserializedMust("/:0:42")))
+
+	// ------- cross-chunk tests
+
+	True(t, CursorFromserializedMust("/:1:42").IsAheadComparedTo(CursorFromserializedMust("/:0:123")))
+	False(t, CursorFromserializedMust("/:0:123").IsAheadComparedTo(CursorFromserializedMust("/:1:42")))
+
+	// same offset but bigger chunk
+	True(t, CursorFromserializedMust("/:1:42").IsAheadComparedTo(CursorFromserializedMust("/:0:42")))
+}
+
+func TestIsAheadComparedToPanicsWithDifferingStreams(t *testing.T) {
+	defer func() {
+		EqualString(t, recover().(error).Error(), "Cursor: cannot compare cursors from different streams")
+	}()
+
+	c1 := CursorFromserializedMust("/foo:0:0")
+	c2 := CursorFromserializedMust("/bar:0:0")
+
+	c1.IsAheadComparedTo(c2)
+}
+
+func TestPositionEquals(t *testing.T) {
+	True(t, CursorFromserializedMust("/foo:13:45").PositionEquals(CursorFromserializedMust("/foo:13:45:server")))
+	False(t, CursorFromserializedMust("/foo:13:45").PositionEquals(CursorFromserializedMust("/foo:13:46")))
+	False(t, CursorFromserializedMust("/foo:13:45").PositionEquals(CursorFromserializedMust("/foo:10:45")))
+}
+
+func TestPositionEqualsPanicsWithDifferingStreams(t *testing.T) {
+	defer func() {
+		EqualString(t, recover().(error).Error(), "Cursor: cannot compare cursors from different streams")
+	}()
+
+	c1 := CursorFromserializedMust("/foo:0:0")
+	c2 := CursorFromserializedMust("/bar:0:0")
+
+	c1.PositionEquals(c2)
 }
 
 func TestToChunkPath(t *testing.T) {

@@ -112,7 +112,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	//       so we don't accidentally overwrite any data?
 
 	// /tenants/foo/_/0.log
-	streamFirstChunkCursor := cursor.New(streamName, 0, 0, e.ip)
+	streamFirstChunkCursor := cursor.BeginningOfStream(streamName, e.ip)
 
 	tx := transaction.NewEventstoreTransaction(e.database)
 

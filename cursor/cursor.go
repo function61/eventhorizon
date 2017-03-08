@@ -14,6 +14,10 @@ type Cursor struct {
 	Server string
 }
 
+const (
+	NoServer = ""
+)
+
 func New(stream string, chunk int, offset int, server string) *Cursor {
 	return &Cursor{
 		Stream: stream,
@@ -23,12 +27,38 @@ func New(stream string, chunk int, offset int, server string) *Cursor {
 	}
 }
 
+func BeginningOfStream(stream string, server string) *Cursor {
+	return New(stream, 0, 0, server)
+}
+
 func (c *Cursor) Serialize() string {
 	if c.Server == "" {
 		return c.Stream + ":" + strconv.Itoa(c.Chunk) + ":" + strconv.Itoa(c.Offset)
 	}
 
 	return c.Stream + ":" + strconv.Itoa(c.Chunk) + ":" + strconv.Itoa(c.Offset) + ":" + c.Server
+}
+
+func (c *Cursor) PositionEquals(other *Cursor) bool {
+	if c.Stream != other.Stream {
+		panic(errors.New("Cursor: cannot compare cursors from different streams"))
+	}
+
+	return c.Chunk == other.Chunk && c.Offset == other.Offset
+}
+
+func (c *Cursor) IsAheadComparedTo(other *Cursor) bool {
+	if c.Stream != other.Stream {
+		panic(errors.New("Cursor: cannot compare cursors from different streams"))
+	}
+
+	// block index equal => forward if intra-chunk offset greater
+	if c.Chunk == other.Chunk {
+		return c.Offset > other.Offset
+	} else {
+		// block index not equal => definitely EITHER forward OR backward
+		return c.Chunk > other.Chunk
+	}
 }
 
 // "/tenants/root/_/0.log"
