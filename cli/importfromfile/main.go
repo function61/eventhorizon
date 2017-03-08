@@ -1,8 +1,9 @@
 package main
 
+// Imports events into a stream from a file with one line per event.
+
 import (
 	"bufio"
-	"github.com/function61/eventhorizon/writer"
 	"github.com/function61/eventhorizon/writer/writerclient"
 	"github.com/function61/eventhorizon/writer/writerhttp/types"
 	"log"
@@ -53,40 +54,26 @@ func importLinesFromFile(filename string, importFn batchImporter) int {
 }
 
 func printUsageAndExit() {
-	log.Fatalf("Usage: %s <mode=server|client> <stream> <filename>", os.Args[0])
+	log.Fatalf("Usage: %s <stream> <filename>", os.Args[0])
 }
 func main() {
-	if len(os.Args) != 4 {
+	if len(os.Args) != 3 {
 		printUsageAndExit()
 	}
 
-	mode := os.Args[1]
-	stream := os.Args[2]
-	filename := os.Args[3]
+	stream := os.Args[1]
+	filename := os.Args[2]
 
-	if mode == "server" {
-		esWriter := writer.NewEventstoreWriter()
-		defer esWriter.Close()
+	client := writerclient.NewClient()
 
-		evaluateBatch := func(batch []string) error {
-			return esWriter.AppendToStream(stream, batch)
+	evaluateBatch := func(batch []string) error {
+		appendRequest := &types.AppendToStreamRequest{
+			Stream: stream,
+			Lines:  batch,
 		}
 
-		importLinesFromFile(filename, evaluateBatch)
-	} else if mode == "client" {
-		client := writerclient.NewClient()
-
-		evaluateBatch := func(batch []string) error {
-			appendRequest := &types.AppendToStreamRequest{
-				Stream: stream,
-				Lines:  batch,
-			}
-
-			return client.Append(appendRequest)
-		}
-
-		importLinesFromFile(filename, evaluateBatch)
-	} else {
-		printUsageAndExit()
+		return client.Append(appendRequest)
 	}
+
+	importLinesFromFile(filename, evaluateBatch)
 }
