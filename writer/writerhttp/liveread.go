@@ -3,31 +3,28 @@ package writerhttp
 import (
 	"encoding/json"
 	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/reader/types"
+	rtypes "github.com/function61/eventhorizon/reader/types"
 	"github.com/function61/eventhorizon/writer"
+	wtypes "github.com/function61/eventhorizon/writer/writerhttp/types"
 	"net/http"
 )
-
-type ReadRequest struct {
-	Cursor string
-}
 
 func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 	// $ curl -d '{"Cursor": "/tenants/foo:0:0"}' http://localhost:9092/liveread
 	http.HandleFunc("/liveread", func(w http.ResponseWriter, r *http.Request) {
-		var readRequest ReadRequest
-		if err := json.NewDecoder(r.Body).Decode(&readRequest); err != nil {
+		var req wtypes.LiveReadInput
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		cur, errCursor := cursor.CursorFromserialized(readRequest.Cursor)
+		cur, errCursor := cursor.CursorFromserialized(req.Cursor)
 		if errCursor != nil {
 			http.Error(w, errCursor.Error(), http.StatusBadRequest)
 			return
 		}
 
-		readOpts := types.NewReadOptions()
+		readOpts := rtypes.NewReadOptions()
 		readOpts.Cursor = cur
 
 		readResult, err := eventWriter.LiveReader.Read(readOpts)

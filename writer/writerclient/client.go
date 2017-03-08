@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/reader/types"
-	writertypes "github.com/function61/eventhorizon/writer/writerhttp/types"
+	rtypes "github.com/function61/eventhorizon/reader/types"
+	wtypes "github.com/function61/eventhorizon/writer/writerhttp/types"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -21,13 +21,12 @@ func NewClient() *Client {
 	return &Client{}
 }
 
-func (c *Client) LiveRead(cur *cursor.Cursor) (*types.ReadResult, error) {
+func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, error) {
+	cur := cursor.CursorFromserializedMust(input.Cursor)
 	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
 
-	// TODO: use Input struct from writerhttp/liveread
-	var jsonStr = []byte(fmt.Sprintf(`{"Cursor":"%s"}`, cur.Serialize()))
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	// req.Header.Set("X-Custom-Header", "myvalue")
+	reqJson, _ := json.Marshal(input)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqJson))
 	// req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -55,7 +54,7 @@ func (c *Client) LiveRead(cur *cursor.Cursor) (*types.ReadResult, error) {
 	return readResponseFromJson, nil
 }
 
-func (c *Client) Append(asr *writertypes.AppendToStreamRequest) error {
+func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
 	url := fmt.Sprintf("http://127.0.0.1:%d/append", config.WRITER_HTTP_PORT)
 
 	asJson, _ := json.Marshal(asr)

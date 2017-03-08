@@ -2,8 +2,8 @@ package pusher
 
 import (
 	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/reader"
 	ptypes "github.com/function61/eventhorizon/pusher/types"
+	"github.com/function61/eventhorizon/reader"
 	"log"
 	"sync"
 )
