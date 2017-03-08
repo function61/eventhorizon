@@ -1,19 +1,19 @@
 package main
 
 import (
+	"github.com/function61/eventhorizon/cli"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/pubsub/server"
 	"github.com/function61/eventhorizon/writer"
 	"github.com/function61/eventhorizon/writer/writerhttp"
 	"log"
-	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 )
 
 func main() {
-	checkForS3AccessKeys()
+	if err := cli.CheckForS3AccessKeys(); err != nil {
+		log.Fatalf("main: %s", err.Error())
+	}
 
 	// start pub/sub server
 	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
@@ -26,9 +26,7 @@ func main() {
 
 	log.Printf("main: waiting for stop signal")
 
-	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	log.Println(<-ch)
+	log.Println(cli.WaitForInterrupt())
 
 	// stop serving HTTP
 
@@ -41,14 +39,4 @@ func main() {
 
 	// stop pub/sub
 	pubSubServer.Close()
-}
-
-func checkForS3AccessKeys() {
-	if val := os.Getenv("AWS_ACCESS_KEY_ID"); val == "" {
-		log.Fatalf("main: Need AWS_ACCESS_KEY_ID for S3 access. See README.md")
-	}
-
-	if val := os.Getenv("AWS_SECRET_ACCESS_KEY"); val == "" {
-		log.Fatalf("main: Need AWS_SECRET_ACCESS_KEY for S3 access. See README.md")
-	}
 }
