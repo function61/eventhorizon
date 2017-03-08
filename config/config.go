@@ -13,6 +13,8 @@ const (
 
 	S3_BUCKET = "eventhorizon.fn61.net"
 
+	S3_BUCKET_REGION = "us-east-1"
+
 	PUBSUB_PORT = 9091
 
 	WRITER_HTTP_PORT = 9092

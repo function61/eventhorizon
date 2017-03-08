@@ -25,7 +25,7 @@ func NewS3Manager() *S3Manager {
 		panic(err)
 	}
 
-	s3Client := s3.New(awsSession, aws.NewConfig().WithRegion("us-east-1"))
+	s3Client := s3.New(awsSession, aws.NewConfig().WithRegion(config.S3_BUCKET_REGION))
 
 	s := &S3Manager{config.S3_BUCKET, s3Client}
 
