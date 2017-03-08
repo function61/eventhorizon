@@ -1,4 +1,4 @@
-package pusher
+package main
 
 import (
 	"github.com/function61/eventhorizon/cursor"

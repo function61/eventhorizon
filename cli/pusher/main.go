@@ -11,7 +11,9 @@ func main() {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	psh := pusher.NewPusher()
+	r := NewReceiver()
+
+	psh := pusher.NewPusher(r)
 	go psh.Run()
 
 	log.Println(cli.WaitForInterrupt())

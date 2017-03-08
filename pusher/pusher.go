@@ -3,12 +3,13 @@ package pusher
 import (
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/reader"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
 	"log"
 	"sync"
 )
 
 type Pusher struct {
-	receiver       *Receiver
+	receiver       ptypes.Receiver
 	reader         *reader.EventstoreReader
 	threads        map[string]*PusherThread
 	done           chan bool
@@ -16,11 +17,9 @@ type Pusher struct {
 	streamActivity chan StreamActivityMsg
 }
 
-func NewPusher() *Pusher {
-	r := NewReceiver()
-
+func NewPusher(receiver ptypes.Receiver) *Pusher {
 	return &Pusher{
-		receiver:       r,
+		receiver:       receiver,
 		reader:         reader.NewEventstoreReader(),
 		threads:        make(map[string]*PusherThread),
 		done:           make(chan bool),
