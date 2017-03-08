@@ -46,22 +46,34 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 
 		If we encounter EOF and chunk is not closed, move to reading from advertised server.
 	*/
-	if opts.Cursor.Server != "" {
-		log.Printf("EventstoreReader: contacting livereader for %s", opts.Cursor.Serialize())
-
-		wclient := writerclient.NewClient()
-
-		// TODO: maybe return just a buffer with opts.MaxLinesToRead lines from livereader,
-		//       and do the actual parsing here in reader, so parsing is not done at writer at all
-		return wclient.LiveRead(&wtypes.LiveReadInput{
-			Cursor: opts.Cursor.Serialize(),
-		})
-	}
 
 	// log.Printf("EventstoreReader: starting read from %s", opts.Cursor.Serialize())
 
 	if !e.seekableStore.Has(opts.Cursor) { // copy from compressed&encrypted store
 		log.Printf("EventstoreReader: %s miss from SeekableStore", opts.Cursor.Serialize())
+
+		// FIXME: this being here is a goddamn hack
+		if opts.Cursor.Server != "" {
+			log.Printf("EventstoreReader: contacting livereader for %s", opts.Cursor.Serialize())
+
+			wclient := writerclient.NewClient()
+
+			// TODO: maybe return just a buffer with opts.MaxLinesToRead lines from livereader,
+			//       and do the actual parsing here in reader, so parsing is not done at writer at all !!
+			result, was404, err := wclient.LiveRead(&wtypes.LiveReadInput{
+				Cursor: opts.Cursor.Serialize(),
+			})
+
+			if err == nil { // got result from LiveReader
+				return result, nil
+			}
+
+			if !was404 && err != nil { // unexpected error
+				panic(err)
+			}
+
+			// ok it was 404 => carry on trying from S3
+		}
 
 		if !e.compressedEncryptedStore.Has(opts.Cursor) { // copy from S3
 			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", opts.Cursor.Serialize())
@@ -69,6 +81,7 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 			if !e.compressedEncryptedStore.DownloadFromS3(opts.Cursor, e.s3manager) {
 				log.Printf("EventstoreReader: %s miss from S3", opts.Cursor.Serialize())
 
+				// TODO: try this from the server pointed to in the cursor
 				return nil, errors.New("Did not find from S3")
 			}
 		}
@@ -85,6 +98,8 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 
 	// happens after ReadFromFD()
 	defer fd.Close()
+
+	// TODO: just seek in here and supply a reader to ReadFromFD() ?
 
 	return ReadFromFD(fd, opts)
 }

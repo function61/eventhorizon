@@ -21,7 +21,8 @@ func NewClient() *Client {
 	return &Client{}
 }
 
-func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, error) {
+// second output value (bool) tells whether this was definite 404 of the file not existing
+func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, bool, error) {
 	cur := cursor.CursorFromserializedMust(input.Cursor)
 	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
 
@@ -36,22 +37,29 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 { // TODO: check for 2xx
-		panic(errors.New("HTTP response not 200"))
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, false, err
 	}
 
-	readResponseFromJson := &types.ReadResult{}
+	if resp.StatusCode != 200 { // TODO: check for 2xx
+		err := errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
+
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, true, err
+		}
+
+		// unexpected HTTP error
+		return nil, false, err
+	}
+
+	readResponseFromJson := &rtypes.ReadResult{}
 
 	if err := json.Unmarshal(body, readResponseFromJson); err != nil {
-		panic(err)
+		return nil, false, err
 	}
 
-	return readResponseFromJson, nil
+	return readResponseFromJson, false, nil
 }
 
 func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {

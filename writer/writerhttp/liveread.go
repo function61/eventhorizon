@@ -29,8 +29,8 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 
 		readResult, err := eventWriter.LiveReader.Read(readOpts)
 		if err != nil {
-			// TODO: not always server error, might be bad user input so should be bad req
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			// FIXME: do not assume it's always about 404
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
 
