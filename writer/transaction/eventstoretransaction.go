@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/function61/eventhorizon/writer/types"
 )
 
 type Write struct {
@@ -13,8 +14,8 @@ type Write struct {
 type EventstoreTransaction struct {
 	BoltTx                 *bolt.Tx
 	Bolt                   *bolt.DB
-	NewChunks              []*ChunkSpec
-	ShipFiles              []*LongTermShippableFile
+	NewChunks              []*types.ChunkSpec
+	ShipFiles              []*types.LongTermShippableFile
 	FilesToDisengageWalFor []string
 	NeedsWALCompaction     []string
 	FilesToOpen            []string
@@ -27,8 +28,8 @@ type EventstoreTransaction struct {
 func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {
 	return &EventstoreTransaction{
 		Bolt:                   bolt,
-		NewChunks:              []*ChunkSpec{},
-		ShipFiles:              []*LongTermShippableFile{},
+		NewChunks:              []*types.ChunkSpec{},
+		ShipFiles:              []*types.LongTermShippableFile{},
 		FilesToDisengageWalFor: []string{},
 		NeedsWALCompaction:     []string{},
 		FilesToOpen:            []string{},

@@ -11,6 +11,7 @@ import (
 	"github.com/function61/eventhorizon/pubsub/client"
 	"github.com/function61/eventhorizon/writer/longtermshipper"
 	"github.com/function61/eventhorizon/writer/transaction"
+	"github.com/function61/eventhorizon/writer/types"
 	"github.com/function61/eventhorizon/writer/wal"
 	"log"
 	"os"
@@ -24,8 +25,8 @@ type EventstoreWriter struct {
 	mu                  sync.Mutex
 	database            *bolt.DB
 	pubSubClient        *client.PubSubClient
-	streamToChunkName   map[string]*transaction.ChunkSpec
-	longTermShipperWork chan *transaction.LongTermShippableFile
+	streamToChunkName   map[string]*types.ChunkSpec
+	longTermShipperWork chan *types.LongTermShippableFile
 	longTermShipperDone chan bool
 	subAct              *SubscriptionActivityTask
 	LiveReader          *LiveReader
@@ -35,8 +36,8 @@ type EventstoreWriter struct {
 func NewEventstoreWriter() *EventstoreWriter {
 	e := &EventstoreWriter{
 		ip:                  "127.0.0.1",
-		streamToChunkName:   make(map[string]*transaction.ChunkSpec),
-		longTermShipperWork: make(chan *transaction.LongTermShippableFile),
+		streamToChunkName:   make(map[string]*types.ChunkSpec),
+		longTermShipperWork: make(chan *types.LongTermShippableFile),
 		longTermShipperDone: make(chan bool),
 		mu:                  sync.Mutex{},
 		metrics:             NewMetrics(),
@@ -333,7 +334,7 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 		return err
 	}
 
-	fileToShip := &transaction.LongTermShippableFile{
+	fileToShip := &types.LongTermShippableFile{
 		ChunkName: currentChunkSpec.ChunkPath,
 		Fd:        fd,
 	}
@@ -349,7 +350,7 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 }
 
 func (e *EventstoreWriter) openChunkLocally(chunkCursor *cursor.Cursor, tx *transaction.EventstoreTransaction) error {
-	chunkSpec := &transaction.ChunkSpec{
+	chunkSpec := &types.ChunkSpec{
 		ChunkPath:   chunkCursor.ToChunkPath(),
 		StreamName:  chunkCursor.Stream,
 		ChunkNumber: chunkCursor.Chunk,
@@ -473,7 +474,7 @@ func (e *EventstoreWriter) recoverOpenStreams(tx *transaction.EventstoreTransact
 	streamsBucket.ForEach(func(key, value []byte) error {
 		// streamName := string(key)
 
-		chunkSpec := &transaction.ChunkSpec{}
+		chunkSpec := &types.ChunkSpec{}
 
 		if err := json.Unmarshal(value, chunkSpec); err != nil {
 			panic(err)
@@ -513,6 +514,6 @@ func (e *EventstoreWriter) streamExists(streamName string, tx *transaction.Event
 	return streamExists
 }
 
-func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *transaction.ChunkSpec) *cursor.Cursor {
+func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *types.ChunkSpec) *cursor.Cursor {
 	return cursor.New(chunkSpec.StreamName, chunkSpec.ChunkNumber+1, 0, e.ip)
 }

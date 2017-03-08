@@ -1,4 +1,4 @@
-package transaction
+package types
 
 type ChunkSpec struct {
 	// TODO: calculate this

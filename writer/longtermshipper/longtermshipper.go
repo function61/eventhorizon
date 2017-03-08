@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/scalablestore"
-	"github.com/function61/eventhorizon/writer/transaction"
+	"github.com/function61/eventhorizon/writer/types"
 	"io"
 	"log"
 	"os"
@@ -35,7 +35,7 @@ import (
 // http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
 // http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
 
-func shipOne(ltsf *transaction.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
+func shipOne(ltsf *types.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	started := time.Now()
@@ -118,7 +118,7 @@ func shipOne(ltsf *transaction.LongTermShippableFile, s3Manager *scalablestore.S
 	}
 }
 
-func RunManager(work chan *transaction.LongTermShippableFile, done chan bool) {
+func RunManager(work chan *types.LongTermShippableFile, done chan bool) {
 	log.Printf("LongTermShipperManager: Started")
 
 	ensureDirectoryExists()

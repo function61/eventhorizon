@@ -1,4 +1,4 @@
-package transaction
+package types
 
 import (
 	"os"
