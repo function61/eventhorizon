@@ -1,21 +1,22 @@
 package pusher
 
 import (
-	"errors"
-	"fmt"
 	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/pusher/endpoint"
-	"github.com/function61/eventhorizon/reader"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
+	rtypes "github.com/function61/eventhorizon/reader/types"
 	"log"
+	"sync"
 )
 
 type ReceiverState struct {
+	// stream => offset mappings
 	offset map[string]string
 }
 
 type Receiver struct {
 	state      *ReceiverState
 	eventsRead int
+	mu         *sync.Mutex
 }
 
 func NewReceiver() *Receiver {
@@ -23,31 +24,86 @@ func NewReceiver() *Receiver {
 		offset: make(map[string]string),
 	}
 
-	state.offset["/tenants/foo"] = "/tenants/foo:0:0"
-
-	return &Receiver{
+	r := &Receiver{
 		state:      state,
 		eventsRead: 0,
+		mu:         &sync.Mutex{},
+	}
+
+	subscriptionId := r.GetSubscriptionId()
+
+	subscriptionPath := "/_subscriptions/" + subscriptionId
+
+	defaultServer := "127.0.0.1" // FIXME
+
+	state.offset[subscriptionPath] = cursor.BeginningOfStream(
+		subscriptionPath,
+		defaultServer).Serialize()
+
+	return r
+}
+
+func (r *Receiver) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
+	ourCursorSerialized, offsetExists := r.state.offset[remote.Stream]
+
+	// we've no record for the stream => we are definitely behind
+	if !offsetExists {
+		return cursor.BeginningOfStream(remote.Stream, cursor.NoServer)
+	}
+
+	ourCursor := cursor.CursorFromserializedMust(ourCursorSerialized)
+
+	if remote.IsAheadComparedTo(ourCursor) {
+		return ourCursor
+	} else {
+		return nil
 	}
 }
 
-func (r *Receiver) PushReadResult(result *reader.ReadResult) (*endpoint.PushResult, error) {
-	streamName := cursor.CursorFromserializedMust(result.FromOffset).Stream
+func (r *Receiver) PushReadResult(result *rtypes.ReadResult) *ptypes.PushResult {
+	// TODO: lock this at database level (per stream), so no two receivers can ever
+	//       race within the same stream
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	ourOffset, err := r.QueryOffset(streamName)
-	if err != nil {
-		panic(err)
+	fromOffset := cursor.CursorFromserializedMust(result.FromOffset)
+	ourOffset := r.queryOffset(fromOffset.Stream)
+
+	if !fromOffset.PositionEquals(ourOffset) {
+		return ptypes.NewPushResultIncorrectBaseOffset(ourOffset.Serialize())
 	}
 
-	if ourOffset != result.FromOffset {
-		panic(errors.New("Invalid offset"))
-	}
+	// start with the offset stored in database. if we don't ACK a single
+	// event, this is what we'll return and pusher will know that we didn't move
+	// forward and throttle the pushes accordingly
+	acceptedOffset := ourOffset.Serialize()
 
-	acceptedOffset := ourOffset
+	behindCursors := make(map[string]string)
 
 	for _, line := range result.Lines {
 		if line.IsMeta {
-			log.Printf("Receiver: meta event rcvd: %s", line.Content)
+			// everything we encounter in SubscriptionActivity is something we ourselves
+			// have subscribed to, so we can just check:
+			// => if we're behind
+			// => if we're never heard of the stream => start following it
+			for _, remoteCursorSerialized := range line.SubscriptionActivity {
+				remoteCursor := cursor.CursorFromserializedMust(remoteCursorSerialized)
+
+				// see if this stream's behind-ness is already confirmed as behind?
+				// in that case we don't need newer data because we already know our
+				// position for this stream, and re-checking it will never change it.
+				_, weAlreadyKnowThisStreamIsehind := behindCursors[remoteCursor.Stream]
+
+				if !weAlreadyKnowThisStreamIsehind {
+					shouldStartFrom := r.isRemoteAhead(remoteCursor)
+
+					if shouldStartFrom != nil {
+						log.Printf("Receiver: remote ahead of us: %s", remoteCursorSerialized)
+
+						behindCursors[remoteCursor.Stream] = shouldStartFrom.Serialize()
+					}
+				}
+			}
 		}
 
 		if (r.eventsRead % 10000) == 0 {
@@ -57,21 +113,44 @@ func (r *Receiver) PushReadResult(result *reader.ReadResult) (*endpoint.PushResu
 		r.eventsRead++
 		// log.Printf("Receiver: accepted %s", line.Content)
 
-		acceptedOffset = line.PtrAfter
+		// only ACK offsets if no behind streams encountered
+		// (this happens only for subscription streams anyway)
+		if len(behindCursors) == 0 {
+			acceptedOffset = line.PtrAfter
+		}
 	}
 
 	// log.Printf("Receiver: saving ACKed offset %s", acceptedOffset)
 
-	r.state.offset[streamName] = acceptedOffset
+	r.state.offset[fromOffset.Stream] = acceptedOffset
 
-	return endpoint.NewPushResult(acceptedOffset), nil
+	return ptypes.NewPushResult(acceptedOffset, stringMapToSlice(behindCursors))
 }
 
-func (r *Receiver) QueryOffset(stream string) (string, error) {
-	pos, exists := r.state.offset[stream]
+func (r *Receiver) queryOffset(stream string) *cursor.Cursor {
+	cursorSerialized, exists := r.state.offset[stream]
+
+	// we can trust that it is a valid stream because all pushes are based on
+	// the subscription ID that is exclusive to us. so if stream does not exist
+	// => allow it to be created
 	if !exists {
-		return "", errors.New(fmt.Sprintf("We do not track stream %s", stream))
+		return cursor.BeginningOfStream(stream, cursor.NoServer)
 	}
 
-	return pos, nil
+	return cursor.CursorFromserializedMust(cursorSerialized)
+}
+
+// TODO: maybe implement this as just error check-and-return in PushReadResult()
+func (r *Receiver) GetSubscriptionId() string {
+	return "foo"
+}
+
+func stringMapToSlice(mapp map[string]string) []string {
+	slice := []string{}
+
+	for _, value := range mapp {
+		slice = append(slice, value)
+	}
+
+	return slice
 }

@@ -34,6 +34,10 @@ func TestNew(t *testing.T) {
 	EqualString(t, cursor.Serialize(), "/tenants/foo:3:42:poop")
 }
 
+func TestForOffsetQuery(t *testing.T) {
+	EqualString(t, ForOffsetQuery("/foo").Serialize(), "/foo:-1:-1")
+}
+
 func TestBeginningOfStream(t *testing.T) {
 	EqualString(t, BeginningOfStream("/foo", NoServer).Serialize(), "/foo:0:0")
 }

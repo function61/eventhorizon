@@ -45,6 +45,16 @@ func (e *EventstoreReader) Read(opts *types.ReadOptions) (*types.ReadResult, err
 
 		If we encounter EOF and chunk is not closed, move to reading from advertised server.
 	*/
+	if opts.Cursor.Server != "" {
+		log.Printf("EventstoreReader: contacting livereader for %s", opts.Cursor.Serialize())
+
+		wclient := writerclient.NewClient()
+
+		// TODO: maybe return just a buffer with opts.MaxLinesToRead lines from livereader,
+		//       and do the actual parsing here in reader, so parsing is not done at writer at all
+		return wclient.LiveRead(opts.Cursor)
+	}
+
 	// log.Printf("EventstoreReader: starting read from %s", opts.Cursor.Serialize())
 
 	if !e.seekableStore.Has(opts.Cursor) { // copy from compressed&encrypted store
@@ -111,18 +121,26 @@ func ReadFromFD(fd *os.File, opts *types.ReadOptions) (*types.ReadResult, error)
 
 		isMetaEvent, parsedLine, event := metaevents.Parse(rawLine)
 
+		activityUnpacked := []string{}
+
 		if isMetaEvent {
 			rotated, isRotated := event.(metaevents.Rotated)
+			subscriptionActivity, isSubscriptionActivity := event.(metaevents.SubscriptionActivity)
 
 			if isRotated {
 				newCursor = cursor.CursorFromserializedMust(rotated.Next)
+			} else if isSubscriptionActivity {
+				for _, activityCursorSerialized := range subscriptionActivity.Activity {
+					activityUnpacked = append(activityUnpacked, activityCursorSerialized)
+				}
 			}
 		}
 
 		readResultLine := types.ReadResultLine{
-			IsMeta:   isMetaEvent,
-			PtrAfter: newCursor.Serialize(),
-			Content:  parsedLine,
+			IsMeta:               isMetaEvent,
+			PtrAfter:             newCursor.Serialize(),
+			Content:              parsedLine,
+			SubscriptionActivity: activityUnpacked,
 		}
 
 		readResult.Lines = append(readResult.Lines, readResultLine)

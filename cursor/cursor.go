@@ -27,6 +27,14 @@ func New(stream string, chunk int, offset int, server string) *Cursor {
 	}
 }
 
+func ForOffsetQuery(stream string) *Cursor {
+	// negative values are syntactically valid but not logically.
+	// we use this mainly to provide valid looking offset to push operation
+	// for which we will get incorrect offset response with correct offset back,
+	// so this is essentially to implement offset queries
+	return New(stream, -1, -1, NoServer)
+}
+
 func BeginningOfStream(stream string, server string) *Cursor {
 	return New(stream, 0, 0, server)
 }

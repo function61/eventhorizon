@@ -4,62 +4,96 @@ import (
 	"github.com/function61/eventhorizon/cursor"
 	"github.com/function61/eventhorizon/reader"
 	"log"
+	"sync"
 )
 
 type Pusher struct {
-	receiver *Receiver
-	reader   *reader.EventstoreReader
+	receiver       *Receiver
+	reader         *reader.EventstoreReader
+	threads        map[string]*PusherThread
+	done           chan bool
+	stop           chan bool
+	streamActivity chan StreamActivityMsg
 }
 
 func NewPusher() *Pusher {
 	r := NewReceiver()
 
 	return &Pusher{
-		receiver: r,
-		reader:   reader.NewEventstoreReader(),
+		receiver:       r,
+		reader:         reader.NewEventstoreReader(),
+		threads:        make(map[string]*PusherThread),
+		done:           make(chan bool),
+		stop:           make(chan bool),
+		streamActivity: make(chan StreamActivityMsg, 1),
 	}
 }
 
+// run this in a goroutine
 func (p *Pusher) Run() {
-	stream := "/tenants/foo"
+	subscriptionId := p.receiver.GetSubscriptionId()
 
-	receiverInitialOffset, err := p.receiver.QueryOffset(stream)
-	if err != nil {
-		log.Printf("Pusher: error querying receiver offset %s", err.Error())
-		return
-	}
+	subscriptionStreamPath := "/_subscriptions/" + subscriptionId
 
-	log.Printf("Pusher: receiver's starting offset for %s is %s", stream, receiverInitialOffset)
+	wg := &sync.WaitGroup{}
 
-	previousCursor := cursor.CursorFromserializedMust(receiverInitialOffset)
+	// start with single thread for the subscription stream.
+	// that thread will yield us messages on p.streamActivity if that subscription
+	// has new activity any subscribed streams
+	p.threads[subscriptionStreamPath] = NewPusherThread(
+		p,
+		subscriptionStreamPath, // stream
+		true, // is subscription stream - check docs for significance
+		"",
+		nil, // since we don't know Receiver's cursor for this stream, it will be queried
+		wg)
 
 	for {
-		acceptedOffset, _ := p.pushOne(previousCursor)
+		select {
+		case streamActivityMsg := <-p.streamActivity:
+			poopCursor := cursor.CursorFromserializedMust(streamActivityMsg.CursorSerialized)
 
-		previousCursor = cursor.CursorFromserializedMust(acceptedOffset)
+			_, threadExists := p.threads[poopCursor.Stream]
+
+			if threadExists {
+				log.Printf("Pusher: thread exists for %s; notifying", poopCursor.Stream)
+
+				log.Printf("Pusher: NOT IMPLEMENTED YET")
+			} else {
+				log.Printf("Pusher: spawning new thread for %s", poopCursor.Stream)
+
+				p.threads[poopCursor.Stream] = NewPusherThread(
+					p,
+					poopCursor.Stream, // stream
+					false,             // is subscription stream - check docs for significance
+					"",
+					poopCursor,
+					wg)
+			}
+			break
+		case <-p.stop:
+			// request stop for all threads
+			for _, thread := range p.threads {
+				thread.stopCh <- true
+			}
+
+			wg.Wait()
+
+			// we are done when all threads have been stopped
+			p.done <- true
+
+			return
+			break
+
+		}
 	}
 }
 
-func (p *Pusher) pushOne(cur *cursor.Cursor) (string, int) {
-	readReq := reader.NewReadOptions()
-	readReq.Cursor = cur
+func (p *Pusher) Close() {
+	log.Printf("Pusher: requesting stop")
 
-	readResult, err := p.reader.Read(readReq)
-	if err != nil {
-		panic(err)
-	}
+	p.stop <- true
+	<-p.done
 
-	if len(readResult.Lines) == 0 {
-		panic("nope")
-	}
-
-	pushResult, err := p.receiver.PushReadResult(readResult)
-	if err != nil {
-		panic(err)
-	}
-
-	// log.Printf("Pusher: receiver ACKed until %s", pushResult.AcceptedOffset)
-
-	// FIXME: take into account accepted item count
-	return pushResult.AcceptedOffset, len(readResult.Lines)
+	log.Printf("Pusher: stopped")
 }

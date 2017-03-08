@@ -5,9 +5,10 @@ import (
 )
 
 type ReadResultLine struct {
-	IsMeta   bool
-	PtrAfter string
-	Content  string
+	IsMeta               bool
+	PtrAfter             string
+	Content              string
+	SubscriptionActivity []string // if meta event is SubscriptionActivity, activity is parsed here
 }
 
 type ReadOptions struct {
