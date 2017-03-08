@@ -15,6 +15,13 @@ func main() {
 		log.Fatalf("main: %s", err.Error())
 	}
 
+	log.Println("       .")
+	log.Println("      /=\\\\       PyramidDB")
+	log.Println("     /===\\ \\     function61.com")
+	log.Println("    /=====\\  \\")
+	log.Println("   /=======\\  /")
+	log.Println("  /=========\\/")
+
 	// start pub/sub server
 	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
 
