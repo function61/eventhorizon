@@ -63,9 +63,9 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 
 			if err == nil { // got result from LiveReader
 				// no need to seek, as the result from LiveReader is already based on offset
-				// so is the line read limit but there is no harm in ReadFromReader()
+				// so is the line read limit but there is no harm in parseFromReader()
 				// implementing the limit again
-				return ReadFromReader(result, opts)
+				return parseFromReader(result, opts)
 			}
 
 			if !was404 && err != nil { // unexpected error
@@ -96,7 +96,7 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		return nil, err
 	}
 
-	// happens after ReadFromReader() returns
+	// happens after parseFromReader() returns
 	defer fd.Close()
 
 	fileInfo, errStat := fd.Stat()
@@ -113,11 +113,10 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		panic(errSeek)
 	}
 
-	return ReadFromReader(fd, opts)
+	return parseFromReader(fd, opts)
 }
 
-// used from LiveReader as well
-func ReadFromReader(reader io.Reader, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
+func parseFromReader(reader io.Reader, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
 	scanner := bufio.NewScanner(reader)
 
 	readResult := rtypes.NewReadResult()
