@@ -2,9 +2,9 @@ package longtermshipper
 
 import (
 	"compress/gzip"
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/scalablestore"
-	"github.com/function61/eventhorizon/writer/types"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/pyramid/writer/types"
 	"io"
 	"log"
 	"os"

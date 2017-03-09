@@ -2,8 +2,8 @@ package writerhttp
 
 import (
 	"encoding/json"
-	"github.com/function61/eventhorizon/writer"
-	"github.com/function61/eventhorizon/writer/writerhttp/types"
+	"github.com/function61/pyramid/writer"
+	"github.com/function61/pyramid/writer/writerhttp/types"
 	"io"
 	"net/http"
 )

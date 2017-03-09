@@ -1,7 +1,7 @@
 package types
 
 import (
-	rtypes "github.com/function61/eventhorizon/reader/types"
+	rtypes "github.com/function61/pyramid/reader/types"
 )
 
 type Receiver interface {

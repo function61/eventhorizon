@@ -3,9 +3,9 @@ package store
 import (
 	"compress/gzip"
 	"fmt"
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/scalablestore"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/cursor"
+	"github.com/function61/pyramid/scalablestore"
 	"io"
 	"log"
 	"os"

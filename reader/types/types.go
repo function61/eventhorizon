@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/pyramid/cursor"
 )
 
 type ReadResultLine struct {

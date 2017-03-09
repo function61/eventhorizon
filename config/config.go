@@ -1,15 +1,15 @@
 package config
 
 const (
-	WALMANAGER_DATADIR = "/eventhorizon/store-live"
+	WALMANAGER_DATADIR = "/pyramid-data/store-live"
 
-	LONGTERMSHIPPER_PATH = "/eventhorizon/store-longterm"
+	LONGTERMSHIPPER_PATH = "/pyramid-data/store-longterm"
 
-	SEEKABLE_STORE_PATH = "/eventhorizon/store-seekable"
+	SEEKABLE_STORE_PATH = "/pyramid-data/store-seekable"
 
-	COMPRESSED_ENCRYPTED_STORE_PATH = "/eventhorizon/store-compressed_and_encrypted"
+	COMPRESSED_ENCRYPTED_STORE_PATH = "/pyramid-data/store-compressed_and_encrypted"
 
-	BOLTDB_DIR = "/eventhorizon"
+	BOLTDB_DIR = "/pyramid-data"
 
 	S3_BUCKET = "eventhorizon.fn61.net"
 

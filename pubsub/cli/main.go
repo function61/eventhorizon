@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/pubsub/server"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/pubsub/server"
 	"log"
 	"os"
 	"os/signal"

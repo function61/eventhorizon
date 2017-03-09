@@ -1,12 +1,9 @@
 FROM golang:1.8.0
 
-# Building this image:
-# $ docker build -t eventhorizon-dev -f Dockerfile-dev .
-
 # For Alpine-based version, check version control, but is not in use because:
 # Alpine (musl) + VirtualBox shared folders is a no-go: https://www.virtualbox.org/ticket/9069
 
-RUN mkdir -p /go/src/github.com/function61 && ln -s /app /go/src/github.com/function61/eventhorizon
+RUN mkdir -p /go/src/github.com/function61 && ln -s /app /go/src/github.com/function61/pyramid
 
 CMD bash
 

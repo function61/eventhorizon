@@ -1,9 +1,9 @@
 package pusher
 
 import (
-	"github.com/function61/eventhorizon/cursor"
-	ptypes "github.com/function61/eventhorizon/pusher/types"
-	rtypes "github.com/function61/eventhorizon/reader/types"
+	"github.com/function61/pyramid/cursor"
+	ptypes "github.com/function61/pyramid/pusher/types"
+	rtypes "github.com/function61/pyramid/reader/types"
 	"log"
 	"sync"
 	"time"

@@ -1,8 +1,8 @@
 package writerhttp
 
 import (
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/writer"
 	"log"
 	"net/http"
 	"strconv"

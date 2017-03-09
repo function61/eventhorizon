@@ -3,7 +3,7 @@ package server
 import (
 	"bufio"
 	"fmt"
-	"github.com/function61/eventhorizon/pubsub"
+	"github.com/function61/pyramid/pubsub"
 	"io"
 	"log"
 	"net"

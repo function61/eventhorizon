@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/function61/eventhorizon/pubsub/client"
+	"github.com/function61/pyramid/pubsub/client"
 	"log"
 	"strconv"
 	"time"

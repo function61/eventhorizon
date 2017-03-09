@@ -1,8 +1,8 @@
 package writer
 
 import (
-	"github.com/function61/eventhorizon/reader"
-	"github.com/function61/eventhorizon/reader/types"
+	"github.com/function61/pyramid/reader"
+	"github.com/function61/pyramid/reader/types"
 )
 
 type LiveReader struct {

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/function61/eventhorizon/cli"
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/pubsub/server"
-	"github.com/function61/eventhorizon/writer"
-	"github.com/function61/eventhorizon/writer/writerhttp"
+	"github.com/function61/pyramid/cli"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/pubsub/server"
+	"github.com/function61/pyramid/writer"
+	"github.com/function61/pyramid/writer/writerhttp"
 	"log"
 	"strconv"
 )

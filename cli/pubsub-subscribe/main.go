@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/function61/eventhorizon/config"
-	"github.com/function61/eventhorizon/pubsub/client"
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/pubsub/client"
 	"log"
 	"os"
 	"strconv"

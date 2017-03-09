@@ -1,7 +1,7 @@
 package writerhttp
 
 import (
-	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/pyramid/writer"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
 )

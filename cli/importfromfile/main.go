@@ -4,8 +4,8 @@ package main
 
 import (
 	"bufio"
-	"github.com/function61/eventhorizon/writer/writerclient"
-	"github.com/function61/eventhorizon/writer/writerhttp/types"
+	"github.com/function61/pyramid/writer/writerclient"
+	"github.com/function61/pyramid/writer/writerhttp/types"
 	"log"
 	"os"
 )

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/function61/eventhorizon/cli"
-	"github.com/function61/eventhorizon/pusher"
+	"github.com/function61/pyramid/cli"
+	"github.com/function61/pyramid/pusher"
 	"log"
 )
 
