@@ -105,7 +105,12 @@ func (t *SubscriptionActivityTask) broadcastSubscriptionActivities(tx *transacti
 				activityBySubscription[subscription] = metaevents.NewSubscriptionActivity()
 			}
 
-			activityBySubscription[subscription].Activity[string(dirtyStream)] = string(latestCursorSerialized)
+			// append() by itself does not guarantee that each stream is mentioned
+			// only once (a must for SubscriptionActivity event), but the above
+			// ForEach() iterates over unique streams, so we're good
+			activityBySubscription[subscription].Activity = append(
+				activityBySubscription[subscription].Activity,
+				string(latestCursorSerialized))
 		}
 
 		if err := dirtyStreamsBucket.Delete(dirtyStream); err != nil {

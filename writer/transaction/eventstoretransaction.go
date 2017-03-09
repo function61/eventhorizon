@@ -21,8 +21,8 @@ type EventstoreTransaction struct {
 	FilesToOpen            []string
 	FilesToClose           []string
 	WriteOps               []*Write
-	AffectedStreams        map[string]string
-	NonMetaLinesAdded      int // only for metrics
+	AffectedStreams        map[string]string // streamName => cursorSerialized
+	NonMetaLinesAdded      int               // only for metrics
 }
 
 func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {

@@ -139,6 +139,9 @@ func ReadFromFD(fd *os.File, opts *rtypes.ReadOptions) (*rtypes.ReadResult, erro
 
 		isMetaEvent, parsedLine, event := metaevents.Parse(rawLine)
 
+		// as a convenience, parse & unpack SubscriptionActivity events' stream
+		// activity in the resulting data structure, as not to *require* Targets
+		// to have the capability to parse meta events
 		activityUnpacked := []string{}
 
 		if isMetaEvent {
@@ -148,9 +151,7 @@ func ReadFromFD(fd *os.File, opts *rtypes.ReadOptions) (*rtypes.ReadResult, erro
 			if isRotated {
 				newCursor = cursor.CursorFromserializedMust(rotated.Next)
 			} else if isSubscriptionActivity {
-				for _, activityCursorSerialized := range subscriptionActivity.Activity {
-					activityUnpacked = append(activityUnpacked, activityCursorSerialized)
-				}
+				activityUnpacked = append(activityUnpacked, subscriptionActivity.Activity...)
 			}
 		}
 
