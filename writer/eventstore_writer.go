@@ -175,6 +175,11 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 			return err
 		}
 
+		// since the subscribed event is saved into the *very same stream* we are
+		// subscribing to, an initial SubscriptionActivity event will be raised
+		// for the stream even if the stream doesn't have any other "real" activity.
+		// => subscriber will notice it. everything went better than expected :)
+
 		return e.appendToStreamInternal(streamName, nil, subscribedEvent.Serialize(), tx)
 	})
 	if err != nil {
