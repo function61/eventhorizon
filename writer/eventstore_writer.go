@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -153,6 +154,11 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
 
 	subscribedEvent := metaevents.NewSubscribed(subscriptionId)
+
+	if strings.HasPrefix(streamName, subscriptionStreamPath("")) {
+		// this would cause an endless SubscriptionActivity notification loop
+		return errors.New("SubscribeToStream: cannot subscribe to a subscription stream")
+	}
 
 	tx := transaction.NewEventstoreTransaction(e.database)
 
