@@ -72,8 +72,14 @@ func (t *PusherThread) run() {
 			panic(err)
 		}
 
+		// succesfull read result is empty only when we are at the top
 		if len(readResult.Lines) == 0 {
-			panic("at the top?")
+			log.Printf("PusherThread: reached the top for %s", t.stream)
+			// stop thread - this actually works as a hack because after this
+			// when manager wants to shut down, message is posted on stopCh which
+			// would block but it's buffered and manager only calls waitgroup
+			// wait which was satisfied by returning from here
+			return
 		}
 
 		// this is where Receiver does her magic
