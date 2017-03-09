@@ -13,7 +13,6 @@ import (
 	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
 	"io"
 	"log"
-	"os"
 )
 
 type EventstoreReader struct {
@@ -54,18 +53,19 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 
 		// FIXME: this being here is a goddamn hack
 		if opts.Cursor.Server != "" {
-			log.Printf("EventstoreReader: contacting livereader for %s", opts.Cursor.Serialize())
+			log.Printf("EventstoreReader: contacting LiveReader for %s", opts.Cursor.Serialize())
 
 			wclient := writerclient.NewClient()
 
-			// TODO: maybe return just a buffer with opts.MaxLinesToRead lines from livereader,
-			//       and do the actual parsing here in reader, so parsing is not done at writer at all !!
 			result, was404, err := wclient.LiveRead(&wtypes.LiveReadInput{
 				Cursor: opts.Cursor.Serialize(),
 			})
 
 			if err == nil { // got result from LiveReader
-				return result, nil
+				// no need to seek, as the result from LiveReader is already based on offset
+				// so is the line read limit but there is no harm in ReadFromReader()
+				// implementing the limit again
+				return ReadFromReader(result, opts)
 			}
 
 			if !was404 && err != nil { // unexpected error
@@ -96,16 +96,9 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		return nil, err
 	}
 
-	// happens after ReadFromFD()
+	// happens after ReadFromReader() returns
 	defer fd.Close()
 
-	// TODO: just seek in here and supply a reader to ReadFromFD() ?
-
-	return ReadFromFD(fd, opts)
-}
-
-// used from LiveReader as well
-func ReadFromFD(fd *os.File, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
 	fileInfo, errStat := fd.Stat()
 	if errStat != nil {
 		return nil, errStat
@@ -120,7 +113,12 @@ func ReadFromFD(fd *os.File, opts *rtypes.ReadOptions) (*rtypes.ReadResult, erro
 		panic(errSeek)
 	}
 
-	scanner := bufio.NewScanner(fd)
+	return ReadFromReader(fd, opts)
+}
+
+// used from LiveReader as well
+func ReadFromReader(reader io.Reader, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
+	scanner := bufio.NewScanner(reader)
 
 	readResult := rtypes.NewReadResult()
 	readResult.FromOffset = opts.Cursor.Serialize()

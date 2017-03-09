@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
-	rtypes "github.com/function61/pyramid/reader/types"
 	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -22,7 +22,7 @@ func NewClient() *Client {
 }
 
 // second output value (bool) tells whether this was definite 404 of the file not existing
-func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, bool, error) {
+func (c *Client) LiveRead(input *wtypes.LiveReadInput) (io.Reader, bool, error) {
 	cur := cursor.CursorFromserializedMust(input.Cursor)
 	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
 
@@ -53,13 +53,7 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (*rtypes.ReadResult, bool
 		return nil, false, err
 	}
 
-	readResponseFromJson := &rtypes.ReadResult{}
-
-	if err := json.Unmarshal(body, readResponseFromJson); err != nil {
-		return nil, false, err
-	}
-
-	return readResponseFromJson, false, nil
+	return bytes.NewReader(body), false, nil
 }
 
 func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {

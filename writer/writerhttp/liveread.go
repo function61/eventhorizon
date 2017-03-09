@@ -7,6 +7,7 @@ import (
 	"github.com/function61/pyramid/writer"
 	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
 	"net/http"
+	"os"
 )
 
 func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
@@ -27,15 +28,17 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 		readOpts := rtypes.NewReadOptions()
 		readOpts.Cursor = cur
 
-		readResult, err := eventWriter.LiveReader.Read(readOpts)
-		if err != nil {
-			// FIXME: do not assume it's always about 404
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
+		// FIXME: since this read operation holds a writer-wide mutex, a slow
+		//        consumer can currently cause DOS when writer blocks
+		if err := eventWriter.LiveReader.ReadIntoWriter(readOpts, w); err != nil {
+			if os.IsNotExist(err) {
+				http.Error(w, err.Error(), http.StatusNotFound)
 
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "    ")
-		encoder.Encode(readResult)
+			} else {
+				// FIXME: sometimes it's user's fault (f.ex. cursor past EOF)
+				//        so 4xx would be more appropriate
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
 	})
 }
