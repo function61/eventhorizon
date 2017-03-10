@@ -1,5 +1,9 @@
 package types
 
+type CreateStreamRequest struct {
+	Name string
+}
+
 type AppendToStreamRequest struct {
 	Stream string
 	Lines  []string

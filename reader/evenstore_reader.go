@@ -9,8 +9,8 @@ import (
 	"github.com/function61/pyramid/reader/store"
 	rtypes "github.com/function61/pyramid/reader/types"
 	"github.com/function61/pyramid/scalablestore"
+	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
-	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
 	"io"
 	"log"
 )

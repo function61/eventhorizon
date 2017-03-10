@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
-	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
+	wtypes "github.com/function61/pyramid/writer/types"
 	"io"
 	"io/ioutil"
 	"log"

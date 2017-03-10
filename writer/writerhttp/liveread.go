@@ -6,7 +6,7 @@ import (
 	rtypes "github.com/function61/pyramid/reader/types"
 	"github.com/function61/pyramid/writer"
 	"github.com/function61/pyramid/writer/authmiddleware"
-	wtypes "github.com/function61/pyramid/writer/writerhttp/types"
+	wtypes "github.com/function61/pyramid/writer/types"
 	"net/http"
 	"os"
 )
