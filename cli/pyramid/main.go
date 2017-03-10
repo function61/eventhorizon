@@ -36,7 +36,6 @@ func writer_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-
 	// start pub/sub server
 	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
 
@@ -203,10 +202,11 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
+		banner()
 		log.Fatalf(
-			"Usage: %s %s",
+			"Usage: %s <subcommand>\n\nSubcommands: \n  %s",
 			os.Args[0],
-			strings.Join(stringKeyedMapToStringSlice(mapping), "|"))
+			strings.Join(stringKeyedMapToStringSlice(mapping), "\n  "))
 	}
 
 	subcommand := os.Args[1]
