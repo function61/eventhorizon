@@ -10,6 +10,7 @@ import (
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
 	"github.com/function61/pyramid/writer/writerhttp"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -188,6 +189,29 @@ func pusher_(args []string) error {
 	return nil
 }
 
+func streamLiveRead(args []string) error {
+	if len(args) != 1 {
+		return usage("<Cursor>")
+	}
+
+	wclient := writerclient.NewClient()
+
+	req := &wtypes.LiveReadInput{
+		Cursor: args[0],
+	}
+
+	reader, _, err := wclient.LiveRead(req)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(os.Stdout, reader); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // just a dispatcher to the subcommands
 func main() {
 	mapping := map[string]func([]string) error{
@@ -196,6 +220,7 @@ func main() {
 		"stream-appendfromfile": streamAppendFromFile,
 		"stream-subscribe":      streamSubscribe,
 		"stream-unsubscribe":    streamUnsubscribe,
+		"stream-liveread":       streamLiveRead,
 		"pubsub-subscribe":      pubsubSubscribe,
 		"pusher":                pusher_,
 		"writer":                writer_,
