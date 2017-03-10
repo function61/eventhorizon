@@ -1,8 +1,10 @@
 package main
 
 import (
+	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/client"
+	"github.com/function61/pyramid/pusher"
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
 	"log"
@@ -114,6 +116,27 @@ func streamAppendFromFile(args []string) error {
 	return nil
 }
 
+func pusher_(args []string) error {
+	if len(args) != 1 {
+		return usage("<Target>")
+	}
+
+	if err := cli.CheckForS3AccessKeys(); err != nil {
+		log.Fatalf("main: %s", err.Error())
+	}
+
+	exampleReceiverTarget := NewReceiver()
+
+	psh := pusher.NewPusher(exampleReceiverTarget)
+	go psh.Run()
+
+	log.Println(cli.WaitForInterrupt())
+
+	psh.Close()
+
+	return nil
+}
+
 // just a dispatcher to the subcommands
 func main() {
 	mapping := map[string]func([]string) error{
@@ -123,6 +146,7 @@ func main() {
 		"stream-subscribe":      streamSubscribe,
 		"stream-unsubscribe":    streamUnsubscribe,
 		"pubsub-subscribe":      pubsubSubscribe,
+		"pusher":                pusher_,
 	}
 
 	if len(os.Args) < 2 {

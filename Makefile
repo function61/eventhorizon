@@ -1,4 +1,4 @@
-.PHONY: all fmt writer pusher importfromfile test vet release
+.PHONY: all fmt writer test vet release
 
 all: fmt writer
 
@@ -7,12 +7,6 @@ fmt:
 
 writer:
 	cd cli/writer/ && go build
-
-pusher:
-	cd cli/pusher/ && go build
-
-importfromfile:
-	cd cli/importfromfile/ && go build
 
 test:
 	go test ./...
