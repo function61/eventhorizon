@@ -1,10 +1,11 @@
 package types
 
 import (
+	"github.com/function61/pyramid/cursor"
 	"os"
 )
 
 type LongTermShippableFile struct {
-	ChunkName string // '/tenants/foo/_/28.log'
-	Fd        *os.File
+	Block *cursor.Cursor // offset and server irrelevant
+	Fd    *os.File
 }

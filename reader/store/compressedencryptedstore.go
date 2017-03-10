@@ -12,6 +12,36 @@ import (
 	"time"
 )
 
+/*	Compression & encryption pipeline:
+
+	+-----------------+
+	|                 |
+	|  Seekable file  |
+	|                 |
+	+--------+--------+
+	         |
+	         |
+	+--------v--------+
+	|                 |
+	| Gzip compressor |
+	|                 |
+	+--------+--------+
+	         |
+	         |
+	+--------v--------+
+	|                 |
+	|   AES-encrypt   |
+	|                 |
+	+--------+--------+
+	         |
+	         |
+	+--------v--------+
+	|                 |
+	|  Enc&comp. file |
+	|                 |
+	+-----------------+
+*/
+
 type CompressedEncryptedStore struct {
 }
 
@@ -27,12 +57,68 @@ func NewCompressedEncryptedStore() *CompressedEncryptedStore {
 	return &CompressedEncryptedStore{}
 }
 
+// TODO: this has a race condition. remove this
 func (c *CompressedEncryptedStore) Has(cur *cursor.Cursor) bool {
 	if _, err := os.Stat(c.localPath(cur)); os.IsNotExist(err) {
 		return false
 	}
 
 	return true
+}
+
+// stores the file as compressed & encrypted file from WAL's live file.
+// when passing the FD, make sure fseek(0)
+func (c *CompressedEncryptedStore) SaveFromLiveFile(cur *cursor.Cursor, fromFd *os.File) error {
+	localPath := c.localPath(cur)
+	localPathTemp := localPath + ".tmp-fromlive"
+
+	resultingFile, err := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+
+	gzipWriter := gzip.NewWriter(resultingFile)
+
+	// pumps everything from original live file into gzipped file
+	if _, err := io.Copy(gzipWriter, fromFd); err != nil {
+		return err
+	}
+
+	// this is super necessary - it writes some trailing headers without which
+	// some gzip decoders work ($ gzip) and some don't (Golang's gzip)
+	if err := gzipWriter.Close(); err != nil {
+		return err
+	}
+
+	// also important because otherwise the seek pointer would be off for next read
+	if err := resultingFile.Close(); err != nil {
+		return err
+	}
+
+	// atomically rename the compressed & encrypted file to the final name
+	// with which the whole stored block becomes valid
+	if err := os.Rename(localPathTemp, localPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// upload compressed&encrypted to S3. only done once
+// (or in rare cases more if upload errors)
+func (c *CompressedEncryptedStore) UploadToS3(cur *cursor.Cursor, s3Manager *scalablestore.S3Manager) error {
+	localCompressedFile, openErr := os.Open(c.localPath(cur))
+	if openErr != nil {
+		return openErr
+	}
+
+	defer localCompressedFile.Close()
+
+	if err := s3Manager.Put(cur.ToChunkPath(), localCompressedFile); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager *scalablestore.S3Manager) bool {
@@ -42,6 +128,7 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager 
 
 	response, err := s3Manager.Get(fileKey)
 	if err != nil { // FIXME: assuming 404, not any other error like network error..
+		log.Printf("CompressedEncryptedStore: S3 get error: %s", err.Error())
 		return false
 	}
 

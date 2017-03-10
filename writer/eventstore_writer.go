@@ -350,8 +350,8 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	}
 
 	fileToShip := &types.LongTermShippableFile{
-		ChunkName: currentChunkSpec.ChunkPath,
-		Fd:        fd,
+		Block: cursor.New(currentChunkSpec.StreamName, currentChunkSpec.ChunkNumber, 0, cursor.NoServer),
+		Fd:    fd,
 	}
 
 	// longTermShipper has responsibility of closing the file

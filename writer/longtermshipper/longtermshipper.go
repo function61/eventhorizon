@@ -1,14 +1,11 @@
 package longtermshipper
 
 import (
-	"compress/gzip"
-	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/reader/store"
 	"github.com/function61/pyramid/scalablestore"
-	"github.com/function61/pyramid/writer/types"
+	wtypes "github.com/function61/pyramid/writer/types"
 	"io"
 	"log"
-	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -35,102 +32,48 @@ import (
 // http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
 // http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
 
-func shipOne(ltsf *types.LongTermShippableFile, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
+func shipOne(ltsf *wtypes.LongTermShippableFile, compEnc *store.CompressedEncryptedStore, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
+	wg.Add(1)
 	defer wg.Done()
 
 	started := time.Now()
 
-	safeName := strings.Replace(ltsf.ChunkName, "/", "_", -1)
+	log.Printf("LongTermShipperManager: compressing %s", ltsf.Block.ToChunkPath())
 
-	storageFullPath := config.LONGTERMSHIPPER_PATH + "/" + safeName
-
-	log.Printf("LongTermShipperManager: compressing %s -> %s", ltsf.ChunkName, ltsf.ChunkName) // storageFullPath)
-
-	storageFile, err := os.OpenFile(storageFullPath, os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		panic(err)
-	}
-
-	/*	Build an in-memory streaming pipeline:
-
-		+-----------------+
-		|                 |
-		|      File       |
-		|                 |
-		+--------+--------+
-		         |
-		         |
-		+--------v--------+
-		|                 |
-		| Gzip compressor |
-		|                 |
-		+--------+--------+
-		         |
-		         |
-		+--------v--------+
-		|                 |
-		|   AES-encrypt   |
-		|                 |
-		+--------+--------+
-		         |
-		         |
-		+--------v--------+
-		|                 |
-		|       S3        |
-		|                 |
-		+-----------------+
-
-	*/
-	// TODO: is this required? probably
+	// this is probably required because the position is wherever WAL writer left it
 	if _, err := ltsf.Fd.Seek(0, io.SeekStart); err != nil {
 		panic(err)
 	}
 
-	// gzipPipeReader, gzipPipeWriter := io.Pipe()
-	gzipWriter := gzip.NewWriter(storageFile)
-
-	if _, err := io.Copy(gzipWriter, ltsf.Fd); err != nil {
+	if err := compEnc.SaveFromLiveFile(ltsf.Block, ltsf.Fd); err != nil {
 		panic(err)
 	}
 
-	// this is super necessary
-	gzipWriter.Close()
-
-	// TODO: is this needed?
-	if _, err := storageFile.Seek(0, io.SeekStart); err != nil {
+	if err := compEnc.UploadToS3(ltsf.Block, s3Manager); err != nil {
 		panic(err)
 	}
 
-	fileKey := ltsf.ChunkName
+	log.Printf("LongTermShipperManager: completed %s in %s", ltsf.Block.ToChunkPath(), time.Since(started))
 
-	if err := s3Manager.Put(fileKey, storageFile); err != nil {
-		panic(err)
-	}
-
-	if err := storageFile.Close(); err != nil {
-		panic(err)
-	}
-
-	log.Printf("LongTermShipperManager: completed %s in %s", ltsf.ChunkName, time.Since(started))
+	// TODO: rename from store:live to store:seekable
 
 	if err := ltsf.Fd.Close(); err != nil {
-		panic(err)
+		panic(err) // TODO: not probably worth panic()ing for
 	}
 }
 
-func RunManager(work chan *types.LongTermShippableFile, done chan bool) {
+func RunManager(work chan *wtypes.LongTermShippableFile, done chan bool) {
 	log.Printf("LongTermShipperManager: Started")
 
-	ensureDirectoryExists()
+	compEnc := store.NewCompressedEncryptedStore()
 
 	s3Manager := scalablestore.NewS3Manager()
 
 	wg := &sync.WaitGroup{}
 
 	for ltsf := range work {
-		wg.Add(1)
-
-		go shipOne(ltsf, s3Manager, wg)
+		// TODO: do this transactionally
+		go shipOne(ltsf, compEnc, s3Manager, wg)
 	}
 
 	log.Printf("LongTermShipperManager: stopping; waiting for WaitGroup")
@@ -140,14 +83,4 @@ func RunManager(work chan *types.LongTermShippableFile, done chan bool) {
 	log.Printf("LongTermShipperManager: WaitGroup done")
 
 	done <- true
-}
-
-func ensureDirectoryExists() {
-	if _, err := os.Stat(config.LONGTERMSHIPPER_PATH); os.IsNotExist(err) {
-		log.Printf("LongTermShipperManager: mkdir %s", config.LONGTERMSHIPPER_PATH)
-
-		if err = os.MkdirAll(config.LONGTERMSHIPPER_PATH, 0755); err != nil {
-			panic(err)
-		}
-	}
 }

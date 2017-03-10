@@ -5,8 +5,6 @@ const (
 
 	WALMANAGER_DATADIR = "/pyramid-data/store-live"
 
-	LONGTERMSHIPPER_PATH = "/pyramid-data/store-longterm"
-
 	SEEKABLE_STORE_PATH = "/pyramid-data/store-seekable"
 
 	COMPRESSED_ENCRYPTED_STORE_PATH = "/pyramid-data/store-compressed_and_encrypted"
