@@ -1,12 +1,12 @@
-.PHONY: all fmt writer test vet release
+.PHONY: all fmt pyramid test vet release
 
-all: fmt writer
+all: fmt pyramid
 
 fmt:
 	go fmt ./...
 
-writer:
-	cd cli/writer/ && go build
+pyramid:
+	cd cli/pyramid/ && go build
 
 test:
 	go test ./...
@@ -14,4 +14,4 @@ test:
 vet:
 	go vet ./...
 
-release: fmt test vet writer
+release: fmt test vet pyramid

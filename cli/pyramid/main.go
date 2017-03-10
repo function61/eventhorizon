@@ -4,14 +4,66 @@ import (
 	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/client"
+	"github.com/function61/pyramid/pubsub/server"
 	"github.com/function61/pyramid/pusher"
+	"github.com/function61/pyramid/writer"
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
+	"github.com/function61/pyramid/writer/writerhttp"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 )
+
+func banner() {
+	log.Println("       .")
+	log.Println("      /=\\\\       PyramidDB")
+	log.Println("     /===\\ \\     function61.com")
+	log.Println("    /=====\\  \\")
+	log.Println("   /=======\\  /")
+	log.Println("  /=========\\/")
+}
+
+func writer_(args []string) error {
+	if len(args) != 0 {
+		return usage("(no args)")
+	}
+
+	banner()
+
+	if err := cli.CheckForS3AccessKeys(); err != nil {
+		log.Fatalf("main: %s", err.Error())
+	}
+
+
+	// start pub/sub server
+	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
+
+	esServer := writer.NewEventstoreWriter()
+
+	httpCloser := make(chan bool)
+	httpCloserDone := make(chan bool)
+	writerhttp.HttpServe(esServer, httpCloser, httpCloserDone)
+
+	log.Printf("main: waiting for stop signal")
+
+	log.Println(cli.WaitForInterrupt())
+
+	// stop serving HTTP
+
+	httpCloser <- true
+	<-httpCloserDone
+
+	// stop the main writer server
+
+	esServer.Close()
+
+	// stop pub/sub
+	pubSubServer.Close()
+
+	return nil
+}
 
 func streamAppend(args []string) error {
 	if len(args) != 2 {
@@ -147,6 +199,7 @@ func main() {
 		"stream-unsubscribe":    streamUnsubscribe,
 		"pubsub-subscribe":      pubsubSubscribe,
 		"pusher":                pusher_,
+		"writer":                writer_,
 	}
 
 	if len(os.Args) < 2 {

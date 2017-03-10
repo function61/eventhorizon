@@ -1,7 +1,6 @@
 syntax: glob
 
 # binaries
-cli/writer/writer
 cli/pyramid/pyramid
 
 # temp stuff
