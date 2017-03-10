@@ -3,10 +3,16 @@ package writer
 import (
 	"bufio"
 	"errors"
-	"github.com/function61/pyramid/reader/types"
+	rtypes "github.com/function61/pyramid/reader/types"
 	"io"
 	"os"
 )
+
+// When a Pusher (or anybody else for that matter) wants to read from a stream,
+// historical reads (= closed blocks) are directly satisfied from S3.
+// But when reads to a stream approach the head - the under-writing, "live", block -
+// that block is of course not found from S3 as we need high write IOPS to the stream,
+// so those reads are served from the Writer itself. This file implements this.
 
 type LiveReader struct {
 	writer *EventstoreWriter
@@ -18,7 +24,10 @@ func NewLiveReader(writer *EventstoreWriter) *LiveReader {
 	}
 }
 
-func (l *LiveReader) ReadIntoWriter(opts *types.ReadOptions, writer io.Writer) error {
+// Intentionally dumps raw lines (without parsing it into ReadResult), because
+// it would be stupid to implement parsing both at Writer and Reader - those are
+// usually separate nodes so code and data structures would have to be 100 % in sync.
+func (l *LiveReader) ReadIntoWriter(opts *rtypes.ReadOptions, writer io.Writer) error {
 	l.writer.mu.Lock()
 	defer l.writer.mu.Unlock()
 
