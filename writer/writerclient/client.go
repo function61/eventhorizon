@@ -22,93 +22,78 @@ func NewClient() *Client {
 
 func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFileNotExist bool, err error) {
 	cur := cursor.CursorFromserializedMust(input.Cursor)
-	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
-
 	reqJson, _ := json.Marshal(input)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(reqJson))
-	applyAuthorizationHeader(req)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil { // this is only network level errors
-		panic(err)
-	}
-	defer resp.Body.Close()
+	body, statusCode, err := c.handleAndReturnBodyAndStatusCode(c.url(cur.Server, "/liveread"), reqJson, http.StatusOK)
 
-	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, false, err
-	}
-
-	if resp.StatusCode != 200 { // TODO: check for 2xx
-		err := errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
-
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, true, err
-		}
-
-		// unexpected HTTP error
-		return nil, false, err
+		wasFileNotExist := statusCode == http.StatusNotFound
+		return nil, wasFileNotExist, err
 	}
 
 	return bytes.NewReader(body), false, nil
 }
 
-func (c *Client) CreateStream(asr *wtypes.CreateStreamRequest) error {
-	reqJson, _ := json.Marshal(asr)
+func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) error {
+	reqJson, _ := json.Marshal(req)
 
-	return c.internalMakeRequest(c.url("/create_stream"), reqJson, http.StatusCreated)
+	return c.handleSuccessOnly(c.url("127.0.0.1", "/create_stream"), reqJson, http.StatusCreated)
 }
 
-func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
-	reqJson, _ := json.Marshal(asr)
+func (c *Client) Append(req *wtypes.AppendToStreamRequest) error {
+	reqJson, _ := json.Marshal(req)
 
-	return c.internalMakeRequest(c.url("/append"), reqJson, http.StatusCreated)
+	return c.handleSuccessOnly(c.url("127.0.0.1", "/append"), reqJson, http.StatusCreated)
 }
 
 func (c *Client) SubscribeToStream(req *wtypes.SubscribeToStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.internalMakeRequest(c.url("/subscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("127.0.0.1", "/subscribe"), reqJson, http.StatusOK)
 }
 
 func (c *Client) UnsubscribeFromStream(req *wtypes.UnsubscribeFromStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.internalMakeRequest(c.url("/unsubscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("127.0.0.1", "/unsubscribe"), reqJson, http.StatusOK)
 }
 
-func (c *Client) internalMakeRequest(url string, asJson []byte, expectedCode int) error {
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(asJson))
-	applyAuthorizationHeader(req)
+// less specific version for callers that are only interested about success, but
+// not particular failure reasons or response body
+func (c *Client) handleSuccessOnly(url string, asJson []byte, expectedCode int) error {
+	_, _, err := c.handleAndReturnBodyAndStatusCode(url, asJson, expectedCode)
+	return err
+}
+
+// more specific version for callers that are interested of failure reason and status
+func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte, expectedCode int) (body []byte, statusCode int, err error) {
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.AUTH_TOKEN))
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil { // this is only network level errors
-		return err
+	resp, networkErr := client.Do(req)
+	if networkErr != nil { // this is only network level errors
+		return nil, 0, networkErr
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
+	body, readErr := ioutil.ReadAll(resp.Body)
+	if readErr != nil {
 		// error reading response body (should not happen even with HTTP errors)
 		// probably a network level error
-		return err
+		return nil, 0, readErr
 	}
 
-	if resp.StatusCode != expectedCode { // TODO: check for 2xx
-		return errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
+	if resp.StatusCode != expectedCode {
+		return body, resp.StatusCode, errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
 	}
 
-	return nil
+	return body, resp.StatusCode, nil
 }
 
-func (c *Client) url(path string) string {
-	url := fmt.Sprintf("http://127.0.0.1:%d%s", config.WRITER_HTTP_PORT, path)
+func (c *Client) url(server string, path string) string {
+	url := fmt.Sprintf("http://%s:%d%s", server, config.WRITER_HTTP_PORT, path)
 
 	return url
-}
-
-func applyAuthorizationHeader(req *http.Request) {
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.AUTH_TOKEN))
 }
