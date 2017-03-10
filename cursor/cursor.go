@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+// Cursor is an exact byte position into a block inside a stream. You can (de)serialize
+// and compare cursors (is cursor A behind cursor B?). Same cursor can look different
+// because some cursors can have server hints and some don't. They still represent
+// the same position, that is to say equality is tested only for (stream, block, offset).
+//
+// The good thing about this unambiquous cursor is that under the hood reading
+// data from a cursor is ultimately just an fseek into a single file. Which is fast.
+
 type Cursor struct {
 	Stream string
 	Chunk  int
