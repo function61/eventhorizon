@@ -1,4 +1,4 @@
-.PHONY: all fmt writer pusher importfromfile test
+.PHONY: all fmt writer pusher importfromfile test vet release
 
 all: fmt writer
 
@@ -16,3 +16,8 @@ importfromfile:
 
 test:
 	go test ./...
+
+vet:
+	go vet ./...
+
+release: fmt test vet writer
