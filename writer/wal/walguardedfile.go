@@ -26,8 +26,6 @@ func WalGuardedFileOpen(directory string, fileName string) *WalGuardedFile {
 		panic(err)
 	}
 
-	log.Printf("WalGuardedFile: Opened %s", chunkPath)
-
 	stats, err := fd.Stat()
 	if err != nil {
 		panic(err)

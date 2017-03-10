@@ -491,8 +491,7 @@ func (e *EventstoreWriter) recoverOpenStreams(tx *transaction.EventstoreTransact
 			panic(err)
 		}
 
-		log.Printf("EventstoreWriter: recoverOpenStreams: stream=%s chunk=%s", chunkSpec.StreamName, chunkSpec.ChunkPath)
-
+		// not actually new, but "re-opened"
 		tx.NewChunks = append(tx.NewChunks, chunkSpec)
 
 		return nil

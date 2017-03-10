@@ -269,7 +269,7 @@ func (w *WalManager) scanAndRecoverActiveWalStores(tx *transaction.EventstoreTra
 }
 
 func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.EventstoreTransaction) *WalGuardedFile {
-	log.Printf("WalManager: recoverFileStateFromWal: start %s", fileName)
+	log.Printf("WalManager: recovering %s", fileName)
 
 	walFile := WalGuardedFileOpen(config.WALMANAGER_DATADIR, fileName)
 
@@ -291,10 +291,10 @@ func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.Ev
 		return nil
 	})
 
-	log.Printf("WalManager: recoverFileStateFromWal: %d record(s) queued for recovery", walRecordsQueued)
-
 	// compact the WAL entries
 	if walRecordsQueued > 0 {
+		log.Printf("WalManager: recoverFileStateFromWal: %d record(s) queued for recovery", walRecordsQueued)
+
 		tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, walFile.fileNameFictional)
 	}
 
