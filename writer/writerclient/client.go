@@ -21,8 +21,7 @@ func NewClient() *Client {
 	return &Client{}
 }
 
-// second output value (bool) tells whether this was definite 404 of the file not existing
-func (c *Client) LiveRead(input *wtypes.LiveReadInput) (io.Reader, bool, error) {
+func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFileNotExist bool, err error) {
 	cur := cursor.CursorFromserializedMust(input.Cursor)
 	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
 
