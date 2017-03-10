@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func append_(args []string) error {
+func streamAppend(args []string) error {
 	if len(args) != 2 {
 		return usage("<Stream> <Line>")
 	}
@@ -41,7 +41,7 @@ func streamSubscribe(args []string) error {
 	return wclient.SubscribeToStream(req)
 }
 
-func create(args []string) error {
+func streamCreate(args []string) error {
 	if len(args) != 1 {
 		return usage("<Stream>")
 	}
@@ -91,7 +91,7 @@ func pubsubSubscribe(args []string) error {
 }
 
 // Imports events into a stream from a file with one line per event.
-func importfromfile(args []string) error {
+func streamAppendFromFile(args []string) error {
 	if len(args) != 2 {
 		return usage("<Stream> <FilePath>")
 	}
@@ -117,12 +117,12 @@ func importfromfile(args []string) error {
 // just a dispatcher to the subcommands
 func main() {
 	mapping := map[string]func([]string) error{
-		"create":             create,
-		"append":             append_,
-		"importfromfile":     importfromfile,
-		"stream-subscribe":   streamSubscribe,
-		"stream-unsubscribe": streamUnsubscribe,
-		"pubsub-subscribe":   pubsubSubscribe,
+		"stream-create":         streamCreate,
+		"stream-append":         streamAppend,
+		"stream-appendfromfile": streamAppendFromFile,
+		"stream-subscribe":      streamSubscribe,
+		"stream-unsubscribe":    streamUnsubscribe,
+		"pubsub-subscribe":      pubsubSubscribe,
 	}
 
 	if len(os.Args) < 2 {
