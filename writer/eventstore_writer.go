@@ -371,8 +371,6 @@ func (e *EventstoreWriter) openChunkLocally(chunkCursor *cursor.Cursor, tx *tran
 		ChunkNumber: chunkCursor.Chunk,
 	}
 
-	log.Printf("EventstoreWriter: openChunkLocally: Opening %s", chunkCursor.ToChunkPath())
-
 	streamsBucket := tx.BoltTx.Bucket([]byte("_streams"))
 
 	if streamsBucket == nil {
