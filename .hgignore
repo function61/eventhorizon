@@ -2,9 +2,9 @@ syntax: glob
 
 # binaries
 cli/writer/writer
+cli/pyramid/pyramid
 cli/pusher/pusher
 cli/pubsub-subscribe/pubsub-subscribe
-cli/importfromfile/importfromfile
 
 # temp stuff
 simulator3
