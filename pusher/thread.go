@@ -51,6 +51,7 @@ func (t *PusherThread) run() {
 	log.Printf("PusherThread: starting for %s", t.stream)
 
 	defer t.waitGroup.Done()
+	defer log.Printf("PusherThread: %s. Stopping.", t.stream)
 
 	if t.receiverCursorToPush == nil {
 		t.resolveReceiverCursor()
@@ -60,7 +61,6 @@ func (t *PusherThread) run() {
 		select { // just peek if stop requested
 		case <-t.stopCh:
 			return // will trigger waitGroup done
-			break
 		default:
 		}
 
@@ -115,7 +115,6 @@ func (t *PusherThread) run() {
 			select { // just peek if stop requested
 			case <-t.stopCh:
 				return // will trigger waitGroup done
-				break
 			case <-time.After(dur):
 				break
 			}
@@ -124,8 +123,6 @@ func (t *PusherThread) run() {
 		// update receiver cursor
 		t.receiverCursorToPush = ackedCursor
 	}
-
-	log.Printf("PusherThread: %s. Stopping.", t.stream)
 }
 
 func (t *PusherThread) pumpBehindCursorsToManager(result *ptypes.PushResult) {

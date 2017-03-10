@@ -82,8 +82,6 @@ func (p *Pusher) Run() {
 			p.done <- true
 
 			return
-			break
-
 		}
 	}
 }

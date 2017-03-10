@@ -63,7 +63,6 @@ func (t *SubscriptionActivityTask) loopUntilStopped() {
 		case <-t.subscriptionActivityStop:
 			t.subscriptionActivityDone <- true
 			return
-			break
 		case <-time.After(5 * time.Second):
 			break
 		}
