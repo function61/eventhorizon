@@ -4,7 +4,6 @@ syntax: glob
 cli/writer/writer
 cli/pyramid/pyramid
 cli/pusher/pusher
-cli/pubsub-subscribe/pubsub-subscribe
 
 # temp stuff
 simulator3

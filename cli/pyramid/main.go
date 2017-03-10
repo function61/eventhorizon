@@ -1,10 +1,13 @@
 package main
 
 import (
+	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/pubsub/client"
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +26,7 @@ func append_(args []string) error {
 	return wclient.Append(req)
 }
 
-func subscribe(args []string) error {
+func streamSubscribe(args []string) error {
 	if len(args) != 2 {
 		return usage("<Stream> <SubscriptionId>")
 	}
@@ -52,7 +55,7 @@ func create(args []string) error {
 	return wclient.CreateStream(req)
 }
 
-func unsubscribe(args []string) error {
+func streamUnsubscribe(args []string) error {
 	if len(args) != 2 {
 		return usage("<Stream> <SubscriptionId>")
 	}
@@ -67,8 +70,27 @@ func unsubscribe(args []string) error {
 	return wclient.UnsubscribeFromStream(req)
 }
 
-// Imports events into a stream from a file with one line per event.
+func pubsubSubscribe(args []string) error {
+	if len(args) != 1 {
+		return usage("<Topic>")
+	}
 
+	pubSubClient := client.NewPubSubClient("127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT))
+	pubSubClient.Subscribe(args[0])
+
+	for {
+		msg := <-pubSubClient.Notifications
+
+		log.Printf("Recv: %v", msg)
+	}
+
+	// TODO: no graceful quit mechanism
+	pubSubClient.Close()
+
+	return nil
+}
+
+// Imports events into a stream from a file with one line per event.
 func importfromfile(args []string) error {
 	if len(args) != 2 {
 		return usage("<Stream> <FilePath>")
@@ -95,11 +117,12 @@ func importfromfile(args []string) error {
 // just a dispatcher to the subcommands
 func main() {
 	mapping := map[string]func([]string) error{
-		"create":         create,
-		"append":         append_,
-		"importfromfile": importfromfile,
-		"subscribe":      subscribe,
-		"unsubscribe":    unsubscribe,
+		"create":             create,
+		"append":             append_,
+		"importfromfile":     importfromfile,
+		"stream-subscribe":   streamSubscribe,
+		"stream-unsubscribe": streamUnsubscribe,
+		"pubsub-subscribe":   pubsubSubscribe,
 	}
 
 	if len(os.Args) < 2 {
