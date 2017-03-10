@@ -82,7 +82,11 @@ func NewEventstoreWriter() *EventstoreWriter {
 
 		e.walManager = wal.NewWalManager(tx)
 
-		if err := e.recoverOpenStreams(tx); err != nil {
+		// since we just started with empty data structures, read from database
+		// which streams we have open (and their metadata)
+		// TODO: have one WAL instance per file, so this call will be the only
+		//       source of truth. currently both of them keep track of open files.
+		if err := e.discoverOpenStreamsMetadata(tx); err != nil {
 			return err
 		}
 
@@ -476,7 +480,7 @@ func (e *EventstoreWriter) Close() {
 	log.Printf("EventstoreWriter: Closed")
 }
 
-func (e *EventstoreWriter) recoverOpenStreams(tx *transaction.EventstoreTransaction) error {
+func (e *EventstoreWriter) discoverOpenStreamsMetadata(tx *transaction.EventstoreTransaction) error {
 	streamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
 	if err != nil {
 		return err
