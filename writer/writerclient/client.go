@@ -10,7 +10,6 @@ import (
 	wtypes "github.com/function61/pyramid/writer/types"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -55,18 +54,38 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFil
 	return bytes.NewReader(body), false, nil
 }
 
+func (c *Client) CreateStream(asr *wtypes.CreateStreamRequest) error {
+	reqJson, _ := json.Marshal(asr)
+
+	return c.internalMakeRequest(c.url("/create_stream"), reqJson, http.StatusCreated)
+}
+
 func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
-	url := fmt.Sprintf("http://127.0.0.1:%d/append", config.WRITER_HTTP_PORT)
+	reqJson, _ := json.Marshal(asr)
 
-	asJson, _ := json.Marshal(asr)
+	return c.internalMakeRequest(c.url("/append"), reqJson, http.StatusCreated)
+}
 
+func (c *Client) SubscribeToStream(req *wtypes.SubscribeToStreamRequest) error {
+	reqJson, _ := json.Marshal(req)
+
+	return c.internalMakeRequest(c.url("/subscribe"), reqJson, http.StatusOK)
+}
+
+func (c *Client) UnsubscribeFromStream(req *wtypes.UnsubscribeFromStreamRequest) error {
+	reqJson, _ := json.Marshal(req)
+
+	return c.internalMakeRequest(c.url("/unsubscribe"), reqJson, http.StatusOK)
+}
+
+func (c *Client) internalMakeRequest(url string, asJson []byte, expectedCode int) error {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(asJson))
 	applyAuthorizationHeader(req)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil { // this is only network level errors
-		panic(err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -74,16 +93,20 @@ func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
 	if err != nil {
 		// error reading response body (should not happen even with HTTP errors)
 		// probably a network level error
-		panic(err)
+		return err
 	}
 
-	if resp.StatusCode != 201 { // TODO: check for 2xx
-		panic(errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body)))
+	if resp.StatusCode != expectedCode { // TODO: check for 2xx
+		return errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
 	}
-
-	log.Printf("WriterClient: %s response %s", url, body)
 
 	return nil
+}
+
+func (c *Client) url(path string) string {
+	url := fmt.Sprintf("http://127.0.0.1:%d%s", config.WRITER_HTTP_PORT, path)
+
+	return url
 }
 
 func applyAuthorizationHeader(req *http.Request) {
