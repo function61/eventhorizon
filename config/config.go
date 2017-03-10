@@ -1,6 +1,8 @@
 package config
 
 const (
+	AUTH_TOKEN = "foo"
+
 	WALMANAGER_DATADIR = "/pyramid-data/store-live"
 
 	LONGTERMSHIPPER_PATH = "/pyramid-data/store-longterm"

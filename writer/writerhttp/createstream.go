@@ -3,6 +3,7 @@ package writerhttp
 import (
 	"encoding/json"
 	"github.com/function61/pyramid/writer"
+	"github.com/function61/pyramid/writer/authmiddleware"
 	"io"
 	"net/http"
 )
@@ -13,7 +14,7 @@ type CreateStreamRequest struct {
 
 func CreateStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 	// $ curl -d '{"Name": "/foostream"}' http://localhost:9092/create_stream
-	http.HandleFunc("/create_stream", func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/create_stream", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var createStreamRequest CreateStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&createStreamRequest); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -26,5 +27,5 @@ func CreateStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 		}
 
 		io.WriteString(w, "OK\n")
-	})
+	})))
 }

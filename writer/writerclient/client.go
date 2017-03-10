@@ -27,8 +27,8 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (io.Reader, bool, error) 
 	url := fmt.Sprintf("http://%s:%d/liveread", cur.Server, config.WRITER_HTTP_PORT)
 
 	reqJson, _ := json.Marshal(input)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqJson))
-	// req.Header.Set("Content-Type", "application/json")
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(reqJson))
+	applyAuthorizationHeader(req)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -61,7 +61,8 @@ func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
 
 	asJson, _ := json.Marshal(asr)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(asJson))
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(asJson))
+	applyAuthorizationHeader(req)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -84,4 +85,8 @@ func (c *Client) Append(asr *wtypes.AppendToStreamRequest) error {
 	log.Printf("WriterClient: %s response %s", url, body)
 
 	return nil
+}
+
+func applyAuthorizationHeader(req *http.Request) {
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.AUTH_TOKEN))
 }
