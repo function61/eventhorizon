@@ -28,6 +28,7 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 
 		readOpts := rtypes.NewReadOptions()
 		readOpts.Cursor = cur
+		readOpts.MaxLinesToRead = req.MaxLinesToRead
 
 		// FIXME: since this read operation holds a writer-wide mutex, a slow
 		//        consumer can currently cause DOS when writer blocks

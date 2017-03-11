@@ -10,6 +10,6 @@ type AppendToStreamRequest struct {
 }
 
 type LiveReadInput struct {
-	// TODO: max lines to read
-	Cursor string
+	Cursor         string
+	MaxLinesToRead int
 }

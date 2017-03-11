@@ -190,14 +190,20 @@ func pusher_(args []string) error {
 }
 
 func streamLiveRead(args []string) error {
-	if len(args) != 1 {
-		return usage("<Cursor>")
+	if len(args) != 2 {
+		return usage("<Cursor> <LinesToRead>")
+	}
+
+	maxLinesToRead, atoiErr := strconv.Atoi(args[1])
+	if atoiErr != nil {
+		return atoiErr
 	}
 
 	wclient := writerclient.NewClient()
 
 	req := &wtypes.LiveReadInput{
-		Cursor: args[0],
+		Cursor:         args[0],
+		MaxLinesToRead: maxLinesToRead,
 	}
 
 	reader, _, err := wclient.LiveRead(req)

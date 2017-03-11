@@ -58,7 +58,8 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 			wclient := writerclient.NewClient()
 
 			result, was404, err := wclient.LiveRead(&wtypes.LiveReadInput{
-				Cursor: opts.Cursor.Serialize(),
+				Cursor:         opts.Cursor.Serialize(),
+				MaxLinesToRead: opts.MaxLinesToRead,
 			})
 
 			if err == nil { // got result from LiveReader
