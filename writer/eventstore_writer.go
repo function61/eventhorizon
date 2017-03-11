@@ -374,7 +374,7 @@ func (e *EventstoreWriter) openChunkLocally(chunkCursor *cursor.Cursor, tx *tran
 	streamsBucket := tx.BoltTx.Bucket([]byte("_streams"))
 
 	if streamsBucket == nil {
-		panic("No _streams bucket")
+		return errors.New("No _streams bucket") // should not happen
 	}
 
 	specAsJson, err := json.Marshal(chunkSpec)
@@ -479,22 +479,22 @@ func (e *EventstoreWriter) Close() {
 }
 
 func (e *EventstoreWriter) discoverOpenStreamsMetadataAndRecoverWal(tx *transaction.EventstoreTransaction) error {
-	streamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
-	if err != nil {
-		return err
+	streamsBucket, createBucketErr := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
+	if createBucketErr != nil {
+		return createBucketErr
 	}
 
 	// key is stream name, but it is also found from block spec.
 	// key is mainly used as a unique id.
-	streamsBucket.ForEach(func(key, value []byte) error {
+	return streamsBucket.ForEach(func(key, value []byte) error {
 		chunkSpec := &types.ChunkSpec{}
 
 		if err := json.Unmarshal(value, chunkSpec); err != nil {
-			panic(err)
+			return err
 		}
 
 		if err := e.walManager.RecoverAndOpenFile(chunkSpec.ChunkPath, tx); err != nil {
-			panic(err)
+			return err
 		}
 
 		// not actually new, but "re-opened"
@@ -502,8 +502,6 @@ func (e *EventstoreWriter) discoverOpenStreamsMetadataAndRecoverWal(tx *transact
 
 		return nil
 	})
-
-	return nil
 }
 
 func (e *EventstoreWriter) startPubSubClient() {
