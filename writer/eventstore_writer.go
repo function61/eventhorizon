@@ -80,13 +80,13 @@ func NewEventstoreWriter() *EventstoreWriter {
 	if err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
+		// TODO: have one WAL instance per file instead of a WAL manager.
 		e.walManager = wal.NewWalManager(tx)
 
 		// since we just started with empty data structures, read from database
-		// which streams we have open (and their metadata)
-		// TODO: have one WAL instance per file, so this call will be the only
-		//       source of truth. currently both of them keep track of open files.
-		if err := e.discoverOpenStreamsMetadata(tx); err != nil {
+		// which blocks we have open (and their metadata), and re-open
+		// those with WAL manager + recover corrupted writes if required.
+		if err := e.discoverOpenStreamsMetadataAndRecoverWal(tx); err != nil {
 			return err
 		}
 
@@ -478,18 +478,22 @@ func (e *EventstoreWriter) Close() {
 	log.Printf("EventstoreWriter: Closed")
 }
 
-func (e *EventstoreWriter) discoverOpenStreamsMetadata(tx *transaction.EventstoreTransaction) error {
+func (e *EventstoreWriter) discoverOpenStreamsMetadataAndRecoverWal(tx *transaction.EventstoreTransaction) error {
 	streamsBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("_streams"))
 	if err != nil {
 		return err
 	}
 
+	// key is stream name, but it is also found from block spec.
+	// key is mainly used as a unique id.
 	streamsBucket.ForEach(func(key, value []byte) error {
-		// streamName := string(key)
-
 		chunkSpec := &types.ChunkSpec{}
 
 		if err := json.Unmarshal(value, chunkSpec); err != nil {
+			panic(err)
+		}
+
+		if err := e.walManager.RecoverAndOpenFile(chunkSpec.ChunkPath, tx); err != nil {
 			panic(err)
 		}
 

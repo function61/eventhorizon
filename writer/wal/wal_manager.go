@@ -27,17 +27,7 @@ func NewWalManager(tx *transaction.EventstoreTransaction) *WalManager {
 		openFiles: make(map[string]*WalGuardedFile),
 	}
 
-	/*	Bolt keys
-
-		activechunks/?
-
-		CHUNK_NAME/BYTE_OFFSET = DATA_TO_WRITE
-		0.log/0 = first line
-
-	*/
-
 	w.ensureDataDirectoryExists()
-	w.scanAndRecoverActiveWalStores(tx)
 
 	return w
 }
@@ -65,6 +55,8 @@ func (w *WalManager) AppendToFile(fileName string, content string, tx *transacti
 
 	positionAfterWrite := writePosition + contentLen
 
+	// WAL entries look like this:
+	// bucket="/foostream/_/0.log" key=123 value="line\n"
 	if err := chunkWalBucket.Put(itob(writePosition), []byte(content)); err != nil {
 		return 0, err
 	}
@@ -97,24 +89,15 @@ func (w *WalManager) BorrowFileForReading(fileName string) (*os.File, error) {
 	return walFile.fd, nil
 }
 
-// Bucket("activechunks").Put(fileName, fileName)
-// CreateBucket(fileName).Put(fileName, fileName)
 func (w *WalManager) OpenNewFile(fileName string, tx *transaction.EventstoreTransaction) error {
-	activeFilesBucket := tx.BoltTx.Bucket([]byte("activechunks"))
-
-	existsCheck := activeFilesBucket.Get([]byte(fileName))
+	existsCheck := tx.BoltTx.Bucket([]byte(fileName))
 	if existsCheck != nil {
 		return errors.New(fmt.Sprintf("WalManager: OpenNewFile: chunk %s already exists", fileName))
 	}
 
-	// create bucket for file
-	_, err := tx.BoltTx.CreateBucketIfNotExists([]byte(fileName))
+	// create WAL bucket for file
+	_, err := tx.BoltTx.CreateBucket([]byte(fileName))
 	if err != nil {
-		return err
-	}
-
-	// list file in active files bucket
-	if err := activeFilesBucket.Put([]byte(fileName), []byte(fileName)); err != nil {
 		return err
 	}
 
@@ -185,6 +168,8 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 		walFile.walSize = 0
 	}
 
+	// FIXME: chunk WAL bucket is left behind, and this bug is actually the only
+	//        thing preventing Writer from re-opening a stream where blockIdx > 0
 	for _, fileName := range tx.FilesToDisengageWalFor {
 		// this is a promise not to write into the file ever again
 		delete(w.openFiles, fileName)
@@ -203,21 +188,12 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 // this file will never be written into again
 // it is the caller's responsibility to call Close() on the returned file (only if function not errored)
 func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (error, *os.File) {
-	guardedFile := w.openFiles[fileName]
+	guardedFile, exists := w.openFiles[fileName]
+	if !exists {
+		return errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName)), nil
+	}
 
 	log.Printf("WalManager: CloseActiveFile: closing %s", fileName)
-
-	// delete file from activechunks
-	activeFilesBucket := tx.BoltTx.Bucket([]byte("activechunks"))
-
-	existsCheck := activeFilesBucket.Get([]byte(fileName))
-	if existsCheck == nil {
-		return errors.New(fmt.Sprintf("WalManager: CloseActiveFile: file %s does not exist", fileName)), nil
-	}
-
-	if err := activeFilesBucket.Delete([]byte(fileName)); err != nil {
-		return err, nil
-	}
 
 	tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, fileName)
 	tx.FilesToDisengageWalFor = append(tx.FilesToDisengageWalFor, fileName)
@@ -249,33 +225,17 @@ func (w *WalManager) GetCurrentFileLength(fileName string) (int, error) {
 	return int(wgf.nextFreePosition), nil
 }
 
-func (w *WalManager) scanAndRecoverActiveWalStores(tx *transaction.EventstoreTransaction) {
-	activeFilesBucket, err := tx.BoltTx.CreateBucketIfNotExists([]byte("activechunks"))
-	if err != nil {
-		panic(err)
-	}
-
-	activeFilesBucket.ForEach(func(key, value []byte) error {
-		fileName := string(key)
-
-		w.openFiles[fileName] = w.recoverFileStateFromWal(fileName, tx)
-
-		return nil
-	})
-
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.EventstoreTransaction) *WalGuardedFile {
+// use this after restart to recover and re-open a file that was previously open.
+// you cannot re-open file that was CloseActiveFile()'d, because that's final
+func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.EventstoreTransaction) error {
 	log.Printf("WalManager: recovering %s", fileName)
 
+	// panics if open fails
 	walFile := WalGuardedFileOpen(config.WALMANAGER_DATADIR, fileName)
 
 	chunkWalBucket := tx.BoltTx.Bucket([]byte(fileName))
 	if chunkWalBucket == nil {
-		panic(errors.New("No WAL bucket: " + fileName))
+		return errors.New("No WAL bucket: " + fileName)
 	}
 
 	walRecordsQueued := 0
@@ -293,12 +253,15 @@ func (w *WalManager) recoverFileStateFromWal(fileName string, tx *transaction.Ev
 
 	// compact the WAL entries
 	if walRecordsQueued > 0 {
-		log.Printf("WalManager: recoverFileStateFromWal: %d record(s) queued for recovery", walRecordsQueued)
+		log.Printf("WalManager: %d record(s) queued for recovery", walRecordsQueued)
 
 		tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, walFile.fileNameFictional)
 	}
 
-	return walFile
+	// FIXME: this should be a side effect
+	w.openFiles[fileName] = walFile
+
+	return nil
 }
 
 func (w *WalManager) ensureDataDirectoryExists() {
