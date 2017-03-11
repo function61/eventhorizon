@@ -10,27 +10,8 @@ import (
 	"time"
 )
 
-// TODO: implement encryption
-/*	Summary:
-
-	ECB
-
-	- No IV
-	- Blocks don't depend on previous blocks (=> supports seeking)
-	- Repetition between plaintext can be observed between blocks (=> security concern)
-	- Should not be used
-
-	CBC
-
-	- Requires IV
-	- Blocks depend on previous blocks (=> no seeking)
-	- No repetition can be observed
-
-	CFM
-*/
-// http://crypto.stackexchange.com/questions/225/should-i-use-ecb-or-cbc-encryption-mode-for-my-block-cipher
-// http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
-// http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
+// longtermshipper is responsible for orchestrating compression, encryption and
+// uploading processing of sealed blocks.
 
 func shipOne(ltsf *wtypes.LongTermShippableFile, compEnc *store.CompressedEncryptedStore, s3Manager *scalablestore.S3Manager, wg *sync.WaitGroup) {
 	wg.Add(1)
@@ -41,6 +22,7 @@ func shipOne(ltsf *wtypes.LongTermShippableFile, compEnc *store.CompressedEncryp
 	log.Printf("LongTermShipperManager: compressing %s", ltsf.Block.ToChunkPath())
 
 	// this is probably required because the position is wherever WAL writer left it
+	// TODO: have WAL writer just close the file (= seek not required) and pass filename?
 	if _, err := ltsf.Fd.Seek(0, io.SeekStart); err != nil {
 		panic(err)
 	}

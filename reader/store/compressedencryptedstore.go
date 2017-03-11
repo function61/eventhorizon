@@ -40,7 +40,34 @@ import (
 	|  Enc&comp. file |
 	|                 |
 	+-----------------+
+
+
+	ECB/CBC/CFM summary:
+
+	ECB
+
+	- No IV
+	- Blocks don't depend on previous blocks (=> supports seeking)
+	- Repetition between plaintext can be observed between blocks (=> security concern)
+	- Should not be used
+
+	CBC
+
+	- Requires IV
+	- Blocks depend on previous blocks (=> no seeking)
+	- No repetition can be observed
+
+	CFM
+
+	- About same as CBC?
+	- Not particularly well known?
+
+	http://crypto.stackexchange.com/questions/225/should-i-use-ecb-or-cbc-encryption-mode-for-my-block-cipher
+	http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
+	http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
 */
+
+// TODO: implement encryption
 
 type CompressedEncryptedStore struct {
 }
