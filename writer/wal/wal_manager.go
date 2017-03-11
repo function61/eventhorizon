@@ -260,7 +260,7 @@ func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.Eventst
 
 	// compact the WAL entries
 	if walRecordsQueued > 0 {
-		log.Printf("WalManager: %d record(s) queued for recovery", walRecordsQueued)
+		log.Printf("WalManager: recovering %d record(s) for %s", walRecordsQueued, fileName)
 
 		tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, walFile.fileNameFictional)
 	}
