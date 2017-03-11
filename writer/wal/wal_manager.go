@@ -111,10 +111,10 @@ func (w *WalManager) OpenNewFile(fileName string, tx *transaction.EventstoreTran
 func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) error {
 	// queued file opens
 	for _, fileName := range tx.FilesToOpen {
-		w.openFiles[fileName] = WalGuardedFileOpen(config.WALMANAGER_DATADIR, fileName)
+		w.openFiles[fileName] = WalGuardedFileOpen(fileName)
 	}
 
-	// queued file writes
+	// Write all committed WAL entries to the actual files
 	for _, write := range tx.WriteOps {
 		walFile := w.openFiles[write.Filename]
 
@@ -129,9 +129,13 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 		walFile.walSize += uint64(len(write.Buffer))
 	}
 
-	// queued compactions. need transaction for this, but it's not a problem since
-	// ApplySideEffects() is called outside of a transaction, and this transaction
-	// failure does not compromise any ACID properties as we'll re-try this on startup.
+	// Queued WAL compactions:
+	// - Must ensure fsync() for the above queued writes because after we have purged
+	//   WAL, failed writes cannot be reconstructed.
+	// - These happen in a new transaction (ok since Writer's applySideEffects()
+	//   is outside of a tx. It is not the end of the world if this fails, that
+	//   just means that the WAL compaction will be triggered again on next Append.
+	//
 	for _, fileName := range tx.NeedsWALCompaction {
 		walFile := w.openFiles[fileName]
 
@@ -168,13 +172,6 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 		walFile.walSize = 0
 	}
 
-	// FIXME: chunk WAL bucket is left behind, and this bug is actually the only
-	//        thing preventing Writer from re-opening a stream where blockIdx > 0
-	for _, fileName := range tx.FilesToDisengageWalFor {
-		// this is a promise not to write into the file ever again
-		delete(w.openFiles, fileName)
-	}
-
 	for _, fileName := range tx.FilesToClose {
 		// close logs itself
 		if err := w.openFiles[fileName].Close(); err != nil {
@@ -182,23 +179,33 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 		}
 	}
 
+	// FIXME: chunk WAL bucket is left behind, and this bug is actually the only
+	//        thing preventing Writer from re-opening a stream where blockIdx > 0
+	for _, fileName := range tx.FilesToDisengageWalFor {
+		// this is a promise not to write into the file ever again
+		delete(w.openFiles, fileName)
+	}
+
 	return nil
 }
 
-// this file will never be written into again
-// it is the caller's responsibility to call Close() on the returned file (only if function not errored)
-func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (*os.File, error) {
+// this file will never be written into again.
+// returns the internal file path to the finished file, but it is only usable
+// after WAL's ApplySideEffects() closes the file handle.
+func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (string, error) {
 	guardedFile, exists := w.openFiles[fileName]
 	if !exists {
-		return nil, errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName))
+		return "", errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName))
 	}
 
 	log.Printf("WalManager: sealing %s", fileName)
 
+	// these will be done in side effects if the whole transaction succeeds
 	tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, fileName)
 	tx.FilesToDisengageWalFor = append(tx.FilesToDisengageWalFor, fileName)
+	tx.FilesToClose = append(tx.FilesToClose, fileName)
 
-	return guardedFile.fd, nil
+	return guardedFile.GetInternalRealPath(), nil
 }
 
 func (w *WalManager) Close(tx *transaction.EventstoreTransaction) {
@@ -231,7 +238,7 @@ func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.Eventst
 	log.Printf("WalManager: recovering %s", fileName)
 
 	// panics if open fails
-	walFile := WalGuardedFileOpen(config.WALMANAGER_DATADIR, fileName)
+	walFile := WalGuardedFileOpen(fileName)
 
 	chunkWalBucket := tx.BoltTx.Bucket([]byte(fileName))
 	if chunkWalBucket == nil {

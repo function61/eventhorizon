@@ -21,34 +21,30 @@ import (
 )
 
 type EventstoreWriter struct {
-	walManager          *wal.WalManager
-	ip                  string
-	mu                  sync.Mutex
-	database            *bolt.DB
-	pubSubClient        *client.PubSubClient
-	streamToChunkName   map[string]*types.ChunkSpec
-	longTermShipperWork chan *types.LongTermShippableFile
-	longTermShipperDone chan bool
-	subAct              *SubscriptionActivityTask
-	LiveReader          *LiveReader
-	metrics             *Metrics
+	walManager        *wal.WalManager
+	ip                string
+	mu                sync.Mutex
+	database          *bolt.DB
+	shipper           *longtermshipper.Shipper
+	pubSubClient      *client.PubSubClient
+	streamToChunkName map[string]*types.ChunkSpec
+	subAct            *SubscriptionActivityTask
+	LiveReader        *LiveReader
+	metrics           *Metrics
 }
 
 func NewEventstoreWriter() *EventstoreWriter {
 	e := &EventstoreWriter{
-		ip:                  "127.0.0.1",
-		streamToChunkName:   make(map[string]*types.ChunkSpec),
-		longTermShipperWork: make(chan *types.LongTermShippableFile),
-		longTermShipperDone: make(chan bool),
-		mu:                  sync.Mutex{},
-		metrics:             NewMetrics(),
+		ip:                "127.0.0.1",
+		streamToChunkName: make(map[string]*types.ChunkSpec),
+		mu:                sync.Mutex{},
+		shipper:           longtermshipper.New(),
+		metrics:           NewMetrics(),
 	}
 
 	e.makeBoltDbDirIfNotExist()
 
 	e.startPubSubClient()
-
-	go longtermshipper.RunManager(e.longTermShipperWork, e.longTermShipperDone)
 
 	// DB will be created if not exists
 
@@ -66,7 +62,7 @@ func NewEventstoreWriter() *EventstoreWriter {
 			/tenants/bar => subId2
 
 		_streams:
-			stream_name
+			stream_name => latest block spec
 	*/
 	db, err := bolt.Open(dbLocation, 0600, nil)
 	if err != nil {
@@ -87,6 +83,10 @@ func NewEventstoreWriter() *EventstoreWriter {
 		// which blocks we have open (and their metadata), and re-open
 		// those with WAL manager + recover corrupted writes if required.
 		if err := e.discoverOpenStreamsMetadataAndRecoverWal(tx); err != nil {
+			return err
+		}
+
+		if err := e.shipper.RecoverUnfinishedShipments(tx); err != nil {
 			return err
 		}
 
@@ -344,18 +344,20 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	log.Printf("EventstoreWriter: rotateStreamChunk: %s -> %s", currentChunkSpec.ChunkPath, nextChunkCursor.ToChunkPath())
 
 	// this will never be written to again
-	fd, err := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
+	filePath, err := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
 	if err != nil {
 		return err
 	}
 
 	fileToShip := &types.LongTermShippableFile{
-		Block: cursor.New(currentChunkSpec.StreamName, currentChunkSpec.ChunkNumber, 0, cursor.NoServer),
-		Fd:    fd,
+		Block:    cursor.New(currentChunkSpec.StreamName, currentChunkSpec.ChunkNumber, 0, cursor.NoServer),
+		FilePath: filePath,
 	}
 
-	// longTermShipper has responsibility of closing the file
-	tx.ShipFiles = append(tx.ShipFiles, fileToShip)
+	// durably mark sealed block to be shipped to long term storage
+	if err := e.shipper.MarkFileToBeShipped(fileToShip, tx); err != nil {
+		return err
+	}
 
 	if err := e.openChunkLocally(nextChunkCursor, tx); err != nil {
 		return err
@@ -422,17 +424,11 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 		e.streamToChunkName[spec.StreamName] = spec
 	}
 
-	// Write all committed WAL entries to the actual files
-
-	// Queued WAL compactions:
-	// - Must ensure fsync() for the above queued writes because after we have purged
-	//   WAL, failed writes cannot be reconstructed.
-	// - These happen in a new transaction. It is not the end of the world if this fails,
-	//   That just means that the WAL compaction will be triggered again on next Append.
-
-	for _, ltsf := range tx.ShipFiles {
+	// files to ship to long term storage. this is done transactionally
+	// so shipping is guaranteed to be done at least once
+	for _, file := range tx.ShipFiles {
 		e.metrics.ChunkShippedToLongTermStorage.Inc()
-		e.longTermShipperWork <- ltsf
+		e.shipper.Ship(file, tx.Bolt)
 	}
 
 	for streamName, latestCursorSerialized := range tx.AffectedStreams {
@@ -448,9 +444,7 @@ func (e *EventstoreWriter) Close() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	log.Printf("EventstoreWriter: Closing. Requesting stop from LongTermShipperManager")
-
-	close(e.longTermShipperWork)
+	e.shipper.Close()
 
 	e.subAct.Close()
 
@@ -472,8 +466,6 @@ func (e *EventstoreWriter) Close() {
 	log.Printf("EventstoreWriter: Close: Closing BoltDB")
 
 	e.database.Close()
-
-	<-e.longTermShipperDone
 
 	log.Printf("EventstoreWriter: Closed")
 }
