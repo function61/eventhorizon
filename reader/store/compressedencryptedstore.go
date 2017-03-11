@@ -160,7 +160,7 @@ func (c *CompressedEncryptedStore) DownloadFromS3(cur *cursor.Cursor, s3Manager 
 	}
 
 	localPath := c.localPath(cur)
-	localPathTemp := localPath + ".tmp"
+	localPathTemp := localPath + ".tmp-froms3"
 
 	localFileTemp, openErr := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
 	if openErr != nil {
@@ -199,7 +199,7 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 	}
 
 	localPath := c.localPath(cur)
-	localPathTempForSeekable := localPath + ".tmp-seekable"
+	localPathTempForSeekable := localPath + ".tmp-toseekable"
 
 	localTempFileForSeekable, openErr := os.OpenFile(localPathTempForSeekable, os.O_RDWR|os.O_CREATE, 0755)
 	if openErr != nil {
