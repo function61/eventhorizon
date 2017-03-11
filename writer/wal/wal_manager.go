@@ -187,18 +187,18 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 
 // this file will never be written into again
 // it is the caller's responsibility to call Close() on the returned file (only if function not errored)
-func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (error, *os.File) {
+func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (*os.File, error) {
 	guardedFile, exists := w.openFiles[fileName]
 	if !exists {
-		return errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName)), nil
+		return nil, errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName))
 	}
 
-	log.Printf("WalManager: CloseActiveFile: closing %s", fileName)
+	log.Printf("WalManager: sealing %s", fileName)
 
 	tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, fileName)
 	tx.FilesToDisengageWalFor = append(tx.FilesToDisengageWalFor, fileName)
 
-	return nil, guardedFile.fd
+	return guardedFile.fd, nil
 }
 
 func (w *WalManager) Close(tx *transaction.EventstoreTransaction) {

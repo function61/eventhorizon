@@ -344,7 +344,7 @@ func (e *EventstoreWriter) rotateStreamChunk(nextChunkCursor *cursor.Cursor, tx 
 	log.Printf("EventstoreWriter: rotateStreamChunk: %s -> %s", currentChunkSpec.ChunkPath, nextChunkCursor.ToChunkPath())
 
 	// this will never be written to again
-	err, fd := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
+	fd, err := e.walManager.CloseActiveFile(currentChunkSpec.ChunkPath, tx)
 	if err != nil {
 		return err
 	}
