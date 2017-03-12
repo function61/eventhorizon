@@ -6,16 +6,15 @@ const (
 )
 
 type PushResult struct {
-	Code              string
-	CorrectBaseOffset string
-	AcceptedOffset    string
-	BehindCursors     []string
+	Code           string
+	AcceptedOffset string
+	BehindCursors  []string
 }
 
 func NewPushResultIncorrectBaseOffset(correctBaseOffset string) *PushResult {
 	return &PushResult{
-		Code:              CodeIncorrectBaseOffset,
-		CorrectBaseOffset: correctBaseOffset,
+		Code:           CodeIncorrectBaseOffset,
+		AcceptedOffset: correctBaseOffset,
 	}
 }
 

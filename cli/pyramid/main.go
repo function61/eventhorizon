@@ -179,7 +179,7 @@ func pusher_(args []string) error {
 
 	exampleReceiverTarget := NewReceiver()
 
-	psh := pusher.NewPusher(exampleReceiverTarget)
+	psh := pusher.New(exampleReceiverTarget)
 	go psh.Run()
 
 	log.Println(cli.WaitForInterrupt())

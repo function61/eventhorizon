@@ -21,7 +21,7 @@ type EventstoreReader struct {
 	compressedEncryptedStore *store.CompressedEncryptedStore
 }
 
-func NewEventstoreReader() *EventstoreReader {
+func New() *EventstoreReader {
 	seekableStore := store.NewSeekableStore()
 	compressedEncryptedStore := store.NewCompressedEncryptedStore()
 	s3manager := scalablestore.NewS3Manager()
