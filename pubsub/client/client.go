@@ -19,7 +19,7 @@ type PubSubClient struct {
 	subscribedTopics []string
 }
 
-func NewPubSubClient(serverAddress string) *PubSubClient {
+func New(serverAddress string) *PubSubClient {
 	this := &PubSubClient{
 		Notifications:    make(chan []string),
 		writeCh:          make(chan string),

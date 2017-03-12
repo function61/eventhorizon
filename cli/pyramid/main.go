@@ -129,7 +129,7 @@ func pubsubSubscribe(args []string) error {
 		return usage("<Topic>")
 	}
 
-	pubSubClient := client.NewPubSubClient("127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT))
+	pubSubClient := client.New("127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT))
 	pubSubClient.Subscribe(args[0])
 
 	for {

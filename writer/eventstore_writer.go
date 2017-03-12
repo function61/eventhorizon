@@ -501,7 +501,7 @@ func (e *EventstoreWriter) startPubSubClient() {
 
 	log.Printf("EventstoreWriter: connecting to pub/sub server at %s", serverAddr)
 
-	e.pubSubClient = client.NewPubSubClient(serverAddr)
+	e.pubSubClient = client.New(serverAddr)
 }
 
 func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {

@@ -12,7 +12,7 @@ type Stats struct {
 }
 
 func startSubscriber(serverPort int, topic string) {
-	pubSubClient := client.NewPubSubClient("127.0.0.1:" + strconv.Itoa(serverPort))
+	pubSubClient := client.New("127.0.0.1:" + strconv.Itoa(serverPort))
 	pubSubClient.Subscribe(topic)
 
 	stats := Stats{}
