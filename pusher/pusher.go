@@ -161,6 +161,21 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 	response <- output
 }
 
+/*	Possible outcomes:
+
+	could not reach writer -> retry in 5s
+	reached writer, read events -> target acked none
+	reached writer, read events -> target acked some
+	reached writer, read events -> target said wrong offset
+	reached writer, no events -> start sleeping
+
+	Results:
+
+	- last operation failed - retry in 5 sec
+	- target's pointer now at
+	- i have intelligence for these cursors
+*/
+
 func (p *Pusher) Run() {
 	subscriptionId := p.receiver.GetSubscriptionId()
 
@@ -217,58 +232,46 @@ func (p *Pusher) Run() {
 		p.streams[concerningStream].isRunning = false
 		p.streams[concerningStream].shouldRun = output.ShouldContinueRunning
 
-		for _, inte := range output.ActivityIntelligence {
-			if _, exists := p.streams[inte.Stream]; !exists {
-				p.streams[inte.Stream] = &StreamStatus{
-					Stream:    inte.Stream,
-					shouldRun: true,
-				}
-			}
+		p.processIntelligence(output)
+	}
+}
 
-			// have intelligence on target status?
-			if inte.targetAckedCursor != nil {
-				// we didn't have previous information => copy as is
-				if p.streams[inte.Stream].targetAckedCursor == nil {
+func (p *Pusher) processIntelligence(output *WorkOutput) {
+	for _, inte := range output.ActivityIntelligence {
+		if _, exists := p.streams[inte.Stream]; !exists {
+			p.streams[inte.Stream] = &StreamStatus{
+				Stream:    inte.Stream,
+				shouldRun: true,
+			}
+		}
+
+		// have intelligence on target status?
+		if inte.targetAckedCursor != nil {
+			// we didn't have previous information => copy as is
+			if p.streams[inte.Stream].targetAckedCursor == nil {
+				p.streams[inte.Stream].targetAckedCursor = inte.targetAckedCursor
+
+				log.Printf(
+					"Pusher: %s initialized @ %s",
+					inte.targetAckedCursor.Stream,
+					inte.targetAckedCursor.OffsetString())
+			} else {
+				// have information => compare if provided information is ahead
+				if inte.targetAckedCursor.IsAheadComparedTo(p.streams[inte.Stream].targetAckedCursor) {
 					p.streams[inte.Stream].targetAckedCursor = inte.targetAckedCursor
 
 					log.Printf(
-						"Pusher: %s initialized @ %s",
+						"Pusher: %s forward @ %s",
 						inte.targetAckedCursor.Stream,
 						inte.targetAckedCursor.OffsetString())
 				} else {
-					// have information => compare if provided information is ahead
-					if inte.targetAckedCursor.IsAheadComparedTo(p.streams[inte.Stream].targetAckedCursor) {
-						p.streams[inte.Stream].targetAckedCursor = inte.targetAckedCursor
-
-						log.Printf(
-							"Pusher: %s forward @ %s",
-							inte.targetAckedCursor.Stream,
-							inte.targetAckedCursor.OffsetString())
-					} else {
-						log.Printf(
-							"Pusher: %s backpedal/stay still @ %s",
-							inte.targetAckedCursor.Stream,
-							inte.targetAckedCursor.OffsetString())
-					}
+					log.Printf(
+						"Pusher: %s backpedal/stay still @ %s",
+						inte.targetAckedCursor.Stream,
+						inte.targetAckedCursor.OffsetString())
 				}
 			}
-
-			/*	Possible outcomes:
-
-				could not reach writer -> retry in 5s
-				reached writer, read events -> target acked none
-				reached writer, read events -> target acked some
-				reached writer, read events -> target said wrong offset
-				reached writer, no events -> start sleeping
-			*/
 		}
-
-		/*	Results
-
-			- last operation failed - retry in 5 sec
-			- target's pointer now at
-			- i have intelligence for these cursors
-		*/
 	}
 }
 
