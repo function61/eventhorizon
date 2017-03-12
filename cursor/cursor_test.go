@@ -145,3 +145,9 @@ func TestCursorWithServer(t *testing.T) {
 	EqualInt(t, withServer.Offset, 42)
 	EqualString(t, withServer.Server, "poop")
 }
+
+func TestOffsetString(t *testing.T) {
+	withServer := CursorFromserializedMust("/tenants/foo:3:42:poop")
+
+	EqualString(t, withServer.OffsetString(), "3:42")
+}

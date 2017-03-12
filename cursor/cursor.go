@@ -133,3 +133,8 @@ func CursorFromserializedMust(serialized string) *Cursor {
 
 	return c
 }
+
+// for displaying in logs. not to be machine parsed. example: "3:10534"
+func (c *Cursor) OffsetString() string {
+	return strconv.Itoa(c.Chunk) + ":" + strconv.Itoa(c.Offset)
+}
