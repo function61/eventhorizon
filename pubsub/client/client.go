@@ -50,6 +50,9 @@ func (this *PubSubClient) Publish(topic string, message string) {
 
 func (this *PubSubClient) Close() {
 	this.quitting = true
+
+	close(this.Notifications)
+
 	packet := pubsub.MsgformatEncode([]string{"BYE"})
 
 	this.writeCh <- packet
@@ -116,7 +119,9 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 			} else {
 				message := pubsub.MsgformatDecode(messageRaw)
 
-				this.Notifications <- message
+				if !this.quitting {
+					this.Notifications <- message
+				}
 			}
 		}
 	}

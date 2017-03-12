@@ -132,13 +132,19 @@ func pubsubSubscribe(args []string) error {
 	pubSubClient := client.New("127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT))
 	pubSubClient.Subscribe(args[0])
 
-	for {
-		msg := <-pubSubClient.Notifications
+	go func() {
+		for {
+			msg, more := <-pubSubClient.Notifications
+			if !more {
+				break
+			}
 
-		log.Printf("Recv: %v", msg)
-	}
+			log.Printf("Recv: %v", msg)
+		}
+	}()
 
-	// TODO: no graceful quit mechanism
+	cli.WaitForInterrupt()
+
 	pubSubClient.Close()
 
 	return nil
