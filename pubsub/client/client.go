@@ -140,14 +140,12 @@ func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
 				packet += message
 			}
 
-			_, err := conn.Write([]byte(packet))
-			if err != nil {
+			if _, err := conn.Write([]byte(packet)); err != nil {
 				log.Printf("PubSubClient: handleWrites: %s", err.Error())
 				return
 			}
 		case packet := <-this.writeCh:
-			_, err := conn.Write([]byte(packet))
-			if err != nil {
+			if _, err := conn.Write([]byte(packet)); err != nil {
 				log.Printf("PubSubClient: handleWrites: %s", err.Error())
 				return
 			}
