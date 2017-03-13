@@ -35,7 +35,7 @@ func main() {
 	} else if *subTopic != "" {
 		startSubscriber(serverPort, *subTopic)
 	} else if serverPort != 0 {
-		pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(serverPort))
+		pubSubServer := server.New("0.0.0.0:" + strconv.Itoa(serverPort))
 
 		ch := make(chan os.Signal)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)

@@ -38,7 +38,7 @@ func writer_(args []string) error {
 	}
 
 	// start pub/sub server
-	pubSubServer := server.NewESPubSubServer("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
+	pubSubServer := server.New("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
 
 	esServer := writer.NewEventstoreWriter()
 

@@ -64,7 +64,7 @@ type ESPubSubServer struct {
 	acceptorDone         chan bool
 }
 
-func NewESPubSubServer(bindAddr string) *ESPubSubServer {
+func New(bindAddr string) *ESPubSubServer {
 	listener, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		panic(err)
