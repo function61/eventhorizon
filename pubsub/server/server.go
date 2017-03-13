@@ -58,21 +58,21 @@ type ServerClient struct {
 
 type ClientsBySubscription map[string][]*ServerClient
 
-type ESPubSubServer struct {
+type PubSubServer struct {
 	clientBySubscription ClientsBySubscription
 	listener             net.Listener
 	acceptorDone         chan bool
 }
 
-func New(bindAddr string) *ESPubSubServer {
+func New(bindAddr string) *PubSubServer {
 	listener, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Printf("ESPubSubServer: binding to %s", bindAddr)
+	log.Printf("PubSubServer: binding to %s", bindAddr)
 
-	e := &ESPubSubServer{
+	e := &PubSubServer{
 		clientBySubscription: make(ClientsBySubscription),
 		listener:             listener,
 		acceptorDone:         make(chan bool),
@@ -83,26 +83,26 @@ func New(bindAddr string) *ESPubSubServer {
 	return e
 }
 
-func (e *ESPubSubServer) Close() {
-	log.Printf("ESPubSubServer: closing. Stopping acceptorLoop.")
+func (e *PubSubServer) Close() {
+	log.Printf("PubSubServer: closing. Stopping acceptorLoop.")
 
 	e.listener.Close()
 
 	<-e.acceptorDone
 
-	log.Printf("ESPubSubServer: acceptor shut down")
+	log.Printf("PubSubServer: acceptor shut down")
 }
 
-func (e *ESPubSubServer) handleClientDisconnect(cl *ServerClient) {
+func (e *PubSubServer) handleClientDisconnect(cl *ServerClient) {
 	e.removeClientSubscriptions(cl)
 }
 
-func (e *ESPubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
+func (e *PubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
 	for {
 		select {
 		case msgToWrite := <-cl.writeCh:
 			if _, err := conn.Write([]byte(msgToWrite)); err != nil {
-				log.Printf("ESPubSubServer: write error to client %s. Stopping writer.", cl.Addr)
+				log.Printf("PubSubServer: write error to client %s. Stopping writer.", cl.Addr)
 				e.handleClientDisconnect(cl)
 				return
 			}
@@ -113,7 +113,7 @@ func (e *ESPubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
 			}
 
 			if _, err := conn.Write([]byte(packet)); err != nil {
-				log.Printf("ESPubSubServer: write error to client %s. Stopping writer.", cl.Addr)
+				log.Printf("PubSubServer: write error to client %s. Stopping writer.", cl.Addr)
 				e.handleClientDisconnect(cl)
 				return
 			}
@@ -121,7 +121,7 @@ func (e *ESPubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
 	}
 }
 
-func (e *ESPubSubServer) handlePublish(topic string, message string, cl *ServerClient) {
+func (e *PubSubServer) handlePublish(topic string, message string, cl *ServerClient) {
 	notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
 
 	for _, subscriberClient := range e.clientBySubscription[topic] {
@@ -130,16 +130,16 @@ func (e *ESPubSubServer) handlePublish(topic string, message string, cl *ServerC
 	}
 }
 
-func (e *ESPubSubServer) handleSubscribe(topic string, cl *ServerClient) {
-	log.Printf("ESPubSubServer: subscribe; topic=%s", topic)
+func (e *PubSubServer) handleSubscribe(topic string, cl *ServerClient) {
+	log.Printf("PubSubServer: subscribe; topic=%s", topic)
 
 	cl.subscriptionsByClient = append(cl.subscriptionsByClient, topic)
 
 	e.clientBySubscription[topic] = append(e.clientBySubscription[topic], cl)
 }
 
-func (e *ESPubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
-	log.Printf("ESPubSubServer: accepted connection from %s", conn.RemoteAddr())
+func (e *PubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
+	log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
 	reader := bufio.NewReader(conn)
 
@@ -148,13 +148,13 @@ func (e *ESPubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
 		rawMessage, errRead := reader.ReadString('\n')
 		if errRead != nil {
 			if errRead == io.EOF {
-				log.Printf("ESPubSubServer: readFromOneClient: EOF encountered")
+				log.Printf("PubSubServer: readFromOneClient: EOF encountered")
 			} else {
 				operr, ok := errRead.(*net.OpError)
 				if ok && operr.Err.Error() == syscall.ECONNRESET.Error() {
-					log.Printf("ESPubSubServer: readFromOneClient: error: Connection reset by beer")
+					log.Printf("PubSubServer: readFromOneClient: error: Connection reset by beer")
 				} else {
-					log.Printf("ESPubSubServer: readFromOneClient: error: Type not ECONNRESET")
+					log.Printf("PubSubServer: readFromOneClient: error: Type not ECONNRESET")
 				}
 			}
 
@@ -188,8 +188,8 @@ func (e *ESPubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
 	e.handleClientDisconnect(cl)
 }
 
-func (e *ESPubSubServer) acceptorLoop(listener net.Listener) {
-	log.Printf("ESPubSubServer: starting acceptorLoop")
+func (e *PubSubServer) acceptorLoop(listener net.Listener) {
+	log.Printf("PubSubServer: starting acceptorLoop")
 
 	for {
 		conn, err := listener.Accept()
@@ -214,7 +214,7 @@ func (e *ESPubSubServer) acceptorLoop(listener net.Listener) {
 	e.acceptorDone <- true
 }
 
-func (e *ESPubSubServer) removeClientSubscriptions(cl *ServerClient) {
+func (e *PubSubServer) removeClientSubscriptions(cl *ServerClient) {
 	for _, topic := range cl.subscriptionsByClient {
 
 		foundIndex := -1
@@ -226,7 +226,7 @@ func (e *ESPubSubServer) removeClientSubscriptions(cl *ServerClient) {
 		}
 
 		if foundIndex != -1 { // delete by position
-			log.Printf("ESPubSubServer: removeClientSubscriptions: removing subscription. topic=%s pos=%d", topic, foundIndex)
+			log.Printf("PubSubServer: removeClientSubscriptions: removing subscription. topic=%s pos=%d", topic, foundIndex)
 
 			temp := e.clientBySubscription[topic]
 
@@ -240,7 +240,7 @@ func (e *ESPubSubServer) removeClientSubscriptions(cl *ServerClient) {
 
 			// log.Printf("After %v", temp)
 		} else {
-			log.Printf("ESPubSubServer: removeClientSubscriptions: sub not found. SHOULD NOT HAPPEN. topic=%s", topic)
+			log.Printf("PubSubServer: removeClientSubscriptions: sub not found. SHOULD NOT HAPPEN. topic=%s", topic)
 		}
 	}
 }
