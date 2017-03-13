@@ -19,7 +19,6 @@ type Queue struct {
 }
 
 func New() *Queue {
-	// channel buffers one bool, so consumer
 	return &Queue{
 		ReceiveAvailable: make(chan bool, 1),
 		mu:               &sync.Mutex{},
@@ -31,16 +30,14 @@ func (p *Queue) ReceiveAndClear() map[string]string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	copied := p.partitionStore
+	// we can just take a reference to existing map because
+	// we'll "clear" the one we store by allocating a new map for it
+	ref := p.partitionStore
 
+	// clear
 	p.partitionStore = make(map[string]string)
 
-	return copied
-}
-
-func (p *Queue) Close() {
-	// closing is ok, consumer reads any messages buffered on the channel
-	close(p.ReceiveAvailable)
+	return ref
 }
 
 func (p *Queue) Put(partitionKey string, message string) {
@@ -54,7 +51,14 @@ func (p *Queue) Put(partitionKey string, message string) {
 	case p.ReceiveAvailable <- true:
 		// noop
 	default:
-		// notification message dropped
+		// notification message dropped. since the channel is buffered, we know
+		// that there already was one "ReceiveAvailable" notification queued.
+		// the consumer will react to it and get the latest data.
 	}
 
+}
+
+func (p *Queue) Close() {
+	// closing is ok, consumer reads any messages buffered on the channel
+	close(p.ReceiveAvailable)
 }
