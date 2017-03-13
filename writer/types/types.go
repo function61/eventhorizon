@@ -13,3 +13,8 @@ type LiveReadInput struct {
 	Cursor         string
 	MaxLinesToRead int
 }
+
+type SubscriberNotification struct {
+	SubscriptionId         string
+	LatestCursorSerialized string
+}

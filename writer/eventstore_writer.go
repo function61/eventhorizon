@@ -330,7 +330,17 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 
 	e.subAct.MarkOneDirty(cursorAfter, tx)
 
-	tx.AffectedStreams[cursorAfter.Stream] = cursorAfter.Serialize()
+	cursorAfterSerialized := cursorAfter.Serialize()
+
+	tx.AffectedStreams[cursorAfter.Stream] = cursorAfterSerialized
+
+	subscribers := getSubscriptionsForStream(cursorAfter.Stream, tx.BoltTx)
+	for _, subscriber := range subscribers {
+		tx.SubscriberNotifications = append(tx.SubscriberNotifications, &types.SubscriberNotification{
+			SubscriptionId:         subscriber,
+			LatestCursorSerialized: cursorAfterSerialized,
+		})
+	}
 
 	return nil
 }
@@ -433,6 +443,10 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 
 	for streamName, latestCursorSerialized := range tx.AffectedStreams {
 		e.pubSubClient.Publish("stream:"+streamName, latestCursorSerialized)
+	}
+
+	for _, notification := range tx.SubscriberNotifications {
+		e.pubSubClient.Publish("sub:"+notification.SubscriptionId, notification.LatestCursorSerialized)
 	}
 
 	e.metrics.AppendedLinesExclMeta.Add(float64(tx.NonMetaLinesAdded))

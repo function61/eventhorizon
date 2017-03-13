@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/function61/pyramid/writer/types"
+	wtypes "github.com/function61/pyramid/writer/types"
 )
 
 type Write struct {
@@ -12,31 +12,33 @@ type Write struct {
 }
 
 type EventstoreTransaction struct {
-	BoltTx                 *bolt.Tx
-	Bolt                   *bolt.DB
-	NewChunks              []*types.ChunkSpec
-	ShipFiles              []*types.LongTermShippableFile
-	FilesToDisengageWalFor []string
-	NeedsWALCompaction     []string
-	FilesToOpen            []string
-	FilesToClose           []string
-	WriteOps               []*Write
-	AffectedStreams        map[string]string // streamName => cursorSerialized
-	NonMetaLinesAdded      int               // only for metrics
+	BoltTx                  *bolt.Tx
+	Bolt                    *bolt.DB
+	NewChunks               []*wtypes.ChunkSpec
+	ShipFiles               []*wtypes.LongTermShippableFile
+	FilesToDisengageWalFor  []string
+	NeedsWALCompaction      []string
+	FilesToOpen             []string
+	FilesToClose            []string
+	WriteOps                []*Write
+	AffectedStreams         map[string]string // streamName => cursorSerialized
+	SubscriberNotifications []*wtypes.SubscriberNotification
+	NonMetaLinesAdded       int // only for metrics
 }
 
 func NewEventstoreTransaction(bolt *bolt.DB) *EventstoreTransaction {
 	return &EventstoreTransaction{
-		Bolt:                   bolt,
-		NewChunks:              []*types.ChunkSpec{},
-		ShipFiles:              []*types.LongTermShippableFile{},
-		FilesToDisengageWalFor: []string{},
-		NeedsWALCompaction:     []string{},
-		FilesToOpen:            []string{},
-		FilesToClose:           []string{},
-		WriteOps:               []*Write{},
-		AffectedStreams:        make(map[string]string),
-		NonMetaLinesAdded:      0,
+		Bolt:                    bolt,
+		NewChunks:               []*wtypes.ChunkSpec{},
+		ShipFiles:               []*wtypes.LongTermShippableFile{},
+		FilesToDisengageWalFor:  []string{},
+		NeedsWALCompaction:      []string{},
+		FilesToOpen:             []string{},
+		FilesToClose:            []string{},
+		WriteOps:                []*Write{},
+		AffectedStreams:         make(map[string]string),
+		SubscriberNotifications: []*wtypes.SubscriberNotification{},
+		NonMetaLinesAdded:       0,
 	}
 }
 
