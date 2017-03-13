@@ -2,12 +2,12 @@ package server
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"log"
 	"net"
+	"time"
 )
 
 // client from the server's perspective
@@ -52,7 +52,7 @@ func New(bindAddr string) *PubSubServer {
 		lineReceived:         make(chan *IncomingMessage, 1000),
 	}
 
-	go e.acceptorLoop(listener)
+	go e.acceptorLoop(listener.(*net.TCPListener))
 	go e.mainLogicLoop()
 
 	return e
@@ -188,11 +188,11 @@ func (e *PubSubServer) mainLogicLoop() {
 	}
 }
 
-func (e *PubSubServer) acceptorLoop(listener net.Listener) {
+func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 	log.Printf("PubSubServer: starting acceptorLoop")
 
 	for {
-		conn, err := listener.Accept()
+		conn, err := listener.AcceptTCP()
 		if err != nil {
 			// not much sense in doing anything with error, unless we can distinquish
 			// the error from the error triggered by listener.Close() which gets
@@ -200,13 +200,19 @@ func (e *PubSubServer) acceptorLoop(listener net.Listener) {
 			break
 		}
 
-		writeCh := make(chan string, 5)
+		// enable keepalive, so broken connections are cleaned up
+		if err := conn.SetKeepAlivePeriod(60 * time.Second); err != nil {
+			log.Printf("PubSubServer: unable to set keepalive period: %s", err.Error())
+		}
+		if err := conn.SetKeepAlive(true); err != nil {
+			log.Printf("PubSubServer: unable to enable keepalive: %s", err.Error())
+		}
 
 		log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
 		cl := ServerClient{
 			Addr:                  conn.RemoteAddr().String(),
-			writeCh:               writeCh, // FIXME: this is currently not used
+			writeCh:               make(chan string, 5),
 			subscriptionsByClient: []string{},
 			sendQueue:             partitionedlossyqueue.New(),
 			conn:                  conn,
