@@ -15,10 +15,20 @@ type ServerClient struct {
 	Addr                  string
 	authenticated         bool
 	disconnected          bool
+	closeCh               chan bool
 	writeCh               chan string
 	subscriptionsByClient []string
 	sendQueue             *partitionedlossyqueue.Queue
 	conn                  net.Conn
+}
+
+func (c *ServerClient) DisconnectNonBlocking() {
+	select {
+	case c.closeCh <- true:
+	// noop
+	default:
+		// close request already in flight
+	}
 }
 
 type ClientsBySubscription map[string][]*ServerClient
@@ -29,11 +39,12 @@ type IncomingMessage struct {
 }
 
 type PubSubServer struct {
-	clientBySubscription ClientsBySubscription
-	listener             net.Listener
-	acceptorDone         chan bool
-	socketDisconnected   chan *ServerClient
-	lineReceived         chan *IncomingMessage
+	clientBySubscription    ClientsBySubscription
+	listener                net.Listener
+	acceptorAndMainLoopDone chan bool
+	stopMainLoop            chan bool
+	clientDisconnected      chan *ServerClient
+	messageReceived         chan *IncomingMessage
 }
 
 func New(bindAddr string) *PubSubServer {
@@ -45,11 +56,12 @@ func New(bindAddr string) *PubSubServer {
 	log.Printf("PubSubServer: binding to %s", bindAddr)
 
 	e := &PubSubServer{
-		clientBySubscription: make(ClientsBySubscription),
-		listener:             listener,
-		acceptorDone:         make(chan bool),
-		socketDisconnected:   make(chan *ServerClient, 100),
-		lineReceived:         make(chan *IncomingMessage, 1000),
+		clientBySubscription:    make(ClientsBySubscription),
+		listener:                listener,
+		acceptorAndMainLoopDone: make(chan bool),
+		stopMainLoop:            make(chan bool),
+		clientDisconnected:      make(chan *ServerClient, 100),
+		messageReceived:         make(chan *IncomingMessage, 1000),
 	}
 
 	go e.acceptorLoop(listener.(*net.TCPListener))
@@ -59,21 +71,29 @@ func New(bindAddr string) *PubSubServer {
 }
 
 func (e *PubSubServer) Close() {
-	log.Printf("PubSubServer: closing. Stopping acceptorLoop.")
+	log.Printf("PubSubServer: stopping")
 
 	e.listener.Close()
 
-	<-e.acceptorDone
+	e.stopMainLoop <- true
 
-	log.Printf("PubSubServer: acceptor shut down")
+	<-e.acceptorAndMainLoopDone
+	<-e.acceptorAndMainLoopDone
+
+	log.Printf("PubSubServer: stopped")
 }
 
 func (e *PubSubServer) writeForOneClient(cl *ServerClient) {
 	for {
 		select {
+		case <-cl.closeCh:
+			// this could be called many times but it doesn't matter.
+			// and there's not much we could do on error closing the connection
+			cl.conn.Close()
+			return
 		case msgToWrite := <-cl.writeCh:
 			if _, err := cl.conn.Write([]byte(msgToWrite)); err != nil {
-				e.socketDisconnected <- cl
+				e.clientDisconnected <- cl
 				return
 			}
 		case <-cl.sendQueue.ReceiveAvailable:
@@ -83,7 +103,7 @@ func (e *PubSubServer) writeForOneClient(cl *ServerClient) {
 			}
 
 			if _, err := cl.conn.Write([]byte(packet)); err != nil {
-				e.socketDisconnected <- cl
+				e.clientDisconnected <- cl
 				return
 			}
 		}
@@ -101,18 +121,19 @@ func (e *PubSubServer) handleSubscribe(topic string, cl *ServerClient) {
 func (e *PubSubServer) readFromOneClient(cl *ServerClient) {
 	reader := bufio.NewReader(cl.conn)
 
-	// read until we want to disconnect
+	// read until we receive a disconnect
 	for {
 		rawMessage, errRead := reader.ReadString('\n')
 		if errRead != nil {
-			e.socketDisconnected <- cl
+			// we're going to come here also if TCP keepalive times out
+			e.clientDisconnected <- cl
 			return
 		}
 
 		// 'SET key value\n' => [ 'SET', 'key', 'value' ]
 		msgParts := pubsub.MsgformatDecode(rawMessage)
 
-		e.lineReceived <- &IncomingMessage{
+		e.messageReceived <- &IncomingMessage{
 			message: msgParts,
 			client:  cl,
 		}
@@ -123,10 +144,13 @@ func (e *PubSubServer) readFromOneClient(cl *ServerClient) {
 // so there's no need to acquire locks
 func (e *PubSubServer) mainLogicLoop() {
 	log.Printf("PubSubServer: starting mainLogicLoop")
+	defer func() { e.acceptorAndMainLoopDone <- true }()
 
 	for {
 		select {
-		case incomingMessage := <-e.lineReceived:
+		case <-e.stopMainLoop:
+			return
+		case incomingMessage := <-e.messageReceived:
 			// increase readability
 			client := incomingMessage.client
 			msg := incomingMessage.message
@@ -138,8 +162,8 @@ func (e *PubSubServer) mainLogicLoop() {
 			if msgType == "PUB" && len(msg) == 3 {
 				if !client.authenticated {
 					log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
-					client.conn.Close()
-					break
+					client.DisconnectNonBlocking()
+					break // to select
 				}
 
 				topic := msg[1]
@@ -155,8 +179,8 @@ func (e *PubSubServer) mainLogicLoop() {
 			} else if msgType == "SUB" && len(msg) == 2 {
 				if !client.authenticated {
 					log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
-					client.conn.Close()
-					break
+					client.DisconnectNonBlocking()
+					break // to select
 				}
 
 				topic := msg[1]
@@ -169,13 +193,13 @@ func (e *PubSubServer) mainLogicLoop() {
 					client.authenticated = true
 				}
 			} else if msgType == "BYE" && len(msg) == 1 {
-				client.conn.Close()
-				break
+				client.DisconnectNonBlocking()
+				break // to select
 			} else {
 				log.Printf("Unsupported message type: %s", msgType)
-				client.conn.Close()
+				client.DisconnectNonBlocking()
 			}
-		case client := <-e.socketDisconnected:
+		case client := <-e.clientDisconnected:
 			// message may arrive multiple times per client
 			if !client.disconnected {
 				client.disconnected = true
@@ -190,6 +214,7 @@ func (e *PubSubServer) mainLogicLoop() {
 
 func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 	log.Printf("PubSubServer: starting acceptorLoop")
+	defer func() { e.acceptorAndMainLoopDone <- true }()
 
 	for {
 		conn, err := listener.AcceptTCP()
@@ -213,6 +238,7 @@ func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 		cl := ServerClient{
 			Addr:                  conn.RemoteAddr().String(),
 			writeCh:               make(chan string, 5),
+			closeCh:               make(chan bool, 1),
 			subscriptionsByClient: []string{},
 			sendQueue:             partitionedlossyqueue.New(),
 			conn:                  conn,
@@ -222,7 +248,6 @@ func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 		go e.readFromOneClient(&cl)
 	}
 
-	e.acceptorDone <- true
 }
 
 func (e *PubSubServer) removeClientSubscriptions(cl *ServerClient) {
