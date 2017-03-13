@@ -22,7 +22,7 @@ type PubSubClient struct {
 }
 
 func New(serverAddress string) *PubSubClient {
-	this := &PubSubClient{
+	p := &PubSubClient{
 		Notifications:    make(chan []string),
 		writeCh:          make(chan string),
 		done:             make(chan bool),
@@ -32,42 +32,42 @@ func New(serverAddress string) *PubSubClient {
 		quitting:         false,
 	}
 
-	go this.manageConnectivity(serverAddress)
+	go p.manageConnectivity(serverAddress)
 
-	return this
+	return p
 }
 
-func (this *PubSubClient) Subscribe(topic string) {
-	this.subscribedTopics = append(this.subscribedTopics, topic)
+func (p *PubSubClient) Subscribe(topic string) {
+	p.subscribedTopics = append(p.subscribedTopics, topic)
 
-	if this.connected { // otherwise will be sent on connect/reconnect
-		this.sendSubscriptionMessage(topic)
+	if p.connected { // otherwise will be sent on connect/reconnect
+		p.sendSubscriptionMessage(topic)
 	}
 }
 
 // guaranteed to never block, but can lose all but the latest message per topic
-func (this *PubSubClient) Publish(topic string, message string) {
-	this.sendQueue.Put(topic, pubsub.MsgformatEncode([]string{"PUB", topic, message}))
+func (p *PubSubClient) Publish(topic string, message string) {
+	p.sendQueue.Put(topic, pubsub.MsgformatEncode([]string{"PUB", topic, message}))
 }
 
-func (this *PubSubClient) Close() {
-	this.quitting = true
+func (p *PubSubClient) Close() {
+	p.quitting = true
 
-	close(this.Notifications)
+	close(p.Notifications)
 
 	// don't send bye unless connected
-	if !this.connected {
+	if !p.connected {
 		return
 	}
 
 	packet := pubsub.MsgformatEncode([]string{"BYE"})
 
-	this.writeCh <- packet
+	p.writeCh <- packet
 
-	<-this.done
+	<-p.done
 }
 
-func (this *PubSubClient) manageConnectivity(serverAddress string) {
+func (p *PubSubClient) manageConnectivity(serverAddress string) {
 	reconnectBackoff := &backoff.Backoff{
 		Min:    100 * time.Millisecond,
 		Max:    10 * time.Second,
@@ -82,7 +82,7 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 		if err != nil {
 			// don't try to forever connect on connection errors if
 			// we're trying to close connection anyway
-			if this.quitting {
+			if p.quitting {
 				return
 			}
 
@@ -96,14 +96,14 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 
 		reconnectBackoff.Reset()
 
-		go this.handleWrites(conn, stopWriting)
+		go p.handleWrites(conn, stopWriting)
 
 		// re-subscribe
-		for _, topic := range this.subscribedTopics {
-			this.sendSubscriptionMessage(topic)
+		for _, topic := range p.subscribedTopics {
+			p.sendSubscriptionMessage(topic)
 		}
 
-		this.connected = true
+		p.connected = true
 
 		reader := bufio.NewReader(conn)
 
@@ -113,7 +113,7 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 			// will listen for message to process ending in newline (\n)
 			messageRaw, errRead := reader.ReadString('\n')
 			if errRead != nil {
-				this.connected = false
+				p.connected = false
 				stopWriting <- true
 
 				if errRead == io.EOF {
@@ -122,9 +122,9 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 					log.Printf("PubSubClient: manageConnectivity: error")
 				}
 
-				if this.quitting {
+				if p.quitting {
 					log.Printf("PubSubClient: manageConnectivity: quitting: signalling done & stopping loop")
-					this.done <- true
+					p.done <- true
 					return
 				}
 
@@ -132,22 +132,22 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 			} else {
 				message := pubsub.MsgformatDecode(messageRaw)
 
-				if !this.quitting {
-					this.Notifications <- message
+				if !p.quitting {
+					p.Notifications <- message
 				}
 			}
 		}
 	}
 }
 
-func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
+func (p *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
 	defer log.Printf("PubSubClient: handleWrites: stopping")
 
 	for {
 		select {
-		case <-this.sendQueue.ReceiveAvailable:
+		case <-p.sendQueue.ReceiveAvailable:
 			packet := ""
-			for _, message := range this.sendQueue.ReceiveAndClear() {
+			for _, message := range p.sendQueue.ReceiveAndClear() {
 				packet += message
 			}
 
@@ -155,7 +155,7 @@ func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
 				log.Printf("PubSubClient: handleWrites: %s", err.Error())
 				return
 			}
-		case packet := <-this.writeCh:
+		case packet := <-p.writeCh:
 			if _, err := conn.Write([]byte(packet)); err != nil {
 				log.Printf("PubSubClient: handleWrites: %s", err.Error())
 				return
@@ -167,10 +167,10 @@ func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
 
 }
 
-func (this *PubSubClient) sendSubscriptionMessage(topic string) {
+func (p *PubSubClient) sendSubscriptionMessage(topic string) {
 	log.Printf("PubSubClient: sendSubscriptionMessage: subscribing to %s", topic)
 
 	packet := pubsub.MsgformatEncode([]string{"SUB", topic})
 
-	this.writeCh <- packet
+	p.writeCh <- packet
 }
