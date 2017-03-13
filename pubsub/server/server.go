@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/function61/pyramid/pubsub"
+	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"io"
 	"log"
 	"net"
@@ -52,6 +53,7 @@ type ServerClient struct {
 	Addr                  string
 	writeCh               chan string
 	subscriptionsByClient []string
+	sendQueue             *partitionedlossyqueue.Queue
 }
 
 type ClientsBySubscription map[string][]*ServerClient
@@ -96,61 +98,35 @@ func (e *ESPubSubServer) handleClientDisconnect(cl *ServerClient) {
 }
 
 func (e *ESPubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
-	/*
-		Read until does not block (or buffer full)
-
-		Then do a conn.Write()
-	*/
 	for {
-		msgToWrite := <-cl.writeCh
-
-		// see if we have more messages, so we can batch the conn.Write()
-		continuePeeking := true
-
-		for continuePeeking {
-
-			select {
-			case additionalMsg := <-cl.writeCh:
-				msgToWrite = msgToWrite + additionalMsg
-
-				if len(msgToWrite) > 2*1024 {
-					// log.Printf("Batched already 4 kB")
-					// break
-					continuePeeking = false
-				}
-			default:
-				continuePeeking = false
-				// break // no activity
+		select {
+		case msgToWrite := <-cl.writeCh:
+			if _, err := conn.Write([]byte(msgToWrite)); err != nil {
+				log.Printf("ESPubSubServer: write error to client %s. Stopping writer.", cl.Addr)
+				e.handleClientDisconnect(cl)
+				return
 			}
-		}
+		case <-cl.sendQueue.ReceiveAvailable:
+			packet := ""
+			for _, message := range cl.sendQueue.ReceiveAndClear() {
+				packet += message
+			}
 
-		if _, err := conn.Write([]byte(msgToWrite)); err != nil {
-			log.Printf("ESPubSubServer: write error to client %s. Stopping writer.", cl.Addr)
-			e.handleClientDisconnect(cl)
-			// panic(err)
-			break
+			if _, err := conn.Write([]byte(packet)); err != nil {
+				log.Printf("ESPubSubServer: write error to client %s. Stopping writer.", cl.Addr)
+				e.handleClientDisconnect(cl)
+				return
+			}
 		}
 	}
 }
 
 func (e *ESPubSubServer) handlePublish(topic string, message string, cl *ServerClient) {
-	// log.Printf("Publish; topic=%s message=%s", topic, message)
-
 	notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
 
 	for _, subscriberClient := range e.clientBySubscription[topic] {
-
-		subscriberClient.writeCh <- notifyMsg
-
-		// write notify message on channel, but only if it does not block
-		// http://stackoverflow.com/questions/25657207/golang-how-to-know-a-buffered-channel-is-full
-		/*
-			select {
-			case subscriberClient.writeCh <- notifyMsg:
-			default:
-				fmt.Println("Channel full. Discarding value")
-			}
-		*/
+		// guaranteed to never block, but can lose all but the latest message per topic
+		subscriberClient.sendQueue.Put(topic, notifyMsg)
 	}
 }
 
@@ -225,9 +201,10 @@ func (e *ESPubSubServer) acceptorLoop(listener net.Listener) {
 		writeCh := make(chan string, 100)
 
 		cl := ServerClient{
-			conn.RemoteAddr().String(),
-			writeCh,
-			[]string{},
+			Addr:                  conn.RemoteAddr().String(),
+			writeCh:               writeCh, // FIXME: this is currently not used
+			subscriptionsByClient: []string{},
+			sendQueue:             partitionedlossyqueue.New(),
 		}
 
 		go e.writeForOneClient(&cl, conn)
