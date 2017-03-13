@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"github.com/function61/pyramid/pubsub"
+	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"github.com/jpillora/backoff"
 	"io"
 	"log"
@@ -16,6 +17,7 @@ type PubSubClient struct {
 	Notifications    chan []string
 	quitting         bool
 	connected        bool
+	sendQueue        *partitionedlossyqueue.Queue
 	subscribedTopics []string
 }
 
@@ -26,6 +28,7 @@ func New(serverAddress string) *PubSubClient {
 		done:             make(chan bool),
 		subscribedTopics: []string{},
 		connected:        false,
+		sendQueue:        partitionedlossyqueue.New(),
 		quitting:         false,
 	}
 
@@ -42,10 +45,9 @@ func (this *PubSubClient) Subscribe(topic string) {
 	}
 }
 
+// guaranteed to never block, but can lose all but the latest message per topic
 func (this *PubSubClient) Publish(topic string, message string) {
-	packet := pubsub.MsgformatEncode([]string{"PUB", topic, message})
-
-	this.writeCh <- packet
+	this.sendQueue.Put(topic, pubsub.MsgformatEncode([]string{"PUB", topic, message}))
 }
 
 func (this *PubSubClient) Close() {
@@ -128,19 +130,32 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 }
 
 func (this *PubSubClient) handleWrites(conn net.Conn, stop chan bool) {
-	shouldContinue := true
+	defer log.Printf("PubSubClient: handleWrites: stopping")
 
-	for shouldContinue {
+	for {
 		select {
+		case <-this.sendQueue.ReceiveAvailable:
+			packet := ""
+			for _, message := range this.sendQueue.ReceiveAndClear() {
+				packet += message
+			}
+
+			_, err := conn.Write([]byte(packet))
+			if err != nil {
+				log.Printf("PubSubClient: handleWrites: %s", err.Error())
+				return
+			}
 		case packet := <-this.writeCh:
-			conn.Write([]byte(packet))
+			_, err := conn.Write([]byte(packet))
+			if err != nil {
+				log.Printf("PubSubClient: handleWrites: %s", err.Error())
+				return
+			}
 		case <-stop:
-			log.Printf("PubSubClient: handleWrites: stop requested")
-			shouldContinue = false
+			return
 		}
 	}
 
-	log.Printf("PubSubClient: handleWrites: stopping")
 }
 
 func (this *PubSubClient) sendSubscriptionMessage(topic string) {
