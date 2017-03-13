@@ -55,6 +55,11 @@ func (this *PubSubClient) Close() {
 
 	close(this.Notifications)
 
+	// don't send bye unless connected
+	if !this.connected {
+		return
+	}
+
 	packet := pubsub.MsgformatEncode([]string{"BYE"})
 
 	this.writeCh <- packet
@@ -75,6 +80,12 @@ func (this *PubSubClient) manageConnectivity(serverAddress string) {
 	for {
 		conn, err := net.Dial("tcp", serverAddress)
 		if err != nil {
+			// don't try to forever connect on connection errors if
+			// we're trying to close connection anyway
+			if this.quitting {
+				return
+			}
+
 			backoffDuration := reconnectBackoff.Duration()
 			log.Printf("PubSubClient: manageConnectivity: reconnecting in %s: %s", backoffDuration, err)
 			time.Sleep(backoffDuration)
