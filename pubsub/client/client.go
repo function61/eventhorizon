@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"github.com/jpillora/backoff"
@@ -96,14 +97,17 @@ func (p *PubSubClient) manageConnectivity(serverAddress string) {
 
 		reconnectBackoff.Reset()
 
+		p.connected = true
+
 		go p.handleWrites(conn, stopWriting)
+
+		// send auth token
+		p.writeCh <- pubsub.MsgformatEncode([]string{"AUTH", config.AUTH_TOKEN})
 
 		// re-subscribe
 		for _, topic := range p.subscribedTopics {
 			p.sendSubscriptionMessage(topic)
 		}
-
-		p.connected = true
 
 		reader := bufio.NewReader(conn)
 

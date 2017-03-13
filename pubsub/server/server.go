@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"fmt"
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"io"
@@ -141,6 +142,8 @@ func (e *PubSubServer) handleSubscribe(topic string, cl *ServerClient) {
 func (e *PubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
 	log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
+	authenticated := false
+
 	reader := bufio.NewReader(conn)
 
 	// read until we want to disconnect
@@ -164,20 +167,38 @@ func (e *PubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
 		// 'SET key value\n' => [ 'SET', 'key', 'value' ]
 		msgParts := pubsub.MsgformatDecode(rawMessage)
 
+		// FIXME: assert len(msgParts) > 0
+
 		msgType := msgParts[0]
 
-		if msgType == "PUB" {
+		if msgType == "PUB" && len(msgParts) == 3 {
+			if !authenticated {
+				log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
+				conn.Close()
+				break
+			}
+
 			topic := msgParts[1]
 			message := msgParts[2]
 
 			e.handlePublish(topic, message, cl)
-		} else if msgType == "SUB" {
+		} else if msgType == "SUB" && len(msgParts) == 2 {
+			if !authenticated {
+				log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
+				conn.Close()
+				break
+			}
+
 			topic := msgParts[1]
 
 			e.handleSubscribe(topic, cl)
 
 			conn.Write([]byte(pubsub.MsgformatEncode([]string{"OK"})))
-		} else if msgType == "BYE" {
+		} else if msgType == "AUTH" && len(msgParts) == 2 {
+			if msgParts[1] == config.AUTH_TOKEN {
+				authenticated = true
+			}
+		} else if msgType == "BYE" && len(msgParts) == 1 {
 			conn.Close()
 			break
 		} else {
