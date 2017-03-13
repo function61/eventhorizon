@@ -136,8 +136,9 @@ func (e *ESPubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
 func (e *ESPubSubServer) handlePublish(topic string, message string, cl *ServerClient) {
 	// log.Printf("Publish; topic=%s message=%s", topic, message)
 
+	notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
+
 	for _, subscriberClient := range e.clientBySubscription[topic] {
-		notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
 
 		subscriberClient.writeCh <- notifyMsg
 
