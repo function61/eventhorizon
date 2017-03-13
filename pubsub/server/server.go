@@ -6,26 +6,34 @@ import (
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
-	"io"
 	"log"
 	"net"
-	"syscall"
 )
 
 // client from the server's perspective
 type ServerClient struct {
 	Addr                  string
+	authenticated         bool
+	disconnected          bool
 	writeCh               chan string
 	subscriptionsByClient []string
 	sendQueue             *partitionedlossyqueue.Queue
+	conn                  net.Conn
 }
 
 type ClientsBySubscription map[string][]*ServerClient
+
+type IncomingMessage struct {
+	message []string
+	client  *ServerClient
+}
 
 type PubSubServer struct {
 	clientBySubscription ClientsBySubscription
 	listener             net.Listener
 	acceptorDone         chan bool
+	socketDisconnected   chan *ServerClient
+	lineReceived         chan *IncomingMessage
 }
 
 func New(bindAddr string) *PubSubServer {
@@ -40,9 +48,12 @@ func New(bindAddr string) *PubSubServer {
 		clientBySubscription: make(ClientsBySubscription),
 		listener:             listener,
 		acceptorDone:         make(chan bool),
+		socketDisconnected:   make(chan *ServerClient, 100),
+		lineReceived:         make(chan *IncomingMessage, 1000),
 	}
 
 	go e.acceptorLoop(listener)
+	go e.mainLogicLoop()
 
 	return e
 }
@@ -57,17 +68,12 @@ func (e *PubSubServer) Close() {
 	log.Printf("PubSubServer: acceptor shut down")
 }
 
-func (e *PubSubServer) handleClientDisconnect(cl *ServerClient) {
-	e.removeClientSubscriptions(cl)
-}
-
-func (e *PubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
+func (e *PubSubServer) writeForOneClient(cl *ServerClient) {
 	for {
 		select {
 		case msgToWrite := <-cl.writeCh:
-			if _, err := conn.Write([]byte(msgToWrite)); err != nil {
-				log.Printf("PubSubServer: write error to client %s. Stopping writer.", cl.Addr)
-				e.handleClientDisconnect(cl)
+			if _, err := cl.conn.Write([]byte(msgToWrite)); err != nil {
+				e.socketDisconnected <- cl
 				return
 			}
 		case <-cl.sendQueue.ReceiveAvailable:
@@ -76,21 +82,11 @@ func (e *PubSubServer) writeForOneClient(cl *ServerClient, conn net.Conn) {
 				packet += message
 			}
 
-			if _, err := conn.Write([]byte(packet)); err != nil {
-				log.Printf("PubSubServer: write error to client %s. Stopping writer.", cl.Addr)
-				e.handleClientDisconnect(cl)
+			if _, err := cl.conn.Write([]byte(packet)); err != nil {
+				e.socketDisconnected <- cl
 				return
 			}
 		}
-	}
-}
-
-func (e *PubSubServer) handlePublish(topic string, message string, cl *ServerClient) {
-	notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
-
-	for _, subscriberClient := range e.clientBySubscription[topic] {
-		// guaranteed to never block, but can lose all but the latest message per topic
-		subscriberClient.sendQueue.Put(topic, notifyMsg)
 	}
 }
 
@@ -102,74 +98,94 @@ func (e *PubSubServer) handleSubscribe(topic string, cl *ServerClient) {
 	e.clientBySubscription[topic] = append(e.clientBySubscription[topic], cl)
 }
 
-func (e *PubSubServer) readFromOneClient(cl *ServerClient, conn net.Conn) {
-	log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
-
-	authenticated := false
-
-	reader := bufio.NewReader(conn)
+func (e *PubSubServer) readFromOneClient(cl *ServerClient) {
+	reader := bufio.NewReader(cl.conn)
 
 	// read until we want to disconnect
 	for {
 		rawMessage, errRead := reader.ReadString('\n')
 		if errRead != nil {
-			if errRead == io.EOF {
-				log.Printf("PubSubServer: readFromOneClient: EOF encountered")
-			} else {
-				operr, ok := errRead.(*net.OpError)
-				if ok && operr.Err.Error() == syscall.ECONNRESET.Error() {
-					log.Printf("PubSubServer: readFromOneClient: error: Connection reset by beer")
-				} else {
-					log.Printf("PubSubServer: readFromOneClient: error: Type not ECONNRESET")
-				}
-			}
-
-			break
+			e.socketDisconnected <- cl
+			return
 		}
 
 		// 'SET key value\n' => [ 'SET', 'key', 'value' ]
 		msgParts := pubsub.MsgformatDecode(rawMessage)
 
-		// FIXME: assert len(msgParts) > 0
-
-		msgType := msgParts[0]
-
-		if msgType == "PUB" && len(msgParts) == 3 {
-			if !authenticated {
-				log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
-				conn.Close()
-				break
-			}
-
-			topic := msgParts[1]
-			message := msgParts[2]
-
-			e.handlePublish(topic, message, cl)
-		} else if msgType == "SUB" && len(msgParts) == 2 {
-			if !authenticated {
-				log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
-				conn.Close()
-				break
-			}
-
-			topic := msgParts[1]
-
-			e.handleSubscribe(topic, cl)
-
-			conn.Write([]byte(pubsub.MsgformatEncode([]string{"OK"})))
-		} else if msgType == "AUTH" && len(msgParts) == 2 {
-			if msgParts[1] == config.AUTH_TOKEN {
-				authenticated = true
-			}
-		} else if msgType == "BYE" && len(msgParts) == 1 {
-			conn.Close()
-			break
-		} else {
-			panic(fmt.Errorf("Unsupported message type: %s", msgType))
+		e.lineReceived <- &IncomingMessage{
+			message: msgParts,
+			client:  cl,
 		}
 	}
+}
 
-	e.handleClientDisconnect(cl)
+// most of the logic runs in this goroutine. we do all data manipulation here
+// so there's no need to acquire locks
+func (e *PubSubServer) mainLogicLoop() {
+	log.Printf("PubSubServer: starting mainLogicLoop")
+
+	for {
+		select {
+		case incomingMessage := <-e.lineReceived:
+			// increase readability
+			client := incomingMessage.client
+			msg := incomingMessage.message
+
+			// no need to assert len(msgParts) > 0 because
+			// MsgformatDecode() guarantees at least one part
+			msgType := msg[0]
+
+			if msgType == "PUB" && len(msg) == 3 {
+				if !client.authenticated {
+					log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
+					client.conn.Close()
+					break
+				}
+
+				topic := msg[1]
+				message := msg[2]
+
+				notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
+
+				// OK if subscription does not exist
+				for _, subscriberClient := range e.clientBySubscription[topic] {
+					// guaranteed to never block, but can lose all but the latest message per topic
+					subscriberClient.sendQueue.Put(topic, notifyMsg)
+				}
+			} else if msgType == "SUB" && len(msg) == 2 {
+				if !client.authenticated {
+					log.Printf("PubSubServer: attempt to invoke privileged action while unauthorized")
+					client.conn.Close()
+					break
+				}
+
+				topic := msg[1]
+
+				e.handleSubscribe(topic, incomingMessage.client)
+
+				client.conn.Write([]byte(pubsub.MsgformatEncode([]string{"OK"})))
+			} else if msgType == "AUTH" && len(msg) == 2 {
+				if msg[1] == config.AUTH_TOKEN {
+					client.authenticated = true
+				}
+			} else if msgType == "BYE" && len(msg) == 1 {
+				client.conn.Close()
+				break
+			} else {
+				log.Printf("Unsupported message type: %s", msgType)
+				client.conn.Close()
+			}
+		case client := <-e.socketDisconnected:
+			// message may arrive multiple times per client
+			if !client.disconnected {
+				client.disconnected = true
+
+				log.Printf("PubSubServer: socket disconnected")
+
+				e.removeClientSubscriptions(client)
+			}
+		}
+	}
 }
 
 func (e *PubSubServer) acceptorLoop(listener net.Listener) {
@@ -178,21 +194,26 @@ func (e *PubSubServer) acceptorLoop(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			break // TODO: panic if not EOF. Is it EOF when listener.Close()?
-			// panic(err)
+			// not much sense in doing anything with error, unless we can distinquish
+			// the error from the error triggered by listener.Close() which gets
+			// called when our server Close() is called
+			break
 		}
 
-		writeCh := make(chan string, 100)
+		writeCh := make(chan string, 5)
+
+		log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
 		cl := ServerClient{
 			Addr:                  conn.RemoteAddr().String(),
 			writeCh:               writeCh, // FIXME: this is currently not used
 			subscriptionsByClient: []string{},
 			sendQueue:             partitionedlossyqueue.New(),
+			conn:                  conn,
 		}
 
-		go e.writeForOneClient(&cl, conn)
-		go e.readFromOneClient(&cl, conn)
+		go e.writeForOneClient(&cl)
+		go e.readFromOneClient(&cl)
 	}
 
 	e.acceptorDone <- true
