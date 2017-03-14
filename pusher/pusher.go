@@ -120,7 +120,11 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 	}
 
 	// this is where Receiver does her magic
-	pushResult := p.receiver.PushReadResult(readResult)
+	pushResult, pushNetworkErr := p.receiver.PushReadResult(readResult)
+
+	if pushNetworkErr != nil {
+		panic("push network error")
+	}
 
 	if pushResult.Code != ptypes.CodeSuccess && pushResult.Code != ptypes.CodeIncorrectBaseOffset {
 		// or something truly unexpected?
@@ -182,7 +186,10 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 */
 
 func (p *Pusher) Run() {
-	subscriptionId := p.receiver.GetSubscriptionId()
+	subscriptionId, networkErr := p.receiver.GetSubscriptionId()
+	if networkErr != nil {
+		panic("GetSubscriptionId network error")
+	}
 
 	subscriptionStreamPath := "/_subscriptions/" + subscriptionId
 
@@ -347,7 +354,11 @@ func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor
 	offsetQueryReadResult := rtypes.NewReadResult()
 	offsetQueryReadResult.FromOffset = cursor.ForOffsetQuery(streamName).Serialize()
 
-	correctOffsetQueryResponse := receiver.PushReadResult(offsetQueryReadResult)
+	correctOffsetQueryResponse, pushNetworkErr := receiver.PushReadResult(offsetQueryReadResult)
+
+	if pushNetworkErr != nil {
+		panic("push network error")
+	}
 
 	if correctOffsetQueryResponse.Code != ptypes.CodeIncorrectBaseOffset {
 		return nil, errors.New("resolveReceiverCursor: expecting CodeIncorrectBaseOffset")

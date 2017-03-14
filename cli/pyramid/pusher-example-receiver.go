@@ -8,6 +8,12 @@ import (
 	"sync"
 )
 
+const (
+	subscriptionId = "foo"
+)
+
+type MsgHandlerFunc func(msg string)
+
 type ReceiverState struct {
 	// stream => offset mappings
 	offset map[string]string
@@ -17,6 +23,7 @@ type Receiver struct {
 	state      *ReceiverState
 	eventsRead int
 	mu         *sync.Mutex
+	fn         MsgHandlerFunc
 }
 
 func NewReceiver() *Receiver {
@@ -30,7 +37,7 @@ func NewReceiver() *Receiver {
 		mu:         &sync.Mutex{},
 	}
 
-	subscriptionId := r.GetSubscriptionId()
+	r.fn = func(eventSerialized string) { }
 
 	subscriptionPath := "/_subscriptions/" + subscriptionId
 
@@ -60,7 +67,7 @@ func (r *Receiver) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
 	}
 }
 
-func (r *Receiver) PushReadResult(result *rtypes.ReadResult) *ptypes.PushResult {
+func (r *Receiver) PushReadResult(result *rtypes.ReadResult) (*ptypes.PushResult, error) {
 	// TODO: lock this at database level (per stream), so no two receivers can ever
 	//       race within the same stream
 	r.mu.Lock()
@@ -70,7 +77,7 @@ func (r *Receiver) PushReadResult(result *rtypes.ReadResult) *ptypes.PushResult 
 	ourOffset := r.queryOffset(fromOffset.Stream)
 
 	if !fromOffset.PositionEquals(ourOffset) {
-		return ptypes.NewPushResultIncorrectBaseOffset(ourOffset.Serialize())
+		return ptypes.NewPushResultIncorrectBaseOffset(ourOffset.Serialize()), nil
 	}
 
 	// start with the offset stored in database. if we don't ACK a single
@@ -124,7 +131,7 @@ func (r *Receiver) PushReadResult(result *rtypes.ReadResult) *ptypes.PushResult 
 
 	r.state.offset[fromOffset.Stream] = acceptedOffset
 
-	return ptypes.NewPushResult(acceptedOffset, stringMapToSlice(behindCursors))
+	return ptypes.NewPushResult(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
 func (r *Receiver) queryOffset(stream string) *cursor.Cursor {
@@ -141,8 +148,8 @@ func (r *Receiver) queryOffset(stream string) *cursor.Cursor {
 }
 
 // TODO: maybe implement this as just error check-and-return in PushReadResult()
-func (r *Receiver) GetSubscriptionId() string {
-	return "foo"
+func (r *Receiver) GetSubscriptionId() (string, error) {
+	return subscriptionId, nil
 }
 
 func stringMapToSlice(mapp map[string]string) []string {

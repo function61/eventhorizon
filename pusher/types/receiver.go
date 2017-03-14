@@ -5,6 +5,6 @@ import (
 )
 
 type Receiver interface {
-	GetSubscriptionId() string
-	PushReadResult(*rtypes.ReadResult) *PushResult
+	GetSubscriptionId() (string, error)
+	PushReadResult(*rtypes.ReadResult) (*PushResult, error)
 }

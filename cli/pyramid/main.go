@@ -183,9 +183,9 @@ func pusher_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	exampleReceiverTarget := NewReceiver()
+	failingReceiverProxy := NewFailingReceiverProxy(NewReceiver())
 
-	psh := pusher.New(exampleReceiverTarget)
+	psh := pusher.New(failingReceiverProxy)
 	go psh.Run()
 
 	log.Println(cli.WaitForInterrupt())
