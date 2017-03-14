@@ -74,7 +74,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 	}
 
 	// this is where Receiver does her magic
-	pushResult, pushNetworkErr := p.receiver.PushReadResult(readResult)
+	pushOutput, pushNetworkErr := p.receiver.Push(ptypes.NewPushInput(readResult))
 
 	if pushNetworkErr != nil {
 		responseCh <- &WorkResponse{
@@ -85,9 +85,9 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 		return
 	}
 
-	if pushResult.Code != ptypes.CodeSuccess && pushResult.Code != ptypes.CodeIncorrectBaseOffset {
+	if pushOutput.Code != ptypes.CodeSuccess && pushOutput.Code != ptypes.CodeIncorrectBaseOffset {
 		// or something truly unexpected?
-		panic("Unexpected pushResult: " + pushResult.Code)
+		panic("Unexpected pushOutput: " + pushOutput.Code)
 	}
 
 	response := &WorkResponse{
@@ -96,7 +96,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 		ActivityIntelligence:  []*StreamStatus{},
 	}
 
-	mainAckedCursor := cursor.CursorFromserializedMust(pushResult.AcceptedOffset)
+	mainAckedCursor := cursor.CursorFromserializedMust(pushOutput.AcceptedOffset)
 
 	// didn't move?
 	if mainAckedCursor.PositionEquals(input.Status.targetAckedCursor) {
@@ -115,7 +115,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 
 	response.ActivityIntelligence = append(response.ActivityIntelligence, mainIntelligence)
 
-	for _, supplementaryIntelligenceCurSerialized := range pushResult.BehindCursors {
+	for _, supplementaryIntelligenceCurSerialized := range pushOutput.BehindCursors {
 		supplementaryIntelligenceCur := cursor.CursorFromserializedMust(supplementaryIntelligenceCurSerialized)
 
 		supplementaryIntelligence := &StreamStatus{
@@ -135,7 +135,7 @@ func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor
 	offsetQueryReadResult := rtypes.NewReadResult()
 	offsetQueryReadResult.FromOffset = cursor.ForOffsetQuery(streamName).Serialize()
 
-	correctOffsetQueryResponse, pushNetworkErr := receiver.PushReadResult(offsetQueryReadResult)
+	correctOffsetQueryResponse, pushNetworkErr := receiver.Push(ptypes.NewPushInput(offsetQueryReadResult))
 
 	if pushNetworkErr != nil {
 		return nil, pushNetworkErr

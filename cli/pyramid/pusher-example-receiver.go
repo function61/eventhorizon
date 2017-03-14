@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/function61/pyramid/cursor"
 	ptypes "github.com/function61/pyramid/pusher/types"
-	rtypes "github.com/function61/pyramid/reader/types"
 	"log"
 	"sync"
 )
@@ -67,17 +66,17 @@ func (r *Receiver) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
 	}
 }
 
-func (r *Receiver) PushReadResult(result *rtypes.ReadResult) (*ptypes.PushResult, error) {
+func (r *Receiver) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	// TODO: lock this at database level (per stream), so no two receivers can ever
 	//       race within the same stream
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	fromOffset := cursor.CursorFromserializedMust(result.FromOffset)
+	fromOffset := cursor.CursorFromserializedMust(input.Read.FromOffset)
 	ourOffset := r.queryOffset(fromOffset.Stream)
 
 	if !fromOffset.PositionEquals(ourOffset) {
-		return ptypes.NewPushResultIncorrectBaseOffset(ourOffset.Serialize()), nil
+		return ptypes.NewPushOutputIncorrectBaseOffset(ourOffset.Serialize()), nil
 	}
 
 	// start with the offset stored in database. if we don't ACK a single
@@ -87,7 +86,7 @@ func (r *Receiver) PushReadResult(result *rtypes.ReadResult) (*ptypes.PushResult
 
 	behindCursors := make(map[string]string)
 
-	for _, line := range result.Lines {
+	for _, line := range input.Read.Lines {
 		if line.IsMeta {
 			// everything we encounter in SubscriptionActivity is something we ourselves
 			// have subscribed to, so we can just check:
@@ -131,7 +130,7 @@ func (r *Receiver) PushReadResult(result *rtypes.ReadResult) (*ptypes.PushResult
 
 	r.state.offset[fromOffset.Stream] = acceptedOffset
 
-	return ptypes.NewPushResult(acceptedOffset, stringMapToSlice(behindCursors)), nil
+	return ptypes.NewPushOutput(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
 func (r *Receiver) queryOffset(stream string) *cursor.Cursor {

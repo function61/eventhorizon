@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	ptypes "github.com/function61/pyramid/pusher/types"
-	rtypes "github.com/function61/pyramid/reader/types"
 )
 
 type FailingReceiverProxy struct {
@@ -19,12 +18,12 @@ func NewFailingReceiverProxy(next ptypes.Receiver) *FailingReceiverProxy {
 	}
 }
 
-func (f *FailingReceiverProxy) PushReadResult(result *rtypes.ReadResult) (*ptypes.PushResult, error) {
+func (f *FailingReceiverProxy) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	if f.shouldFail() {
 		return nil, errors.New(fmt.Sprintf("synthetic failure %d", f.counter))
 	}
 
-	return f.next.PushReadResult(result)
+	return f.next.Push(input)
 }
 
 func (f *FailingReceiverProxy) GetSubscriptionId() (string, error) {

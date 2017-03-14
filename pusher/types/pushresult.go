@@ -5,21 +5,21 @@ const (
 	CodeIncorrectBaseOffset = "incorrect_base_offset"
 )
 
-type PushResult struct {
+type PushOutput struct {
 	Code           string
 	AcceptedOffset string
 	BehindCursors  []string
 }
 
-func NewPushResultIncorrectBaseOffset(correctBaseOffset string) *PushResult {
-	return &PushResult{
+func NewPushOutputIncorrectBaseOffset(correctBaseOffset string) *PushOutput {
+	return &PushOutput{
 		Code:           CodeIncorrectBaseOffset,
 		AcceptedOffset: correctBaseOffset,
 	}
 }
 
-func NewPushResult(acceptedOffset string, behindCursors []string) *PushResult {
-	return &PushResult{
+func NewPushOutput(acceptedOffset string, behindCursors []string) *PushOutput {
+	return &PushOutput{
 		Code:           CodeSuccess,
 		AcceptedOffset: acceptedOffset,
 		BehindCursors:  behindCursors,
