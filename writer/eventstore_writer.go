@@ -420,10 +420,7 @@ func (e *EventstoreWriter) openChunkLocally(chunkCursor *cursor.Cursor, tx *tran
 // these happen after COMMIT, i.e. transaction is not in effect.
 // in rare cases WAL manager starts a transaction (for compaction)
 func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransaction) error {
-	// - forget files from the WAL table.
-	//
-	// fd is not actually closed by WAL manager (long term shipper does it instead),
-	// but that's ok because it promises not to write into the fd anymore.
+	// do all kinds of complicated stuff related to the file writing
 	if err := e.walManager.ApplySideEffects(tx); err != nil {
 		return err
 	}
@@ -441,9 +438,9 @@ func (e *EventstoreWriter) applySideEffects(tx *transaction.EventstoreTransactio
 		e.shipper.Ship(file, tx.Bolt)
 	}
 
-	for streamName, latestCursorSerialized := range tx.AffectedStreams {
-		e.pubSubClient.Publish("stream:"+streamName, latestCursorSerialized)
-	}
+	// pub/sub publishes are guaranteed to never block and to never grow buffers
+	// unbounded even on connectivity issues. publishes are partitioned per topic
+	// and if pub/sub server reads our publishes slowly, we only deliver the latest msg.
 
 	for _, notification := range tx.SubscriberNotifications {
 		e.pubSubClient.Publish("sub:"+notification.SubscriptionId, notification.LatestCursorSerialized)
