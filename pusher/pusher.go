@@ -20,6 +20,7 @@ const (
 
 type WorkOutput struct {
 	OldInput *WorkInput
+	Error    error
 	/*
 		StreamActivity
 		Re-try
@@ -38,6 +39,7 @@ type StreamStatus struct {
 	shouldRun           bool
 	isRunning           bool
 	Stream              string
+	Sleep               time.Duration
 }
 
 type WorkInput struct {
@@ -66,11 +68,23 @@ func New(receiver ptypes.Receiver) *Pusher {
 
 // this is thread safe as long as it doesn't mutate anything from input structs
 func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
+	// we probably had an error so backoff for a while
+	// as not to cause DOS on the targer
+	if input.Status.Sleep != 0 {
+		log.Printf("PusherWorker: %s: sleep %s", input.Status.Stream, input.Status.Sleep)
+		time.Sleep(input.Status.Sleep)
+	}
+
 	if input.Status.targetAckedCursor == nil {
 		resolvedCursor, err := resolveReceiverCursor(p.receiver, input.Status.Stream)
 
 		if err != nil {
-			panic(err)
+			response <- &WorkOutput{
+				OldInput:              input,
+				ShouldContinueRunning: true,
+				Error: err,
+			}
+			return
 		}
 
 		inte := &StreamStatus{
@@ -88,20 +102,17 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 
 	// now input.Status.targetAckedCursor is guaranteed to be defined
 
-	// time.Sleep(1 * time.Second)
-	/*
-		if input.Sleep != 0 {
-			log.Printf("%s: sleeping for %s", input.Status.Stream, input.Sleep)
-			time.Sleep(input.Sleep)
-		}
-	*/
-
 	readReq := rtypes.NewReadOptions()
 	readReq.Cursor = input.Status.targetAckedCursor
 
-	readResult, err := p.reader.Read(readReq)
-	if err != nil {
-		panic(err)
+	readResult, readerErr := p.reader.Read(readReq)
+	if readerErr != nil {
+		response <- &WorkOutput{
+			OldInput:              input,
+			ShouldContinueRunning: true,
+			Error: readerErr,
+		}
+		return
 	}
 
 	// succesfull read result is empty only when we are at the top
@@ -123,7 +134,12 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 	pushResult, pushNetworkErr := p.receiver.PushReadResult(readResult)
 
 	if pushNetworkErr != nil {
-		panic("push network error")
+		response <- &WorkOutput{
+			OldInput:              input,
+			ShouldContinueRunning: true,
+			Error: pushNetworkErr,
+		}
+		return
 	}
 
 	if pushResult.Code != ptypes.CodeSuccess && pushResult.Code != ptypes.CodeIncorrectBaseOffset {
@@ -215,7 +231,6 @@ func (p *Pusher) Run() {
 				sint.isRunning = true
 
 				streamWorkItem := &WorkInput{
-					Sleep:  5 * time.Second,
 					Status: &*sint,
 				}
 
@@ -245,6 +260,21 @@ func (p *Pusher) Run() {
 
 			p.streams[concerningStream].isRunning = false
 			p.streams[concerningStream].shouldRun = output.ShouldContinueRunning
+
+			sleepDuration := 0 * time.Second
+
+			// if worker had an error, have a small period of sleep before doing
+			// any more work for the same stream
+			if output.Error != nil {
+				sleepDuration = 1 * time.Second
+
+				log.Printf(
+					"Pusher: ERROR (will re-try) pushing %s: %s",
+					concerningStream,
+					output.Error.Error())
+			}
+
+			p.streams[concerningStream].Sleep = sleepDuration
 
 			for _, inte := range output.ActivityIntelligence {
 				p.processIntelligence(inte)
@@ -349,7 +379,7 @@ func (p *Pusher) Close() {
 }
 
 func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor.Cursor, error) {
-	log.Printf("Pusher: don't know Receiver's position on %s; querying", streamName)
+	log.Printf("PusherWorker: don't know Receiver's position on %s; querying", streamName)
 
 	offsetQueryReadResult := rtypes.NewReadResult()
 	offsetQueryReadResult.FromOffset = cursor.ForOffsetQuery(streamName).Serialize()
@@ -357,11 +387,11 @@ func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor
 	correctOffsetQueryResponse, pushNetworkErr := receiver.PushReadResult(offsetQueryReadResult)
 
 	if pushNetworkErr != nil {
-		panic("push network error")
+		return nil, pushNetworkErr
 	}
 
 	if correctOffsetQueryResponse.Code != ptypes.CodeIncorrectBaseOffset {
-		return nil, errors.New("resolveReceiverCursor: expecting CodeIncorrectBaseOffset")
+		return nil, errors.New("PusherWorker: expecting CodeIncorrectBaseOffset")
 	}
 
 	return cursor.CursorFromserializedMust(correctOffsetQueryResponse.AcceptedOffset), nil
