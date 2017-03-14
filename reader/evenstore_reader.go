@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
 	"github.com/function61/pyramid/metaevents"
 	"github.com/function61/pyramid/reader/store"
@@ -19,9 +20,10 @@ type EventstoreReader struct {
 	s3manager                *scalablestore.S3Manager
 	seekableStore            *store.SeekableStore
 	compressedEncryptedStore *store.CompressedEncryptedStore
+	writerClient             *writerclient.Client
 }
 
-func New() *EventstoreReader {
+func New(confCtx *config.Context) *EventstoreReader {
 	seekableStore := store.NewSeekableStore()
 	compressedEncryptedStore := store.NewCompressedEncryptedStore()
 	s3manager := scalablestore.NewS3Manager()
@@ -30,6 +32,7 @@ func New() *EventstoreReader {
 		s3manager:                s3manager,
 		seekableStore:            seekableStore,
 		compressedEncryptedStore: compressedEncryptedStore,
+		writerClient:             writerclient.New(confCtx),
 	}
 }
 
@@ -55,9 +58,7 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		if opts.Cursor.Server != "" {
 			log.Printf("EventstoreReader: contacting LiveReader for %s", opts.Cursor.Serialize())
 
-			wclient := writerclient.NewClient()
-
-			result, was404, err := wclient.LiveRead(&wtypes.LiveReadInput{
+			result, was404, err := e.writerClient.LiveRead(&wtypes.LiveReadInput{
 				Cursor:         opts.Cursor.Serialize(),
 				MaxLinesToRead: opts.MaxLinesToRead,
 			})

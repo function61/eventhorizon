@@ -14,10 +14,13 @@ import (
 )
 
 type Client struct {
+	confCtx *config.Context
 }
 
-func NewClient() *Client {
-	return &Client{}
+func New(confCtx *config.Context) *Client {
+	return &Client{
+		confCtx: confCtx,
+	}
 }
 
 func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFileNotExist bool, err error) {
@@ -37,25 +40,25 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFil
 func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("127.0.0.1", "/create_stream"), reqJson, http.StatusCreated)
+	return c.handleSuccessOnly(c.url("", "/create_stream"), reqJson, http.StatusCreated)
 }
 
 func (c *Client) Append(req *wtypes.AppendToStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("127.0.0.1", "/append"), reqJson, http.StatusCreated)
+	return c.handleSuccessOnly(c.url("", "/append"), reqJson, http.StatusCreated)
 }
 
 func (c *Client) SubscribeToStream(req *wtypes.SubscribeToStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("127.0.0.1", "/subscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("", "/subscribe"), reqJson, http.StatusOK)
 }
 
 func (c *Client) UnsubscribeFromStream(req *wtypes.UnsubscribeFromStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("127.0.0.1", "/unsubscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("", "/unsubscribe"), reqJson, http.StatusOK)
 }
 
 // less specific version for callers that are only interested about success, but
@@ -93,7 +96,12 @@ func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte
 }
 
 func (c *Client) url(server string, path string) string {
-	url := fmt.Sprintf("http://%s:%d%s", server, config.WRITER_HTTP_PORT, path)
+	if server == "" {
+		server = c.confCtx.GetWriterIp()
+	}
 
-	return url
+	// looks like "127.0.0.1:9092"
+	writerServerAddr := fmt.Sprintf("%s:%d", server, c.confCtx.GetWriterPort())
+
+	return "http://" + writerServerAddr + path
 }

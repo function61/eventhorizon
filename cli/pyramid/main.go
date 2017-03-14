@@ -37,10 +37,12 @@ func writer_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	// start pub/sub server
-	pubSubServer := server.New("0.0.0.0:" + strconv.Itoa(config.PUBSUB_PORT))
+	confCtx := config.NewContext()
 
-	esServer := writer.NewEventstoreWriter()
+	// start pub/sub server
+	pubSubServer := server.New(confCtx)
+
+	esServer := writer.New(confCtx)
 
 	httpCloser := make(chan bool)
 	httpCloserDone := make(chan bool)
@@ -70,7 +72,7 @@ func streamAppend(args []string) error {
 		return usage("<Stream> <Line>")
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	req := &wtypes.AppendToStreamRequest{
 		Stream: args[0],
@@ -85,7 +87,7 @@ func streamSubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	req := &wtypes.SubscribeToStreamRequest{
 		Stream:         args[0],
@@ -100,7 +102,7 @@ func streamCreate(args []string) error {
 		return usage("<Stream>")
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	req := &wtypes.CreateStreamRequest{
 		Name: args[0],
@@ -114,7 +116,7 @@ func streamUnsubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	req := &wtypes.UnsubscribeFromStreamRequest{
 		Stream:         args[0],
@@ -129,7 +131,7 @@ func pubsubSubscribe(args []string) error {
 		return usage("<Topic>")
 	}
 
-	pubSubClient := client.New("127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT))
+	pubSubClient := client.New(config.NewContext())
 	pubSubClient.Subscribe(args[0])
 
 	go func() {
@@ -156,7 +158,7 @@ func streamAppendFromFile(args []string) error {
 		return usage("<Stream> <FilePath>")
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	linesRead := readLinebatchesFromFile(args[1], func(batch []string) error {
 		appendRequest := &wtypes.AppendToStreamRequest{
@@ -185,7 +187,7 @@ func pusher_(args []string) error {
 
 	failingReceiverProxy := NewFailingReceiverProxy(NewReceiver())
 
-	psh := pusher.New(failingReceiverProxy)
+	psh := pusher.New(config.NewContext(), failingReceiverProxy)
 	go psh.Run()
 
 	log.Println(cli.WaitForInterrupt())
@@ -205,7 +207,7 @@ func streamLiveRead(args []string) error {
 		return atoiErr
 	}
 
-	wclient := writerclient.NewClient()
+	wclient := writerclient.New(config.NewContext())
 
 	req := &wtypes.LiveReadInput{
 		Cursor:         args[0],

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/client"
 	"log"
-	"strconv"
 	"time"
 )
 
@@ -11,8 +11,8 @@ type Stats struct {
 	messagesProcessed int
 }
 
-func startSubscriber(serverPort int, topic string) {
-	pubSubClient := client.New("127.0.0.1:" + strconv.Itoa(serverPort))
+func startSubscriber(topic string) {
+	pubSubClient := client.New(config.NewContext())
 	pubSubClient.Subscribe(topic)
 
 	stats := Stats{}

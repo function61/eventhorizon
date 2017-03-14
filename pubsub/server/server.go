@@ -47,13 +47,15 @@ type PubSubServer struct {
 	messageReceived         chan *IncomingMessage
 }
 
-func New(bindAddr string) *PubSubServer {
+func New(confCtx *config.Context) *PubSubServer {
+	bindAddr := confCtx.GetPubSubServerBindAddr()
+
+	log.Printf("PubSubServer: binding to %s", bindAddr)
+
 	listener, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		panic(err)
 	}
-
-	log.Printf("PubSubServer: binding to %s", bindAddr)
 
 	e := &PubSubServer{
 		clientBySubscription:    make(ClientsBySubscription),

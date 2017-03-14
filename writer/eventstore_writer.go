@@ -15,14 +15,12 @@ import (
 	"github.com/function61/pyramid/writer/wal"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 )
 
 type EventstoreWriter struct {
 	walManager        *wal.WalManager
-	ip                string
 	mu                sync.Mutex
 	database          *bolt.DB
 	shipper           *longtermshipper.Shipper
@@ -31,15 +29,16 @@ type EventstoreWriter struct {
 	subAct            *SubscriptionActivityTask
 	LiveReader        *LiveReader
 	metrics           *Metrics
+	confCtx           *config.Context
 }
 
-func NewEventstoreWriter() *EventstoreWriter {
+func New(confCtx *config.Context) *EventstoreWriter {
 	e := &EventstoreWriter{
-		ip:                "127.0.0.1",
 		streamToChunkName: make(map[string]*types.ChunkSpec),
 		mu:                sync.Mutex{},
 		shipper:           longtermshipper.New(),
 		metrics:           NewMetrics(),
+		confCtx:           confCtx,
 	}
 
 	e.makeBoltDbDirIfNotExist()
@@ -117,7 +116,7 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 	//       so we don't accidentally overwrite any data?
 
 	// /tenants/foo/_/0.log
-	streamFirstChunkCursor := cursor.BeginningOfStream(streamName, e.ip)
+	streamFirstChunkCursor := cursor.BeginningOfStream(streamName, e.confCtx.GetWriterIp())
 
 	tx := transaction.NewEventstoreTransaction(e.database)
 
@@ -317,7 +316,11 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		return err
 	}
 
-	cursorAfter := cursor.New(streamName, chunkSpec.ChunkNumber, nextOffset, e.ip)
+	cursorAfter := cursor.New(
+		streamName,
+		chunkSpec.ChunkNumber,
+		nextOffset,
+		e.confCtx.GetWriterIp())
 
 	if rotatedCursor != nil {
 		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
@@ -508,11 +511,7 @@ func (e *EventstoreWriter) discoverOpenStreamsMetadataAndRecoverWal(tx *transact
 }
 
 func (e *EventstoreWriter) startPubSubClient() {
-	serverAddr := "127.0.0.1:" + strconv.Itoa(config.PUBSUB_PORT) // TODO: this is us. Will not always be
-
-	log.Printf("EventstoreWriter: connecting to pub/sub server at %s", serverAddr)
-
-	e.pubSubClient = client.New(serverAddr)
+	e.pubSubClient = client.New(e.confCtx)
 }
 
 func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
@@ -532,5 +531,5 @@ func (e *EventstoreWriter) streamExists(streamName string, tx *transaction.Event
 }
 
 func (e *EventstoreWriter) nextChunkCursorFromCurrentChunkSpec(chunkSpec *types.ChunkSpec) *cursor.Cursor {
-	return cursor.New(chunkSpec.StreamName, chunkSpec.ChunkNumber+1, 0, e.ip)
+	return cursor.New(chunkSpec.StreamName, chunkSpec.ChunkNumber+1, 0, e.confCtx.GetWriterIp())
 }

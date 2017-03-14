@@ -1,5 +1,9 @@
 package config
 
+import (
+	"fmt"
+)
+
 const (
 	AUTH_TOKEN = "foo"
 
@@ -23,3 +27,35 @@ const (
 
 	CHUNK_ROTATE_THRESHOLD = 8 * 1024 * 1024
 )
+
+// configuration context is used to pass configuration to different components
+type Context struct {
+}
+
+func NewContext() *Context {
+	return &Context{}
+}
+
+func (c *Context) GetWriterIp() string {
+	return "127.0.0.1"
+}
+
+func (c *Context) GetWriterPort() int {
+	return WRITER_HTTP_PORT
+}
+
+func (c *Context) GetWriterServerAddr() string {
+	return fmt.Sprintf("%s:%d", c.GetWriterIp(), WRITER_HTTP_PORT)
+}
+
+func (c *Context) GetPubSubServerBindAddr() string {
+	// FIXME: currently expecting pub/sub server to be located on the same box
+	//        as the writer
+	return fmt.Sprintf("0.0.0.0:%d", PUBSUB_PORT)
+}
+
+func (c *Context) GetPubSubServerAddr() string {
+	// FIXME: currently expecting pub/sub server to be located on the same box
+	//        as the writer
+	return fmt.Sprintf("%s:%d", c.GetWriterIp(), PUBSUB_PORT)
+}

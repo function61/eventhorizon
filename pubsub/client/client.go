@@ -27,7 +27,7 @@ type PubSubClient struct {
 	incomingMessages     chan []string
 }
 
-func New(serverAddress string) *PubSubClient {
+func New(confCtx *config.Context) *PubSubClient {
 	p := &PubSubClient{
 		Notifications: make(chan []string, 100),
 
@@ -42,7 +42,7 @@ func New(serverAddress string) *PubSubClient {
 		incomingMessages:     make(chan []string, 10),
 	}
 
-	go p.reconnectForeverUntilStopped(serverAddress)
+	go p.reconnectForeverUntilStopped(confCtx.GetPubSubServerAddr())
 
 	return p
 }
@@ -51,6 +51,8 @@ func New(serverAddress string) *PubSubClient {
 // told to stop by Close(). signals done by posting to "done" channel
 func (p *PubSubClient) reconnectForeverUntilStopped(serverAddress string) {
 	defer func() { p.done <- true }()
+
+	log.Printf("PubSubClient: connecting to %s", serverAddress)
 
 	reconnectBackoff := &backoff.Backoff{
 		Min:    100 * time.Millisecond,

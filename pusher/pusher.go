@@ -1,7 +1,6 @@
 package pusher
 
 import (
-	"fmt"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
 	"github.com/function61/pyramid/pubsub/client"
@@ -25,11 +24,11 @@ type Pusher struct {
 	streams      map[string]*StreamStatus
 }
 
-func New(receiver ptypes.Receiver) *Pusher {
+func New(confCtx *config.Context, receiver ptypes.Receiver) *Pusher {
 	return &Pusher{
 		receiver:     receiver,
-		pubSubClient: client.New(fmt.Sprintf("%s:%d", "127.0.0.1", config.PUBSUB_PORT)),
-		reader:       reader.New(),
+		pubSubClient: client.New(confCtx),
+		reader:       reader.New(confCtx),
 		done:         &sync.WaitGroup{},
 		streams:      make(map[string]*StreamStatus),
 	}
