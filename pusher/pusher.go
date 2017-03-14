@@ -18,9 +18,9 @@ const (
 	maxWorkerCount = 5
 )
 
-type WorkOutput struct {
-	OldInput *WorkInput
-	Error    error
+type WorkResponse struct {
+	Request *WorkRequest
+	Error   error
 	/*
 		StreamActivity
 		Re-try
@@ -42,8 +42,7 @@ type StreamStatus struct {
 	Sleep               time.Duration
 }
 
-type WorkInput struct {
-	Sleep  time.Duration
+type WorkRequest struct {
 	Status *StreamStatus
 }
 
@@ -67,7 +66,7 @@ func New(receiver ptypes.Receiver) *Pusher {
 }
 
 // this is thread safe as long as it doesn't mutate anything from input structs
-func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
+func Worker(p *Pusher, input *WorkRequest, response chan *WorkResponse) {
 	// we probably had an error so backoff for a while
 	// as not to cause DOS on the targer
 	if input.Status.Sleep != 0 {
@@ -79,8 +78,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 		resolvedCursor, err := resolveReceiverCursor(p.receiver, input.Status.Stream)
 
 		if err != nil {
-			response <- &WorkOutput{
-				OldInput:              input,
+			response <- &WorkResponse{
+				Request:               input,
 				ShouldContinueRunning: true,
 				Error: err,
 			}
@@ -92,8 +91,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 			targetAckedCursor: resolvedCursor,
 		}
 
-		response <- &WorkOutput{
-			OldInput:              input,
+		response <- &WorkResponse{
+			Request:               input,
 			ShouldContinueRunning: true,
 			ActivityIntelligence:  []*StreamStatus{inte},
 		}
@@ -107,8 +106,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 
 	readResult, readerErr := p.reader.Read(readReq)
 	if readerErr != nil {
-		response <- &WorkOutput{
-			OldInput:              input,
+		response <- &WorkResponse{
+			Request:               input,
 			ShouldContinueRunning: true,
 			Error: readerErr,
 		}
@@ -122,8 +121,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 		// TODO: normally should stop, but if this is a subscription stream, ask livereader
 		// again in 5 seconds if we don't have any new information from pub/sub
 
-		response <- &WorkOutput{
-			OldInput:              input,
+		response <- &WorkResponse{
+			Request:               input,
 			ShouldContinueRunning: false,
 			ActivityIntelligence:  []*StreamStatus{},
 		}
@@ -134,8 +133,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 	pushResult, pushNetworkErr := p.receiver.PushReadResult(readResult)
 
 	if pushNetworkErr != nil {
-		response <- &WorkOutput{
-			OldInput:              input,
+		response <- &WorkResponse{
+			Request:               input,
 			ShouldContinueRunning: true,
 			Error: pushNetworkErr,
 		}
@@ -147,8 +146,8 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 		panic("Unexpected pushResult: " + pushResult.Code)
 	}
 
-	output := &WorkOutput{
-		OldInput:              input,
+	response := &WorkResponse{
+		Request:               input,
 		ShouldContinueRunning: true,
 		ActivityIntelligence:  []*StreamStatus{},
 	}
@@ -170,7 +169,7 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 		mainIntelligence.writerLargestCursor = cursor.CursorFromserializedMust(readResult.Lines[len(readResult.Lines)-1].PtrAfter)
 	}
 
-	output.ActivityIntelligence = append(output.ActivityIntelligence, mainIntelligence)
+	response.ActivityIntelligence = append(response.ActivityIntelligence, mainIntelligence)
 
 	for _, supplementaryIntelligenceCurSerialized := range pushResult.BehindCursors {
 		supplementaryIntelligenceCur := cursor.CursorFromserializedMust(supplementaryIntelligenceCurSerialized)
@@ -180,10 +179,10 @@ func Worker(p *Pusher, input *WorkInput, response chan *WorkOutput) {
 			Stream:            supplementaryIntelligenceCur.Stream,
 		}
 
-		output.ActivityIntelligence = append(output.ActivityIntelligence, supplementaryIntelligence)
+		response.ActivityIntelligence = append(response.ActivityIntelligence, supplementaryIntelligence)
 	}
 
-	response <- output
+	response <- response
 }
 
 /*	Possible outcomes:
@@ -216,7 +215,7 @@ func (p *Pusher) Run() {
 		shouldRun: true,
 	}
 
-	responseCh := make(chan *WorkOutput, 1)
+	responseCh := make(chan *WorkResponse, 1)
 
 	inFlight := 0
 
@@ -230,13 +229,13 @@ func (p *Pusher) Run() {
 			if sint.shouldRun && !sint.isRunning {
 				sint.isRunning = true
 
-				streamWorkItem := &WorkInput{
+				request := &WorkRequest{
 					Status: &*sint,
 				}
 
 				inFlight++
 				p.done.Add(1)
-				go Worker(p, streamWorkItem, responseCh)
+				go Worker(p, request, responseCh)
 			}
 		}
 
@@ -250,33 +249,31 @@ func (p *Pusher) Run() {
 		}
 
 		select {
-		case output := <-responseCh:
+		case response := <-responseCh:
 			inFlight--
 			p.done.Done()
 
-			inputWas := output.OldInput
-
-			concerningStream := inputWas.Status.Stream
+			concerningStream := response.Request.Status.Stream
 
 			p.streams[concerningStream].isRunning = false
-			p.streams[concerningStream].shouldRun = output.ShouldContinueRunning
+			p.streams[concerningStream].shouldRun = response.ShouldContinueRunning
 
 			sleepDuration := 0 * time.Second
 
 			// if worker had an error, have a small period of sleep before doing
 			// any more work for the same stream
-			if output.Error != nil {
+			if response.Error != nil {
 				sleepDuration = 1 * time.Second
 
 				log.Printf(
 					"Pusher: ERROR (will re-try) pushing %s: %s",
 					concerningStream,
-					output.Error.Error())
+					response.Error.Error())
 			}
 
 			p.streams[concerningStream].Sleep = sleepDuration
 
-			for _, inte := range output.ActivityIntelligence {
+			for _, inte := range response.ActivityIntelligence {
 				p.processIntelligence(inte)
 			}
 		case notificationMsg := <-p.pubSubClient.Notifications:
