@@ -137,10 +137,6 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 			// we'll try reconnecting
 			return err
 		case message := <-p.incomingMessages:
-			// TODO: we could have messages buffered in this channel and handled
-			// disconnect before. draing messages somehow, so after reconnect
-			// we don't encounter messages that belonged to previous connection?
-
 			// just blindly emit to Notifications
 			p.Notifications <- message
 		case <-p.subscriptionsChanged:
