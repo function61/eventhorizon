@@ -125,7 +125,12 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 			return err
 		}
 
-		walFile.nextFreePosition += uint64(len(write.Buffer))
+		// we cannot just increase the nextFreePosition because at Writer start
+		// this is initialized from file size and the file size can be more than
+		// it should be if previous fwrite failed, so WAL entries are the ultimate
+		// source of truth for the write position.
+		// obviously this implementation relies on low -> high order of WriteOps.
+		walFile.nextFreePosition = uint64(write.Position + int64(len(write.Buffer)))
 		walFile.walSize += uint64(len(write.Buffer))
 	}
 
