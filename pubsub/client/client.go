@@ -155,9 +155,6 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 			}
 		}
 	}
-
-	// indicates we should stop
-	return nil
 }
 
 func (p *PubSubClient) Subscribe(topic string) {
