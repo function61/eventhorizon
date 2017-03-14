@@ -1,5 +1,7 @@
 package ass
 
+// Small helpers for doing assertions
+
 import (
 	"testing"
 )
