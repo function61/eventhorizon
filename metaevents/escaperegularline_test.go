@@ -1,20 +1,21 @@
 package metaevents
 
 import (
+	"github.com/function61/pyramid/util/ass"
 	"testing"
 )
 
 func TestEscapeRegularLine(t *testing.T) {
 	// empty line
-	EqualString(t, EscapeRegularLine(""), "")
+	ass.EqualString(t, EscapeRegularLine(""), "")
 
 	// regular line with normal chars
-	EqualString(t, EscapeRegularLine("a"), "a")
-	EqualString(t, EscapeRegularLine("foobar"), "foobar")
+	ass.EqualString(t, EscapeRegularLine("a"), "a")
+	ass.EqualString(t, EscapeRegularLine("foobar"), "foobar")
 
 	// leading . has to be escaped
-	EqualString(t, EscapeRegularLine(".foo."), "\\.foo.")
+	ass.EqualString(t, EscapeRegularLine(".foo."), "\\.foo.")
 
 	// so does \
-	EqualString(t, EscapeRegularLine("\\foo\\"), "\\\\foo\\")
+	ass.EqualString(t, EscapeRegularLine("\\foo\\"), "\\\\foo\\")
 }

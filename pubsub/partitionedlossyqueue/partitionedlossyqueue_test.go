@@ -1,21 +1,10 @@
 package partitionedlossyqueue
 
 import (
+	"github.com/function61/pyramid/util/ass"
 	"strconv"
 	"testing"
 )
-
-func EqualString(t *testing.T, actual string, expected string) {
-	if actual != expected {
-		t.Fatalf("exp=%v; got=%v", expected, actual)
-	}
-}
-
-func EqualInt(t *testing.T, actual int, expected int) {
-	if actual != expected {
-		t.Fatalf("exp=%v; got=%v", expected, actual)
-	}
-}
 
 func TestMain(t *testing.T) {
 	type StatStruct struct {
@@ -76,9 +65,9 @@ func TestMain(t *testing.T) {
 	// to build a flaky test. Instead we'll just test that we received the latest
 	// messages correctly.
 
-	EqualString(t, stats["topic A"].LastReceivedMessage, "100000")
-	EqualString(t, stats["topic B"].LastReceivedMessage, "100000")
-	EqualString(t, stats["topic C"].LastReceivedMessage, "42356")
+	ass.EqualString(t, stats["topic A"].LastReceivedMessage, "100000")
+	ass.EqualString(t, stats["topic B"].LastReceivedMessage, "100000")
+	ass.EqualString(t, stats["topic C"].LastReceivedMessage, "42356")
 
 	/*
 		statsFormatted := []string{}

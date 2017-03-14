@@ -1,6 +1,7 @@
 package stringslicediff
 
 import (
+	"github.com/function61/pyramid/util/ass"
 	"testing"
 )
 
@@ -17,9 +18,7 @@ func runScenario(t *testing.T, base []string, other []string, expected string) {
 		resultSerialized += " -" + val
 	}
 
-	if resultSerialized != expected {
-		t.Fatalf("exp=%v; got=%v", expected, resultSerialized)
-	}
+	ass.EqualString(t, resultSerialized, expected)
 }
 
 func TestDiff(t *testing.T) {
