@@ -65,6 +65,9 @@ func (l *LiveReader) ReadIntoWriter(opts *rtypes.ReadOptions, writer io.Writer) 
 			return err
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
 
 	return nil
 }

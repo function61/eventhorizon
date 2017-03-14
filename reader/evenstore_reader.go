@@ -165,6 +165,9 @@ func parseFromReader(reader io.Reader, opts *rtypes.ReadOptions) (*rtypes.ReadRe
 
 		previousCursor = newCursor
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
 
 	return readResult, nil
 }

@@ -40,6 +40,9 @@ func readLinebatchesFromFile(filename string, processFn batchProcessor) int {
 			batch = []string{}
 		}
 	}
+	if err := exportFileScanner.Err(); err != nil {
+		panic(err)
+	}
 
 	if len(batch) > 0 {
 		if err := processFn(batch); err != nil {
