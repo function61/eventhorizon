@@ -3,7 +3,7 @@ package client
 import (
 	"bufio"
 	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/pubsub"
+	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"github.com/function61/pyramid/util/stringslicediff"
 	"github.com/jpillora/backoff"
@@ -94,7 +94,7 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 	// immediately unblocks the reader. reader publishes to incomingMessages
 	go p.handleReads(conn, writerAndReaderStopped)
 
-	authMsg := pubsub.MsgformatEncode([]string{"AUTH", config.AUTH_TOKEN})
+	authMsg := msgformat.Serialize([]string{"AUTH", config.AUTH_TOKEN})
 	p.writeCh <- authMsg
 
 	// trigger resync of subscriptionsChanged
@@ -143,7 +143,7 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 			diff := stringslicediff.Diff(subscriptionsSentToServer, p.subscribedTopics)
 
 			for _, topic := range diff.Added {
-				p.writeCh <- pubsub.MsgformatEncode([]string{"SUB", topic})
+				p.writeCh <- msgformat.Serialize([]string{"SUB", topic})
 			}
 
 			for range diff.Removed {
@@ -166,7 +166,7 @@ func (p *PubSubClient) Subscribe(topic string) {
 
 // guaranteed to never block, but can lose all but the latest message per topic
 func (p *PubSubClient) Publish(topic string, message string) {
-	p.sendQueue.Put(topic, pubsub.MsgformatEncode([]string{"PUB", topic, message}))
+	p.sendQueue.Put(topic, msgformat.Serialize([]string{"PUB", topic, message}))
 }
 
 // FIXME: close while disconnected not working
@@ -193,7 +193,7 @@ func (p *PubSubClient) handleReads(conn net.Conn, wg *sync.WaitGroup) {
 			return
 		}
 
-		message := pubsub.MsgformatDecode(messageRaw)
+		message := msgformat.Deserialize(messageRaw)
 
 		p.incomingMessages <- message
 	}
@@ -223,7 +223,7 @@ func (p *PubSubClient) handleWrites(conn net.Conn, stop chan bool, wg *sync.Wait
 		case <-stop:
 			// not interested about I/O errors here because we want
 			// to disconnect
-			bye := pubsub.MsgformatEncode([]string{"BYE"})
+			bye := msgformat.Serialize([]string{"BYE"})
 			conn.Write([]byte(bye))
 			conn.Close()
 			return

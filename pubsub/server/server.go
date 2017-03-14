@@ -3,7 +3,7 @@ package server
 import (
 	"bufio"
 	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/pubsub"
+	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
 	"log"
 	"net"
@@ -131,7 +131,7 @@ func (e *PubSubServer) readFromOneClient(cl *ServerClient) {
 		}
 
 		// 'SET key value\n' => [ 'SET', 'key', 'value' ]
-		msgParts := pubsub.MsgformatDecode(rawMessage)
+		msgParts := msgformat.Deserialize(rawMessage)
 
 		e.messageReceived <- &IncomingMessage{
 			message: msgParts,
@@ -169,7 +169,7 @@ func (e *PubSubServer) mainLogicLoop() {
 				topic := msg[1]
 				message := msg[2]
 
-				notifyMsg := pubsub.MsgformatEncode([]string{"NOTIFY", topic, message})
+				notifyMsg := msgformat.Serialize([]string{"NOTIFY", topic, message})
 
 				// OK if subscription does not exist
 				for _, subscriberClient := range e.clientBySubscription[topic] {
@@ -187,7 +187,7 @@ func (e *PubSubServer) mainLogicLoop() {
 
 				e.handleSubscribe(topic, incomingMessage.client)
 
-				client.conn.Write([]byte(pubsub.MsgformatEncode([]string{"OK"})))
+				client.conn.Write([]byte(msgformat.Serialize([]string{"OK"})))
 			} else if msgType == "AUTH" && len(msg) == 2 {
 				if msg[1] == config.AUTH_TOKEN {
 					client.authenticated = true
