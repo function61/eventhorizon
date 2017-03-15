@@ -5,6 +5,7 @@ import (
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
+	"github.com/function61/pyramid/util/stringslice"
 	"log"
 	"net"
 	"time"
@@ -127,6 +128,11 @@ func (e *PubSubServer) writeForOneClient(cl *ServerClient) {
 }
 
 func (e *PubSubServer) handleSubscribe(topic string, cl *ServerClient) {
+	if stringslice.ItemIndex(topic, cl.subscriptionsByClient) != -1 {
+		log.Printf("PubSubServer: already subscribed to %s", topic)
+		return
+	}
+
 	log.Printf("PubSubServer: subscribe; topic=%s", topic)
 
 	cl.subscriptionsByClient = append(cl.subscriptionsByClient, topic)
