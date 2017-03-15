@@ -5,6 +5,7 @@ import (
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
+	"github.com/function61/pyramid/util/stringslice"
 	"github.com/function61/pyramid/util/stringslicediff"
 	"github.com/jpillora/backoff"
 	"log"
@@ -156,6 +157,11 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 }
 
 func (p *PubSubClient) Subscribe(topic string) {
+	if stringslice.ItemIndex(topic, p.subscribedTopics) != -1 {
+		log.Printf("PubSubClient: Subscribe: was already subscribed to topic %s", topic)
+		return
+	}
+
 	p.subscribedTopics = append(p.subscribedTopics, topic)
 
 	select {
