@@ -4,7 +4,7 @@ Operating
 Metrics
 -------
 
-Metrics are exposed via [Prometheus](https://prometheus.io/)-compatible api at `/metrics`.
+Metrics are exposed via [Prometheus](https://prometheus.io/)-compatible API at `/metrics`.
 
 You can debug those metrics from command line by running:
 

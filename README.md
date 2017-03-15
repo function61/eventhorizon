@@ -10,6 +10,8 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 | Production ready?       | No, not yet. But not too far away.                                                       |
 | Use cases               | High availability software, datacenter failover and microservices.                       |
 | Storage capacity        | Practically unlimited. You have to pay your bills though. :)                             |
+| Data durability         | All writes transactionally backed by Write-Ahead-Log just like in databases.             |
+| High availability       | Planned, going to use Hashicorp's Raft implementation.                                   |
 | Data stored at          | AWS S3. Google Storage support planned.                                                  |
 | Encryption at transport | TLS                                                                                      |
 | Encryption at rest      | AES-CBC. Encryption keys are not trusted to AWS (=> not using S3 server-side encryption) |
@@ -20,12 +22,13 @@ Docs
 
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
+- [Roadmap](docs/roadmap.md)
 
 
 Architecture
 ------------
 
-Writer manages writes to streams. Streams are divided into ~16 MB chunks which
+Writer manages writes to streams. Streams are divided into ~8 MB chunks which
 are stored compressed & encrypted in AWS S3, except the last, "live", chunk that
 we're writing into.
 
@@ -52,9 +55,9 @@ License & fair play
 Legal license: Apache 2.0 - free software.
 
 Moral license: if you benefit commercially from the use of this project, any help
-would be appreciated (though not legally required) if we helped you make money:
+would be appreciated (though not legally required):
 
-- Order support contract from us
+- Order support contract/consulting from us
 - Contribute with new features, bug fixes and/or help with issues
 - Become a sponsor
 - Donate money
