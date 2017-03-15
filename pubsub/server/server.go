@@ -10,6 +10,20 @@ import (
 	"time"
 )
 
+/*	Short description of the pub/sub server protocol. Legend:
+		> client-to-server
+		< server-to-client)
+
+	> AUTH token
+	> PUB topicX msg1
+	> PUB topicX msg2
+	> SUB topicY
+	< OK
+	> PUB topicY hello
+	< NOTIFY topicY foo
+	> BYE
+*/
+
 // client from the server's perspective
 type ServerClient struct {
 	Addr                  string
