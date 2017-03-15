@@ -23,7 +23,8 @@ type Cursor struct {
 }
 
 const (
-	NoServer = ""
+	NoServer      = ""
+	UnknownServer = "?"
 )
 
 func New(stream string, chunk int, offset int, server string) *Cursor {

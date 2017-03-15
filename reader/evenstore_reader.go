@@ -21,6 +21,7 @@ type EventstoreReader struct {
 	seekableStore            *store.SeekableStore
 	compressedEncryptedStore *store.CompressedEncryptedStore
 	writerClient             *writerclient.Client
+	confCtx                  *config.Context
 }
 
 func New(confCtx *config.Context) *EventstoreReader {
@@ -33,6 +34,7 @@ func New(confCtx *config.Context) *EventstoreReader {
 		seekableStore:            seekableStore,
 		compressedEncryptedStore: compressedEncryptedStore,
 		writerClient:             writerclient.New(confCtx),
+		confCtx:                  confCtx,
 	}
 }
 
@@ -45,6 +47,13 @@ func New(confCtx *config.Context) *EventstoreReader {
 */
 func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
 	cur := opts.Cursor
+
+	// FIXME: this assumes we're only running one server
+	// (this could be resolved from S3)
+	if cur.Server == cursor.UnknownServer {
+		// replace cursor with one pointing to writer
+		cur = cursor.New(cur.Stream, cur.Chunk, cur.Offset, e.confCtx.GetWriterIp())
+	}
 
 	/*	Read from S3 as long as we're not encountering EOF.
 

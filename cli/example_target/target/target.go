@@ -44,11 +44,9 @@ func NewReceiver() *Receiver {
 
 	subscriptionPath := "/_subscriptions/" + subscriptionId
 
-	defaultServer := "127.0.0.1" // FIXME
-
 	state.offset[subscriptionPath] = cursor.BeginningOfStream(
 		subscriptionPath,
-		defaultServer).Serialize()
+		cursor.UnknownServer).Serialize()
 
 	return r
 }
@@ -58,9 +56,7 @@ func (r *Receiver) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
 
 	// we've no record for the stream => we are definitely behind
 	if !offsetExists {
-		defaultServer := "127.0.0.1" // FIXME
-
-		return cursor.BeginningOfStream(remote.Stream, defaultServer)
+		return cursor.BeginningOfStream(remote.Stream, cursor.UnknownServer)
 	}
 
 	ourCursor := cursor.CursorFromserializedMust(ourCursorSerialized)
