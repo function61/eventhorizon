@@ -19,6 +19,7 @@ Docs
 ----
 
 - [Building & contributing](docs/building-and-contributing.md)
+- [Operating](docs/operating.md)
 
 
 Architecture
