@@ -37,11 +37,15 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
 		return ptypes.NewPushOutputIncorrectSubscriptionId(l.subscriptionId), nil
 	}
 
 	fromOffset := cursor.CursorFromserializedMust(input.Read.FromOffset)
+
+	// ensure that Pusher is continuing Push of the stream from the stream
+	// offset that we last saved
 	ourOffset := l.queryOffset(fromOffset.Stream)
 
 	if !fromOffset.PositionEquals(ourOffset) {
@@ -67,9 +71,9 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 				// see if this stream's behind-ness is already confirmed as behind?
 				// in that case we don't need newer data because we already know our
 				// position for this stream, and re-checking it will never change it.
-				_, weAlreadyKnowThisStreamIsehind := behindCursors[remoteCursor.Stream]
+				_, weAlreadyKnowThisStreamIsBehind := behindCursors[remoteCursor.Stream]
 
-				if !weAlreadyKnowThisStreamIsehind {
+				if !weAlreadyKnowThisStreamIsBehind {
 					shouldStartFrom := l.isRemoteAhead(remoteCursor)
 
 					if shouldStartFrom != nil {
