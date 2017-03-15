@@ -44,22 +44,24 @@ func New(confCtx *config.Context) *EventstoreReader {
 	Read from store:seekable
 */
 func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
+	cur := opts.Cursor
+
 	/*	Read from S3 as long as we're not encountering EOF.
 
 		If we encounter EOF and chunk is not closed, move to reading from advertised server.
 	*/
 
-	// log.Printf("EventstoreReader: starting read from %s", opts.Cursor.Serialize())
+	// log.Printf("EventstoreReader: starting read from %s", cur.Serialize())
 
-	if !e.seekableStore.Has(opts.Cursor) { // copy from compressed&encrypted store
-		log.Printf("EventstoreReader: %s miss from SeekableStore", opts.Cursor.Serialize())
+	if !e.seekableStore.Has(cur) { // copy from compressed&encrypted store
+		log.Printf("EventstoreReader: %s miss from SeekableStore", cur.Serialize())
 
 		// FIXME: this being here is a goddamn hack
-		if opts.Cursor.Server != "" {
-			log.Printf("EventstoreReader: contacting LiveReader for %s", opts.Cursor.Serialize())
+		if cur.Server != "" {
+			log.Printf("EventstoreReader: contacting LiveReader for %s", cur.Serialize())
 
 			result, was404, err := e.writerClient.LiveRead(&wtypes.LiveReadInput{
-				Cursor:         opts.Cursor.Serialize(),
+				Cursor:         cur.Serialize(),
 				MaxLinesToRead: opts.MaxLinesToRead,
 			})
 
@@ -67,7 +69,7 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 				// no need to seek, as the result from LiveReader is already based on offset
 				// so is the line read limit but there is no harm in parseFromReader()
 				// implementing the limit again
-				return parseFromReader(result, opts)
+				return parseFromReader(result, cur, opts)
 			}
 
 			if !was404 && err != nil { // unexpected error
@@ -77,11 +79,11 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 			// ok it was 404 => carry on trying from S3
 		}
 
-		if !e.compressedEncryptedStore.Has(opts.Cursor) { // copy from S3
-			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", opts.Cursor.Serialize())
+		if !e.compressedEncryptedStore.Has(cur) { // copy from S3
+			log.Printf("EventstoreReader: %s miss from CompressedEncryptedStore", cur.Serialize())
 
-			if !e.compressedEncryptedStore.DownloadFromS3(opts.Cursor, e.s3manager) {
-				log.Printf("EventstoreReader: %s miss from S3", opts.Cursor.Serialize())
+			if !e.compressedEncryptedStore.DownloadFromS3(cur, e.s3manager) {
+				log.Printf("EventstoreReader: %s miss from S3", cur.Serialize())
 
 				// TODO: try this from the server pointed to in the cursor
 				return nil, errors.New("Did not find from S3")
@@ -89,11 +91,11 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		}
 
 		// the file is now at CompressedEncryptedStore, but not in SeekableStore
-		e.compressedEncryptedStore.ExtractToSeekableStore(opts.Cursor, e.seekableStore)
+		e.compressedEncryptedStore.ExtractToSeekableStore(cur, e.seekableStore)
 	}
 
 	// TODO: open fd cache
-	fd, err := e.seekableStore.Open(opts.Cursor)
+	fd, err := e.seekableStore.Open(cur)
 	if err != nil {
 		return nil, err
 	}
@@ -106,25 +108,25 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 		return nil, errStat
 	}
 
-	if int64(opts.Cursor.Offset) > fileInfo.Size() {
+	if int64(cur.Offset) > fileInfo.Size() {
 		return nil, errors.New(fmt.Sprintf("Attempt to seek past EOF"))
 	}
 
-	_, errSeek := fd.Seek(int64(opts.Cursor.Offset), io.SeekStart)
+	_, errSeek := fd.Seek(int64(cur.Offset), io.SeekStart)
 	if errSeek != nil {
 		panic(errSeek)
 	}
 
-	return parseFromReader(fd, opts)
+	return parseFromReader(fd, cur, opts)
 }
 
-func parseFromReader(reader io.Reader, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
+func parseFromReader(reader io.Reader, cur *cursor.Cursor, opts *rtypes.ReadOptions) (*rtypes.ReadResult, error) {
 	scanner := bufio.NewScanner(reader)
 
 	readResult := rtypes.NewReadResult()
-	readResult.FromOffset = opts.Cursor.Serialize()
+	readResult.FromOffset = cur.Serialize()
 
-	previousCursor := opts.Cursor
+	previousCursor := cur
 
 	for linesRead := 0; linesRead < opts.MaxLinesToRead && scanner.Scan(); linesRead++ {
 		rawLine := scanner.Text()
