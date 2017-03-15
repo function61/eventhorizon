@@ -11,17 +11,6 @@ func TestParentStreamName(t *testing.T) {
 	ass.EqualString(t, parentStreamName("/"), "/")
 }
 
-func TestStringSliceItemIndex(t *testing.T) {
-	collection := []string{"foo", "bar", "baz"}
-
-	ass.EqualInt(t, stringSliceItemIndex("foo", collection), 0)
-	ass.EqualInt(t, stringSliceItemIndex("baz", collection), 2)
-	ass.EqualInt(t, stringSliceItemIndex("bar", collection), 1)
-
-	ass.EqualInt(t, stringSliceItemIndex("", collection), -1)
-	ass.EqualInt(t, stringSliceItemIndex("fasdf", collection), -1)
-}
-
 func TestStringArrayToRawLines(t *testing.T) {
 	satrl := func(arr []string) string {
 		ret, err := stringArrayToRawLines(arr)

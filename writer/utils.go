@@ -24,13 +24,3 @@ func stringArrayToRawLines(contentArr []string) (string, error) {
 
 	return buf, nil
 }
-
-func stringSliceItemIndex(item string, slice []string) int {
-	for idx, val := range slice {
-		if val == item {
-			return idx
-		}
-	}
-
-	return -1
-}

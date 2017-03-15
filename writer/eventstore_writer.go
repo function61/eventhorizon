@@ -9,6 +9,7 @@ import (
 	"github.com/function61/pyramid/cursor"
 	"github.com/function61/pyramid/metaevents"
 	"github.com/function61/pyramid/pubsub/client"
+	"github.com/function61/pyramid/util/stringslice"
 	"github.com/function61/pyramid/writer/longtermshipper"
 	"github.com/function61/pyramid/writer/transaction"
 	"github.com/function61/pyramid/writer/types"
@@ -174,7 +175,7 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
 
-		if stringSliceItemIndex(subscriptionId, existingSubscriptions) != -1 {
+		if stringslice.ItemIndex(subscriptionId, existingSubscriptions) != -1 {
 			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s already subscribed", subscriptionId))
 		}
 
@@ -224,7 +225,7 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
 
-		idxInSlice := stringSliceItemIndex(subscriptionId, existingSubscriptions)
+		idxInSlice := stringslice.ItemIndex(subscriptionId, existingSubscriptions)
 
 		if idxInSlice == -1 {
 			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s is not subscribed", subscriptionId))
