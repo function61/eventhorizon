@@ -16,7 +16,7 @@ const (
 )
 
 type Pusher struct {
-	receiver     ptypes.Receiver
+	target       ptypes.Transport
 	reader       *reader.EventstoreReader
 	pubSubClient *client.PubSubClient
 	stopping     bool
@@ -24,9 +24,9 @@ type Pusher struct {
 	streams      map[string]*StreamStatus
 }
 
-func New(confCtx *config.Context, receiver ptypes.Receiver) *Pusher {
+func New(confCtx *config.Context, target ptypes.Transport) *Pusher {
 	return &Pusher{
-		receiver:     receiver,
+		target:       target,
 		pubSubClient: client.New(confCtx),
 		reader:       reader.New(confCtx),
 		done:         &sync.WaitGroup{},

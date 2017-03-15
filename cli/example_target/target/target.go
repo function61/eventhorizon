@@ -1,9 +1,11 @@
-package main
+package target
 
 import (
+	"encoding/json"
 	"github.com/function61/pyramid/cursor"
 	ptypes "github.com/function61/pyramid/pusher/types"
 	"log"
+	"net/http"
 	"sync"
 )
 
@@ -36,7 +38,9 @@ func NewReceiver() *Receiver {
 		mu:         &sync.Mutex{},
 	}
 
-	r.fn = func(eventSerialized string) { }
+	r.fn = func(eventSerialized string) {
+		log.Printf("%s", eventSerialized)
+	}
 
 	subscriptionPath := "/_subscriptions/" + subscriptionId
 
@@ -54,7 +58,9 @@ func (r *Receiver) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
 
 	// we've no record for the stream => we are definitely behind
 	if !offsetExists {
-		return cursor.BeginningOfStream(remote.Stream, cursor.NoServer)
+		defaultServer := "127.0.0.1" // FIXME
+
+		return cursor.BeginningOfStream(remote.Stream, defaultServer)
 	}
 
 	ourCursor := cursor.CursorFromserializedMust(ourCursorSerialized)
@@ -114,6 +120,8 @@ func (r *Receiver) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 					}
 				}
 			}
+		} else {
+			r.fn(line.Content)
 		}
 
 		if (r.eventsRead % 10000) == 0 {
@@ -158,4 +166,34 @@ func stringMapToSlice(mapp map[string]string) []string {
 	}
 
 	return slice
+}
+
+func Serve() {
+	srv := &http.Server{Addr: ":8080"}
+
+	rcvr := NewReceiver()
+
+	log.Printf("Receiver: listening at :8080")
+
+	http.Handle("/_pyramid_push", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var push ptypes.PushInput
+		if err := json.NewDecoder(r.Body).Decode(&push); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		output, err := rcvr.Push(&push)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		enc := json.NewEncoder(w)
+		enc.Encode(output)
+	}))
+
+	if err := srv.ListenAndServe(); err != nil {
+		// cannot panic, because this probably is an intentional close
+		log.Printf("WriterHttp: ListenAndServe() error: %s", err)
+	}
 }

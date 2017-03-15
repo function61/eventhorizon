@@ -1,10 +1,26 @@
 package types
 
+import (
+	rtypes "github.com/function61/pyramid/reader/types"
+)
+
 const (
 	CodeSuccess                 = "success"
 	CodeIncorrectBaseOffset     = "incorrect_base_offset"
 	CodeIncorrectSubscriptionId = "incorrect_subscription_id"
 )
+
+type PushInput struct {
+	SubscriptionId string
+	Read           *rtypes.ReadResult
+}
+
+func NewPushInput(subscriptionId string, readResult *rtypes.ReadResult) *PushInput {
+	return &PushInput{
+		SubscriptionId: subscriptionId,
+		Read:           readResult,
+	}
+}
 
 type PushOutput struct {
 	Code                  string

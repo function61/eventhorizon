@@ -6,6 +6,7 @@ import (
 	"github.com/function61/pyramid/pubsub/client"
 	"github.com/function61/pyramid/pubsub/server"
 	"github.com/function61/pyramid/pusher"
+	"github.com/function61/pyramid/pusher/transport"
 	"github.com/function61/pyramid/writer"
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
@@ -178,6 +179,7 @@ func streamAppendFromFile(args []string) error {
 
 func pusher_(args []string) error {
 	if len(args) != 1 {
+		// try "http://127.0.0.1:8080/_pyramid_push"
 		return usage("<Target>")
 	}
 
@@ -185,9 +187,9 @@ func pusher_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	failingReceiverProxy := NewFailingReceiverProxy(NewReceiver())
+	httpTarget := transport.NewHttpJsonTransport(args[0])
 
-	psh := pusher.New(config.NewContext(), failingReceiverProxy)
+	psh := pusher.New(config.NewContext(), httpTarget)
 	go psh.Run()
 
 	log.Println(cli.WaitForInterrupt())
