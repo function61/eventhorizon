@@ -27,7 +27,6 @@ import (
 
 // client from the server's perspective
 type ServerClient struct {
-	Addr                  string
 	authenticated         bool
 	disconnected          bool
 	closeCh               chan bool
@@ -258,7 +257,6 @@ func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 		log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
 		cl := ServerClient{
-			Addr:                  conn.RemoteAddr().String(),
 			writeCh:               make(chan string, 5),
 			closeCh:               make(chan bool, 1),
 			subscriptionsByClient: []string{},
