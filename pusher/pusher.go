@@ -47,10 +47,12 @@ func (p *Pusher) Close() {
 }
 
 func (p *Pusher) Run() {
-	subscriptionId, networkErr := p.receiver.GetSubscriptionId()
-	if networkErr != nil {
-		panic("GetSubscriptionId network error")
-	}
+	responseCh := make(chan *WorkResponse, 1)
+
+	// this design is a bit awkward because we have to send work items
+	// to Worker now from two places (here and the below loop) because we can't
+	// go to the below loop before we know the subscription ID
+	subscriptionId := p.resolveSubscriptionIdForever(responseCh)
 
 	subscriptionStreamPath := "/_subscriptions/" + subscriptionId
 
@@ -60,8 +62,6 @@ func (p *Pusher) Run() {
 		Stream:    subscriptionStreamPath,
 		shouldRun: true,
 	}
-
-	responseCh := make(chan *WorkResponse, 1)
 
 	inFlight := 0
 
@@ -76,7 +76,8 @@ func (p *Pusher) Run() {
 				sint.isRunning = true
 
 				request := &WorkRequest{
-					Status: &*sint,
+					SubscriptionId: subscriptionId,
+					Status:         &*sint,
 				}
 
 				inFlight++
@@ -206,5 +207,31 @@ func (p *Pusher) processIntelligence(inte *StreamStatus) {
 					inte.targetAckedCursor.OffsetString())
 			}
 		}
+	}
+}
+
+func (p *Pusher) resolveSubscriptionIdForever(responseCh chan *WorkResponse) string {
+	subscriptionIdRequest := &WorkRequest{
+		SubscriptionId: "",
+		// dummy stream. Target will not use this because our subscription id is missing
+		Status: &StreamStatus{
+			Stream: "/",
+		},
+	}
+
+	for {
+		go Worker(p, subscriptionIdRequest, responseCh)
+
+		subscriptionResponse := <-responseCh
+
+		if subscriptionResponse.Error == nil {
+			return subscriptionResponse.SubscriptionId
+		}
+
+		log.Printf(
+			"Pusher: subscriptionResponse error: %s",
+			subscriptionResponse.Error.Error())
+
+		subscriptionIdRequest.Status.Sleep = 1 * time.Second
 	}
 }

@@ -5,16 +5,17 @@ import (
 )
 
 type PushInput struct {
-	Read *rtypes.ReadResult
+	SubscriptionId string
+	Read           *rtypes.ReadResult
 }
 
-func NewPushInput(readResult *rtypes.ReadResult) *PushInput {
+func NewPushInput(subscriptionId string, readResult *rtypes.ReadResult) *PushInput {
 	return &PushInput{
-		Read: readResult,
+		SubscriptionId: subscriptionId,
+		Read:           readResult,
 	}
 }
 
 type Receiver interface {
-	GetSubscriptionId() (string, error)
 	Push(*PushInput) (*PushOutput, error)
 }

@@ -72,6 +72,10 @@ func (r *Receiver) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if input.SubscriptionId != subscriptionId {
+		return ptypes.NewPushOutputIncorrectSubscriptionId(subscriptionId), nil
+	}
+
 	fromOffset := cursor.CursorFromserializedMust(input.Read.FromOffset)
 	ourOffset := r.queryOffset(fromOffset.Stream)
 
@@ -130,7 +134,7 @@ func (r *Receiver) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 
 	r.state.offset[fromOffset.Stream] = acceptedOffset
 
-	return ptypes.NewPushOutput(acceptedOffset, stringMapToSlice(behindCursors)), nil
+	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
 func (r *Receiver) queryOffset(stream string) *cursor.Cursor {
@@ -144,11 +148,6 @@ func (r *Receiver) queryOffset(stream string) *cursor.Cursor {
 	}
 
 	return cursor.CursorFromserializedMust(cursorSerialized)
-}
-
-// TODO: maybe implement this as just error check-and-return in PushReadResult()
-func (r *Receiver) GetSubscriptionId() (string, error) {
-	return subscriptionId, nil
 }
 
 func stringMapToSlice(mapp map[string]string) []string {

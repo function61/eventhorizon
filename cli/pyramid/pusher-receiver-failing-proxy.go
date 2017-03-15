@@ -26,15 +26,6 @@ func (f *FailingReceiverProxy) Push(input *ptypes.PushInput) (*ptypes.PushOutput
 	return f.next.Push(input)
 }
 
-func (f *FailingReceiverProxy) GetSubscriptionId() (string, error) {
-	return f.next.GetSubscriptionId()
-	/*
-		if f.shouldFail() {
-			return "", errors.New("synthetic failure")
-		}
-	*/
-}
-
 func (f *FailingReceiverProxy) shouldFail() bool {
 	defer func() { f.counter++ }()
 

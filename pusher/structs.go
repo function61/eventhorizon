@@ -23,8 +23,11 @@ type WorkResponse struct {
 	// where the Target stands on subscribed streams that
 	// had activity
 	ActivityIntelligence []*StreamStatus
+
+	SubscriptionId string
 }
 
 type WorkRequest struct {
-	Status *StreamStatus
+	SubscriptionId string
+	Status         *StreamStatus
 }

@@ -1,14 +1,16 @@
 package types
 
 const (
-	CodeSuccess             = "success"
-	CodeIncorrectBaseOffset = "incorrect_base_offset"
+	CodeSuccess                 = "success"
+	CodeIncorrectBaseOffset     = "incorrect_base_offset"
+	CodeIncorrectSubscriptionId = "incorrect_subscription_id"
 )
 
 type PushOutput struct {
-	Code           string
-	AcceptedOffset string
-	BehindCursors  []string
+	Code                  string
+	AcceptedOffset        string
+	CorrectSubscriptionId string
+	BehindCursors         []string
 }
 
 func NewPushOutputIncorrectBaseOffset(correctBaseOffset string) *PushOutput {
@@ -18,7 +20,14 @@ func NewPushOutputIncorrectBaseOffset(correctBaseOffset string) *PushOutput {
 	}
 }
 
-func NewPushOutput(acceptedOffset string, behindCursors []string) *PushOutput {
+func NewPushOutputIncorrectSubscriptionId(correctSubscriptionId string) *PushOutput {
+	return &PushOutput{
+		Code: CodeIncorrectSubscriptionId,
+		CorrectSubscriptionId: correctSubscriptionId,
+	}
+}
+
+func NewPushOutputSuccess(acceptedOffset string, behindCursors []string) *PushOutput {
 	return &PushOutput{
 		Code:           CodeSuccess,
 		AcceptedOffset: acceptedOffset,

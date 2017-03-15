@@ -18,8 +18,16 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 		time.Sleep(input.Status.Sleep)
 	}
 
+	if input.SubscriptionId == "" {
+		responseCh <- querySubscriptionId(p.receiver, input)
+		return
+	}
+
 	if input.Status.targetAckedCursor == nil {
-		resolvedCursor, err := resolveReceiverCursor(p.receiver, input.Status.Stream)
+		resolvedCursor, err := queryReceiverCursor(
+			p.receiver,
+			input.Status.Stream,
+			input.SubscriptionId)
 
 		if err != nil {
 			responseCh <- &WorkResponse{
@@ -74,7 +82,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 	}
 
 	// this is where Receiver does her magic
-	pushOutput, pushNetworkErr := p.receiver.Push(ptypes.NewPushInput(readResult))
+	pushOutput, pushNetworkErr := p.receiver.Push(ptypes.NewPushInput(input.SubscriptionId, readResult))
 
 	if pushNetworkErr != nil {
 		responseCh <- &WorkResponse{
@@ -129,13 +137,13 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 	responseCh <- response
 }
 
-func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor.Cursor, error) {
+func queryReceiverCursor(receiver ptypes.Receiver, streamName string, subscriptionId string) (*cursor.Cursor, error) {
 	log.Printf("PusherWorker: don't know Receiver's position on %s; querying", streamName)
 
 	offsetQueryReadResult := rtypes.NewReadResult()
 	offsetQueryReadResult.FromOffset = cursor.ForOffsetQuery(streamName).Serialize()
 
-	correctOffsetQueryResponse, pushNetworkErr := receiver.Push(ptypes.NewPushInput(offsetQueryReadResult))
+	correctOffsetQueryResponse, pushNetworkErr := receiver.Push(ptypes.NewPushInput(subscriptionId, offsetQueryReadResult))
 
 	if pushNetworkErr != nil {
 		return nil, pushNetworkErr
@@ -146,4 +154,38 @@ func resolveReceiverCursor(receiver ptypes.Receiver, streamName string) (*cursor
 	}
 
 	return cursor.CursorFromserializedMust(correctOffsetQueryResponse.AcceptedOffset), nil
+}
+
+func querySubscriptionId(receiver ptypes.Receiver, input *WorkRequest) *WorkResponse {
+	subscriptionId, err := querySubscriptionIdInternal(receiver, input)
+	if err != nil {
+		return &WorkResponse{
+			Request: input,
+			Error:   err,
+		}
+	}
+
+	return &WorkResponse{
+		Request:        input,
+		SubscriptionId: subscriptionId,
+	}
+}
+
+func querySubscriptionIdInternal(receiver ptypes.Receiver, input *WorkRequest) (string, error) {
+	// just dummy values - receiver must notice the incorrect subscription ID
+	// and respond with it first
+	subscriptionQueryReadResult := rtypes.NewReadResult()
+	subscriptionQueryReadResult.FromOffset = cursor.ForOffsetQuery(input.Status.Stream).Serialize()
+
+	correctSubscriptionQueryResponse, pushNetworkErr := receiver.Push(ptypes.NewPushInput("_query_", subscriptionQueryReadResult))
+
+	if pushNetworkErr != nil {
+		return "", pushNetworkErr
+	}
+
+	if correctSubscriptionQueryResponse.Code != ptypes.CodeIncorrectSubscriptionId {
+		return "", errors.New("PusherWorker: expecting CodeIncorrectSubscriptionId")
+	}
+
+	return correctSubscriptionQueryResponse.CorrectSubscriptionId, nil
 }
