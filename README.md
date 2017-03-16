@@ -23,6 +23,7 @@ Docs
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
 - [Roadmap](docs/roadmap.md)
+- [Alternatives](docs/alternatives.md)
 
 
 Architecture
