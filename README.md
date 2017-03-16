@@ -8,6 +8,7 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 |-------------------------|------------------------------------------------------------------------------------------|
 | Technologies            | Golang, Linux, Docker (not required for use), AWS S3.                                    |
 | Production ready?       | No, not yet. But not too far away.                                                       |
+| Msg delivery semantics  | Exactly once, exact in-order delivery within a stream.                                   |
 | Use cases               | High availability software, datacenter failover and microservices.                       |
 | Storage capacity        | Practically unlimited. You have to pay your bills though. :)                             |
 | Data durability         | All writes transactionally backed by Write-Ahead-Log just like in databases.             |
