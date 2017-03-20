@@ -191,10 +191,11 @@ func (p *Pusher) processIntelligence(inte *StreamStatus) {
 				inte.targetAckedCursor.Stream,
 				inte.targetAckedCursor.OffsetString())
 		} else {
+			// target is always authoritative for this detail
+			stored.targetAckedCursor = inte.targetAckedCursor
+
 			// have information => compare if provided information is ahead
 			if inte.targetAckedCursor.IsAheadComparedTo(stored.targetAckedCursor) {
-				stored.targetAckedCursor = inte.targetAckedCursor
-
 				log.Printf(
 					"Pusher: %s Target forward @ %s",
 					inte.targetAckedCursor.Stream,
