@@ -7,7 +7,7 @@ import (
 
 var parseRe = regexp.MustCompile("^([a-zA-Z]+) (\\{.+)$")
 
-func parse(line string) interface{} {
+func applySerializedEvent(line string, pa *Target) (bool, error) {
 	parsed := parseRe.FindStringSubmatch(line)
 
 	if parsed == nil {
@@ -17,9 +17,10 @@ func parse(line string) interface{} {
 	typ := parsed[1]
 	payload := parsed[2]
 
-	if fn, ok := eventNameToDecoderFn[typ]; ok {
-		return fn(payload)
-	} else {
-		return nil
+	if fn, ok := eventNameToApplyFn[typ]; ok {
+		err := fn(pa, payload)
+		return true, err
 	}
+
+	return false, nil
 }

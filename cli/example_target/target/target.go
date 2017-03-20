@@ -62,28 +62,13 @@ func (pa *Target) PushSetOffset(stream string, offset string) {
 }
 
 func (pa *Target) PushHandleEvent(eventSerialized string) error {
-	obj := parse(eventSerialized)
+	handled, err := applySerializedEvent(eventSerialized, pa)
 
-	if e, ok := obj.(*CompanyCreated); ok {
-		company := &Company{
-			ID:      e.Id,
-			Name:    e.Name,
-		}
+	if err != nil {
+		return err
+	}
 
-		if err := pa.db.WithTransaction(pa.tx).From("companies").Save(company); err != nil {
-			return err
-		}
-	} else if e, ok := obj.(*UserCreated); ok {
-		user := &User{
-			ID:      e.Id,
-			Name:    e.Name,
-			Company: e.Company,
-		}
-
-		if err := pa.db.WithTransaction(pa.tx).From("users").Save(user); err != nil {
-			return err
-		}
-	} else {
+	if !handled {
 		log.Printf("Target: unknown event: %s", eventSerialized)
 	}
 
