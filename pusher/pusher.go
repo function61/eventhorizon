@@ -52,7 +52,10 @@ func (p *Pusher) Run() {
 	// this design is a bit awkward because we have to send work items
 	// to Worker now from two places (here and the below loop) because we can't
 	// go to the below loop before we know the subscription ID
-	subscriptionId := p.resolveSubscriptionIdForever(responseCh)
+	subscriptionId, stop := p.resolveSubscriptionIdForever(responseCh)
+	if stop {
+		return
+	}
 
 	subscriptionStreamPath := "/_subscriptions/" + subscriptionId
 
@@ -210,7 +213,7 @@ func (p *Pusher) processIntelligence(inte *StreamStatus) {
 	}
 }
 
-func (p *Pusher) resolveSubscriptionIdForever(responseCh chan *WorkResponse) string {
+func (p *Pusher) resolveSubscriptionIdForever(responseCh chan *WorkResponse) (string, bool) {
 	subscriptionIdRequest := &WorkRequest{
 		SubscriptionId: "",
 		// dummy stream. Target will not use this because our subscription id is missing
@@ -220,12 +223,16 @@ func (p *Pusher) resolveSubscriptionIdForever(responseCh chan *WorkResponse) str
 	}
 
 	for {
+		if p.stopping {
+			return "", true
+		}
+
 		go Worker(p, subscriptionIdRequest, responseCh)
 
 		subscriptionResponse := <-responseCh
 
 		if subscriptionResponse.Error == nil {
-			return subscriptionResponse.SubscriptionId
+			return subscriptionResponse.SubscriptionId, false
 		}
 
 		log.Printf(
