@@ -22,8 +22,6 @@ package pushlib
 type PushAdapter interface {
 	PushGetOffset(stream string) (string, bool)
 	PushSetOffset(stream string, offset string)
-	PushHandleEvent(eventSerialized string)
-	PushTransactionBegin()
-	PushTransactionCommit()
-	PushTransactionRollback()
+	PushHandleEvent(eventSerialized string) error
+	PushTransaction(func() error) error
 }

@@ -1,6 +1,8 @@
 package target
 
 import (
+	"github.com/asdine/storm"
+	"github.com/boltdb/bolt"
 	"github.com/function61/pyramid/pusher/pushlib"
 	"log"
 )
@@ -12,9 +14,10 @@ type TargetState struct {
 
 // implements PushAdapter interface
 type Target struct {
-	eventsRead   int
 	pushListener *pushlib.Listener
 	state        *TargetState
+	db           *storm.DB
+	tx           *bolt.Tx
 }
 
 func NewTarget() *Target {
@@ -24,9 +27,16 @@ func NewTarget() *Target {
 
 	subscriptionId := "foo"
 
+	db, err := storm.Open("/tmp/listener.db")
+	// db, err := bolt.Open("/tmp/listener.db", 0600, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// defer db.Close()
+
 	pa := &Target{
-		state:      state,
-		eventsRead: 0,
+		state: state,
+		db:    db,
 	}
 	pa.pushListener = pushlib.New(
 		subscriptionId,
@@ -50,24 +60,39 @@ func (pa *Target) PushSetOffset(stream string, offset string) {
 	pa.state.offset[stream] = offset
 }
 
-func (pa *Target) PushHandleEvent(eventSerialized string) {
-	if (pa.eventsRead % 10000) == 0 {
-		log.Printf("Target: %d events read", pa.eventsRead)
+func (pa *Target) PushHandleEvent(eventSerialized string) error {
+	obj := parse(eventSerialized)
+
+	if _, ok := obj.(*CompanyCreated); ok {
+		log.Printf("Target: CompanyCreated: %s", eventSerialized)
+	} else if userCreated, ok := obj.(*UserCreated); ok {
+		user := &User{
+			ID:      userCreated.Id,
+			Name:    userCreated.Name,
+			Company: userCreated.Company,
+		}
+
+		dbx := pa.db.WithTransaction(pa.tx)
+
+		userRepo := dbx.From("users")
+
+		if err := userRepo.Save(user); err != nil {
+			return err
+		}
+		log.Printf("Target: UserCreated: %s", eventSerialized)
+	} else {
+		log.Printf("Target: unknown event: %s", eventSerialized)
 	}
 
-	pa.eventsRead++
-
-	// log.Printf("Target: handle %s", eventSerialized)
+	return nil
 }
 
-func (pa *Target) PushTransactionBegin() {
+func (pa *Target) PushTransaction(run func() error) error {
+	err := pa.db.Bolt.Update(func(tx *bolt.Tx) error {
+		pa.tx = tx
 
-}
+		return run()
+	})
 
-func (pa *Target) PushTransactionCommit() {
-
-}
-
-func (pa *Target) PushTransactionRollback() {
-
+	return err
 }

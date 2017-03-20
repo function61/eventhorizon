@@ -6,31 +6,34 @@ import (
 	ptypes "github.com/function61/pyramid/pusher/types"
 	"log"
 	"net/http"
-	"sync"
 )
 
 type Listener struct {
 	subscriptionId string
-	mu             *sync.Mutex
 	adapter        PushAdapter
 }
 
 func New(subscriptionId string, adapter PushAdapter) *Listener {
 	return &Listener{
 		subscriptionId: subscriptionId,
-		mu:             &sync.Mutex{},
 		adapter:        adapter,
 	}
 }
 
 func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
-	// TODO: lock this at database level (per stream), so no two receivers can ever
-	//       race within the same stream
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	var output *ptypes.PushOutput
 
-	l.adapter.PushTransactionBegin()
+	err := l.adapter.PushTransaction(func() error {
+		var err error
+		output, err = l.pushInternal(input)
 
+		return err
+	})
+
+	return output, err
+}
+
+func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
 		return ptypes.NewPushOutputIncorrectSubscriptionId(l.subscriptionId), nil
@@ -78,7 +81,9 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 				}
 			}
 		} else {
-			l.adapter.PushHandleEvent(line.Content)
+			if err := l.adapter.PushHandleEvent(line.Content); err != nil {
+				return nil, err
+			}
 		}
 
 		// log.Printf("Listener: accepted %s", line.Content)
@@ -93,8 +98,6 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	// log.Printf("Listener: saving ACKed offset %s", acceptedOffset)
 
 	l.adapter.PushSetOffset(fromOffset.Stream, acceptedOffset)
-
-	l.adapter.PushTransactionCommit()
 
 	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
