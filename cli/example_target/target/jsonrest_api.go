@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-func (pa *Target) setupRoutes() {	
+func (pa *Target) setupJsonRestApi() {	
 	http.Handle("/users", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var users []User
 		err := pa.db.From("users").All(&users)

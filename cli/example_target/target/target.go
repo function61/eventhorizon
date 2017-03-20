@@ -18,7 +18,6 @@ func NewTarget() *Target {
 	subscriptionId := "foo"
 
 	db, err := storm.Open("/tmp/listener.db")
-	// db, err := bolt.Open("/tmp/listener.db", 0600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,7 +35,7 @@ func NewTarget() *Target {
 }
 
 func (pa *Target) Run() {
-	pa.setupRoutes()
+	pa.setupJsonRestApi()
 
 	pa.pushListener.Serve()
 }
