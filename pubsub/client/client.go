@@ -64,6 +64,10 @@ func (p *PubSubClient) reconnectForeverUntilStopped(serverAddress string) {
 
 	// keep trying to connect forever, unless intentional disconnect
 	for {
+		if p.quitting {
+			return
+		}
+
 		if err := p.reconnect(serverAddress); err != nil {
 			backoffDuration := reconnectBackoff.Duration()
 			log.Printf("PubSubClient: reconnecting in %s: %s", backoffDuration, err)
@@ -113,10 +117,6 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 	for {
 		select {
 		case <-p.intentionalClose:
-			// let us know that the following I/O error is expected
-			// and that we should not try to reconnect
-			p.quitting = true
-
 			// makes writer send BYE and call conn.Close()
 			// also makes the writer stop
 			stopWriter <- true
@@ -177,9 +177,12 @@ func (p *PubSubClient) Publish(topic string, message string) {
 	p.sendQueue.Put(topic, msgformat.Serialize([]string{"PUB", topic, message}))
 }
 
-// FIXME: close while disconnected not working
 func (p *PubSubClient) Close() {
 	log.Printf("PubSubClient: disconnecting")
+
+	// let us know that the following I/O errors are expected
+	// and that we should not try to reconnect
+	p.quitting = true
 
 	p.intentionalClose <- true
 
