@@ -7,24 +7,14 @@ import (
 	"log"
 )
 
-type TargetState struct {
-	// stream => offset mappings
-	offset map[string]string
-}
-
 // implements PushAdapter interface
 type Target struct {
 	pushListener *pushlib.Listener
-	state        *TargetState
 	db           *storm.DB
 	tx           *bolt.Tx
 }
 
 func NewTarget() *Target {
-	state := &TargetState{
-		offset: make(map[string]string),
-	}
-
 	subscriptionId := "foo"
 
 	db, err := storm.Open("/tmp/listener.db")
@@ -35,9 +25,9 @@ func NewTarget() *Target {
 	// defer db.Close()
 
 	pa := &Target{
-		state: state,
 		db:    db,
 	}
+
 	pa.pushListener = pushlib.New(
 		subscriptionId,
 		pa)
@@ -52,14 +42,23 @@ func (pa *Target) Run() {
 }
 
 func (pa *Target) PushGetOffset(stream string) (string, bool) {
-	offset, exists := pa.state.offset[stream]
-	return offset, exists
+	offset := ""
+	if err := pa.db.WithTransaction(pa.tx).Get("cursors", stream, &offset); err != nil {
+		if err == storm.ErrNotFound {
+			return "", false
+		}
+
+		// more serious error
+		panic(err)
+	}
+
+	return offset, true
 }
 
 func (pa *Target) PushSetOffset(stream string, offset string) {
-	log.Printf("Target: saving %s -> %s", stream, offset)
-
-	pa.state.offset[stream] = offset
+	if err := pa.db.WithTransaction(pa.tx).Set("cursors", stream, offset); err != nil {
+		panic(err)
+	}
 }
 
 func (pa *Target) PushHandleEvent(eventSerialized string) error {
