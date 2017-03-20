@@ -125,11 +125,7 @@ func (l *Listener) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
 	}
 }
 
-func (l *Listener) Serve() {
-	srv := &http.Server{Addr: ":8080"}
-
-	log.Printf("Listener: listening at :8080")
-
+func (l *Listener) AttachPushHandler() {
 	http.Handle("/_pyramid_push", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var push ptypes.PushInput
 		if err := json.NewDecoder(r.Body).Decode(&push); err != nil {
@@ -146,17 +142,12 @@ func (l *Listener) Serve() {
 		enc := json.NewEncoder(w)
 		enc.Encode(output)
 	}))
-
-	if err := srv.ListenAndServe(); err != nil {
-		// cannot panic, because this probably is an intentional close
-		log.Printf("WriterHttp: ListenAndServe() error: %s", err)
-	}
 }
 
-func stringMapToSlice(mapp map[string]string) []string {
+func stringMapToSlice(map_ map[string]string) []string {
 	slice := []string{}
 
-	for _, value := range mapp {
+	for _, value := range map_ {
 		slice = append(slice, value)
 	}
 

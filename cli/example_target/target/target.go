@@ -5,6 +5,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/function61/pyramid/pusher/pushlib"
 	"log"
+	"net/http"
 )
 
 // implements PushAdapter interface
@@ -38,7 +39,16 @@ func (pa *Target) Run() {
 	pa.setupJsonRestApi()
 
 	// sets up HTTP endpoint for receiving pushes
-	pa.pushListener.Serve()
+	pa.pushListener.AttachPushHandler()
+
+	srv := &http.Server{Addr: ":8080"}
+
+	log.Printf("Target: listening at :8080")
+
+	if err := srv.ListenAndServe(); err != nil {
+		// cannot panic, because this probably is an intentional close
+		log.Printf("Target: ListenAndServe() error: %s", err)
+	}
 }
 
 func (pa *Target) PushGetOffset(stream string) (string, bool) {
@@ -61,6 +71,8 @@ func (pa *Target) PushSetOffset(stream string, offset string) {
 	}
 }
 
+// this is where all the magic happens. pushlib calls this function for every
+// incoming event from Pyramid.
 func (pa *Target) PushHandleEvent(eventSerialized string) error {
 	handled, err := applySerializedEvent(eventSerialized, pa)
 
