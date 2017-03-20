@@ -25,7 +25,7 @@ func applyCompanyCreated(pa *Target, payload string) (error) {
 		Name:    e.Name,
 	}
 
-	return pa.db.WithTransaction(pa.tx).From("companies").Save(company)
+	return pa.db.WithTransaction(pa.tx).Save(company)
 }
 
 // UserCreated {"id": 1, "ts": "2001-01-27 00:00:00", "name": "Darryl Philbin", "company": 1}
@@ -49,7 +49,7 @@ func applyUserCreated(pa *Target, payload string) (error) {
 		Company: e.Company,
 	}
 
-	return pa.db.WithTransaction(pa.tx).From("users").Save(user)
+	return pa.db.WithTransaction(pa.tx).Save(user)
 }
 
 // UserNameChanged {"user_id": 16, "ts": "2016-06-06 06:06:06", "new_name": "Phyllis Vance", "reason": ".."}
@@ -67,7 +67,7 @@ func applyUserNameChanged(pa *Target, payload string) (error) {
 		return err
 	}
 
-	return pa.db.WithTransaction(pa.tx).From("users").Update(&User{
+	return pa.db.WithTransaction(pa.tx).Update(&User{
 		ID: e.UserId,
 		Name: e.NewName,
 	})

@@ -8,7 +8,7 @@ import (
 func (pa *Target) setupJsonRestApi() {	
 	http.Handle("/users", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var users []User
-		err := pa.db.From("users").All(&users)
+		err := pa.db.All(&users)
 		if err != nil {
 			panic(err)
 		}
@@ -22,7 +22,7 @@ func (pa *Target) setupJsonRestApi() {
 
 	http.Handle("/companies", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var companies []Company
-		err := pa.db.From("companies").All(&companies)
+		err := pa.db.All(&companies)
 		if err != nil {
 			panic(err)
 		}
