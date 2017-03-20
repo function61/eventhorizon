@@ -24,7 +24,7 @@ func NewTarget() *Target {
 	// defer db.Close()
 
 	pa := &Target{
-		db:    db,
+		db: db,
 	}
 
 	pa.pushListener = pushlib.New(
@@ -37,6 +37,7 @@ func NewTarget() *Target {
 func (pa *Target) Run() {
 	pa.setupJsonRestApi()
 
+	// sets up HTTP endpoint for receiving pushes
 	pa.pushListener.Serve()
 }
 
@@ -75,6 +76,15 @@ func (pa *Target) PushHandleEvent(eventSerialized string) error {
 }
 
 func (pa *Target) PushTransaction(run func() error) error {
+	// PushTransaction() is an API that pushlib calls to wrap all the following
+	// operations in a single transaction. we:
+	//
+	//     1) start transaction
+	//     2) store it in our own state (we use it from below mentioned APIs)
+	//     3) call back to pushlib with "run" which will start rapidly calling
+	//        PushHandleEvent() multiple times + PushSetOffset() once
+	//     4) we get back error state from "run" callback indicating if anything went
+	//        wrong. if we get error Bolt rollbacks the TX, if all is fine we commit.
 	err := pa.db.Bolt.Update(func(tx *bolt.Tx) error {
 		pa.tx = tx
 

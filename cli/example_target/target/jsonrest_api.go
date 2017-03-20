@@ -1,11 +1,11 @@
 package target
 
 import (
-	"net/http"
 	"encoding/json"
+	"net/http"
 )
 
-func (pa *Target) setupJsonRestApi() {	
+func (pa *Target) setupJsonRestApi() {
 	http.Handle("/users", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var users []User
 		err := pa.db.All(&users)
