@@ -34,6 +34,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 				Request:               input,
 				ShouldContinueRunning: true,
 				Error: err,
+				Sleep: 1 * time.Second,
 			}
 			return
 		}
@@ -62,6 +63,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 			Request:               input,
 			ShouldContinueRunning: true,
 			Error: readerErr,
+			Sleep: 1 * time.Second,
 		}
 		return
 	}
@@ -89,6 +91,7 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 			Request:               input,
 			ShouldContinueRunning: true,
 			Error: pushNetworkErr,
+			Sleep: 1 * time.Second,
 		}
 		return
 	}
@@ -106,10 +109,13 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 
 	mainAckedCursor := cursor.CursorFromserializedMust(pushOutput.AcceptedOffset)
 
-	// didn't move?
+	// didn't move? this probably only happens with subscription streams,
+	// whose SubscriptionActivity events are behind. parallel threads are
+	// catching up streams and in 5 seconds the target probably can move the
+	// subscription stream forward
 	if mainAckedCursor.PositionEquals(input.Status.targetAckedCursor) {
-		log.Printf("Pusher: no movement. should sleep for 5s")
-		// time.Sleep(5 * time.Second)
+		log.Printf("Pusher: no movement")
+		response.Sleep = 5 * time.Second
 	}
 
 	mainIntelligence := &StreamStatus{
@@ -162,6 +168,7 @@ func querySubscriptionId(target ptypes.Transport, input *WorkRequest) *WorkRespo
 		return &WorkResponse{
 			Request: input,
 			Error:   err,
+			Sleep:   1 * time.Second,
 		}
 	}
 

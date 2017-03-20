@@ -17,6 +17,7 @@ type StreamStatus struct {
 type WorkResponse struct {
 	Request               *WorkRequest
 	Error                 error
+	Sleep                 time.Duration
 	ShouldContinueRunning bool
 
 	// if this is subscription stream, intelligence about

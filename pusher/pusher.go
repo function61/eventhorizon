@@ -108,20 +108,16 @@ func (p *Pusher) Run() {
 			p.streams[concerningStream].isRunning = false
 			p.streams[concerningStream].shouldRun = response.ShouldContinueRunning
 
-			sleepDuration := 0 * time.Second
-
 			// if worker had an error, have a small period of sleep before doing
 			// any more work for the same stream
 			if response.Error != nil {
-				sleepDuration = 1 * time.Second
-
 				log.Printf(
 					"Pusher: ERROR (will re-try) pushing %s: %s",
 					concerningStream,
 					response.Error.Error())
 			}
 
-			p.streams[concerningStream].Sleep = sleepDuration
+			p.streams[concerningStream].Sleep = response.Sleep
 
 			for _, inte := range response.ActivityIntelligence {
 				p.processIntelligence(inte)
