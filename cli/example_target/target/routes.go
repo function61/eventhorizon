@@ -19,4 +19,18 @@ func (pa *Target) setupRoutes() {
 			panic(err)
 		}
 	}))
+
+	http.Handle("/companies", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var companies []Company
+		err := pa.db.From("companies").All(&companies)
+		if err != nil {
+			panic(err)
+		}
+
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "    ")
+		if err := encoder.Encode(companies); err != nil {
+			panic(err)
+		}
+	}))
 }

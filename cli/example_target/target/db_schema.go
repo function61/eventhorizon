@@ -7,3 +7,8 @@ type User struct {
 	Name    string
 	Company int
 }
+
+type Company struct {
+	ID      int
+	Name    string
+}
