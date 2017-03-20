@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	receiver := target.NewReceiver()
+	receiver := target.NewTarget()
 	receiver.Run()
 
 	cli.WaitForInterrupt()

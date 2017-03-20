@@ -9,25 +9,17 @@ import (
 	"sync"
 )
 
-type OffsetResolver func(stream string) (string, bool)
-type OffsetSaver func(stream string, offset string)
-type EventHandler func(eventSerialized string)
-
 type Listener struct {
 	subscriptionId string
 	mu             *sync.Mutex
-	getOffset      OffsetResolver
-	saveOffset     OffsetSaver
-	eventHandler   EventHandler
+	adapter        PushAdapter
 }
 
-func New(subscriptionId string, getOffset OffsetResolver, saveOffset OffsetSaver, eventHandler EventHandler) *Listener {
+func New(subscriptionId string, adapter PushAdapter) *Listener {
 	return &Listener{
 		subscriptionId: subscriptionId,
 		mu:             &sync.Mutex{},
-		getOffset:      getOffset,
-		saveOffset:     saveOffset,
-		eventHandler:   eventHandler,
+		adapter:        adapter,
 	}
 }
 
@@ -36,6 +28,8 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	//       race within the same stream
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	l.adapter.PushTransactionBegin()
 
 	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
@@ -84,7 +78,7 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 				}
 			}
 		} else {
-			l.eventHandler(line.Content)
+			l.adapter.PushHandleEvent(line.Content)
 		}
 
 		// log.Printf("Listener: accepted %s", line.Content)
@@ -98,13 +92,15 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 
 	// log.Printf("Listener: saving ACKed offset %s", acceptedOffset)
 
-	l.saveOffset(fromOffset.Stream, acceptedOffset)
+	l.adapter.PushSetOffset(fromOffset.Stream, acceptedOffset)
+
+	l.adapter.PushTransactionCommit()
 
 	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
 func (l *Listener) queryOffset(stream string) *cursor.Cursor {
-	cursorSerialized, exists := l.getOffset(stream)
+	cursorSerialized, exists := l.adapter.PushGetOffset(stream)
 
 	// we can trust that it is a valid stream because all pushes are based on
 	// the subscription ID that is exclusive to us. so if stream does not exist

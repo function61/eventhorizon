@@ -5,63 +5,69 @@ import (
 	"log"
 )
 
-type MsgHandlerFunc func(msg string)
-
-type ReceiverState struct {
+type TargetState struct {
 	// stream => offset mappings
 	offset map[string]string
 }
 
-type Receiver struct {
-	state        *ReceiverState
+// implements PushAdapter interface
+type Target struct {
 	eventsRead   int
-	fn           MsgHandlerFunc
 	pushListener *pushlib.Listener
+	state        *TargetState
 }
 
-func NewReceiver() *Receiver {
-	state := &ReceiverState{
+func NewTarget() *Target {
+	state := &TargetState{
 		offset: make(map[string]string),
 	}
 
 	subscriptionId := "foo"
 
-	r := &Receiver{
+	pa := &Target{
 		state:      state,
 		eventsRead: 0,
 	}
-
-	offsetGetter := func(stream string) (string, bool) {
-		// cannot just return, because then Golang uses single-value version
-		offset, exists := r.state.offset[stream]
-		return offset, exists
-	}
-
-	offsetSaver := func(stream string, offset string) {
-		log.Printf("Receiver: saving %s -> %s", stream, offset)
-
-		r.state.offset[stream] = offset
-	}
-
-	eventHandler := func(eventSerialized string) {
-		if (r.eventsRead % 10000) == 0 {
-			log.Printf("Receiver: %d events read", r.eventsRead)
-		}
-
-		r.eventsRead++
-
-		log.Printf("Receiver: handle %s", eventSerialized)
-	}
-
-	r.pushListener = pushlib.New(
+	pa.pushListener = pushlib.New(
 		subscriptionId,
-		offsetGetter,
-		offsetSaver,
-		eventHandler)
+		pa)
 
-	return r
+	return pa
 }
 
-func (r *Receiver) Run() {
-	r.pushListener.Serve()
+func (pa *Target) Run() {
+	pa.pushListener.Serve()
+}
+
+func (pa *Target) PushGetOffset(stream string) (string, bool) {
+	offset, exists := pa.state.offset[stream]
+	return offset, exists
+}
+
+func (pa *Target) PushSetOffset(stream string, offset string) {
+	log.Printf("Target: saving %s -> %s", stream, offset)
+
+	pa.state.offset[stream] = offset
+}
+
+func (pa *Target) PushHandleEvent(eventSerialized string) {
+	if (pa.eventsRead % 10000) == 0 {
+		log.Printf("Target: %d events read", pa.eventsRead)
+	}
+
+	pa.eventsRead++
+
+	// log.Printf("Target: handle %s", eventSerialized)
+}
+
+func (pa *Target) PushTransactionBegin() {
+
+}
+
+func (pa *Target) PushTransactionCommit() {
+
+}
+
+func (pa *Target) PushTransactionRollback() {
+
 }
