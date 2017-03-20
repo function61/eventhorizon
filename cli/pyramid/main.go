@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func banner() {
@@ -161,6 +162,8 @@ func streamAppendFromFile(args []string) error {
 
 	wclient := writerclient.New(config.NewContext())
 
+	started := time.Now()
+
 	linesRead := readLinebatchesFromFile(args[1], func(batch []string) error {
 		appendRequest := &wtypes.AppendToStreamRequest{
 			Stream: args[0],
@@ -172,7 +175,7 @@ func streamAppendFromFile(args []string) error {
 		return wclient.Append(appendRequest)
 	})
 
-	log.Printf("Done. Imported %d lines in aggregate.", linesRead)
+	log.Printf("Done. Imported %d lines in %s.", linesRead, time.Since(started))
 
 	return nil
 }
