@@ -3,21 +3,19 @@ package pushlib
 /*	Sequence of events, success:
 	----------------------------
 
-	PushTransactionBegin
+	PushTransaction
 		PushGetOffset
 			PushHandleEvent
 			PushHandleEvent
 			PushHandleEvent
 		PushSetOffset
-	PushTransactionCommit
 
 	Sequence of events, failure:
 	----------------------------
 
-	PushTransactionBegin
+	PushTransaction
 		PushGetOffset
-			PushHandleEvent => error
-	PushTransactionRollback
+			PushHandleEvent => error => stop
 */
 type PushAdapter interface {
 	PushGetOffset(stream string) (string, bool)
