@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	ptypes "github.com/function61/pyramid/pusher/types"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -39,8 +40,12 @@ func (h *HttpJsonTransport) Push(input *ptypes.PushInput) (*ptypes.PushOutput, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		// FIXME: read body
-		return nil, errors.New(fmt.Sprintf("HTTP %s", resp.Status))
+		errorBody, _ := ioutil.ReadAll(resp.Body)
+
+		return nil, errors.New(fmt.Sprintf(
+			"HTTP %s: %s",
+			resp.Status,
+			string(errorBody)))
 	}
 
 	var decodedResponse ptypes.PushOutput
