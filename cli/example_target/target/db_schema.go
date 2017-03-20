@@ -3,12 +3,12 @@ package target
 // these are the structs used by Storm to read / write into the Bolt database
 
 type User struct {
-	ID      int
+	ID      string
 	Name    string
-	Company int
+	Company string
 }
 
 type Company struct {
-	ID      int
-	Name    string
+	ID   string
+	Name string
 }
