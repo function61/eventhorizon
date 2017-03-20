@@ -46,6 +46,8 @@ func NewTarget() *Target {
 }
 
 func (pa *Target) Run() {
+	pa.setupRoutes()
+
 	pa.pushListener.Serve()
 }
 
