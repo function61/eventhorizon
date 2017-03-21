@@ -6,6 +6,8 @@ import (
 	"regexp"
 )
 
+var parseRe = regexp.MustCompile("^\\.([a-zA-Z]+) (\\{.+)$")
+
 func Parse(line string) (bool, string, interface{}) {
 	// only meta lines start with ".". therefore this is either:
 	// a) regular unescaped line (this is hottest path)
@@ -26,8 +28,6 @@ func Parse(line string) (bool, string, interface{}) {
 	if len(line) == 0 {
 		return false, line, nil
 	}
-
-	parseRe := regexp.MustCompile("^\\.([a-zA-Z]+) (\\{.+)$")
 
 	parsed := parseRe.FindStringSubmatch(line)
 
