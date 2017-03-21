@@ -20,12 +20,15 @@ func New(subscriptionId string, adapter PushAdapter) *Listener {
 	}
 }
 
+// called by the HTTP endpoint for pushing.
+// returns PushOutput for sending status back to Pusher
 func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	var output *ptypes.PushOutput
 
-	err := l.adapter.PushTransaction(func() error {
+	// ask adapter to provide us with a transaction
+	err := l.adapter.PushWrapTransaction(func(tx interface{}) error {
 		var err error
-		output, err = l.pushInternal(input)
+		output, err = l.pushInternal(input, tx)
 
 		return err
 	})
@@ -33,7 +36,7 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	return output, err
 }
 
-func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
+func (l *Listener) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes.PushOutput, error) {
 	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
 		return ptypes.NewPushOutputIncorrectSubscriptionId(l.subscriptionId), nil
@@ -43,7 +46,7 @@ func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, er
 
 	// ensure that Pusher is continuing Push of the stream from the stream
 	// offset that we last saved
-	ourOffset := l.queryOffset(fromOffset.Stream)
+	ourOffset := l.queryOffset(fromOffset.Stream, tx)
 
 	if !fromOffset.PositionEquals(ourOffset) {
 		return ptypes.NewPushOutputIncorrectBaseOffset(ourOffset.Serialize()), nil
@@ -71,7 +74,7 @@ func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, er
 				_, weAlreadyKnowThisStreamIsBehind := behindCursors[remoteCursor.Stream]
 
 				if !weAlreadyKnowThisStreamIsBehind {
-					shouldStartFrom := l.isRemoteAhead(remoteCursor)
+					shouldStartFrom := l.isRemoteAhead(remoteCursor, tx)
 
 					if shouldStartFrom != nil {
 						log.Printf("Listener: remote ahead of us: %s", remoteCursorSerialized)
@@ -81,12 +84,14 @@ func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, er
 				}
 			}
 		} else {
-			if err := l.adapter.PushHandleEvent(line.Content); err != nil {
+			if line.Content == "" {
+				log.Printf("Pusher: empty line %v", line)
+			}
+
+			if err := l.adapter.PushHandleEvent(line.Content, tx); err != nil {
 				return nil, err
 			}
 		}
-
-		// log.Printf("Listener: accepted %s", line.Content)
 
 		// only ACK offsets if no behind streams encountered
 		// (this happens only for subscription streams anyway)
@@ -95,15 +100,15 @@ func (l *Listener) pushInternal(input *ptypes.PushInput) (*ptypes.PushOutput, er
 		}
 	}
 
-	// log.Printf("Listener: saving ACKed offset %s", acceptedOffset)
-
-	l.adapter.PushSetOffset(fromOffset.Stream, acceptedOffset)
+	if err := l.adapter.PushSetOffset(fromOffset.Stream, acceptedOffset, tx); err != nil {
+		return nil, err
+	}
 
 	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
-func (l *Listener) queryOffset(stream string) *cursor.Cursor {
-	cursorSerialized, exists := l.adapter.PushGetOffset(stream)
+func (l *Listener) queryOffset(stream string, tx interface{}) *cursor.Cursor {
+	cursorSerialized, exists := l.adapter.PushGetOffset(stream, tx)
 
 	// we can trust that it is a valid stream because all pushes are based on
 	// the subscription ID that is exclusive to us. so if stream does not exist
@@ -115,8 +120,8 @@ func (l *Listener) queryOffset(stream string) *cursor.Cursor {
 	return cursor.CursorFromserializedMust(cursorSerialized)
 }
 
-func (l *Listener) isRemoteAhead(remote *cursor.Cursor) *cursor.Cursor {
-	ourCursor := l.queryOffset(remote.Stream)
+func (l *Listener) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.Cursor {
+	ourCursor := l.queryOffset(remote.Stream, tx)
 
 	if remote.IsAheadComparedTo(ourCursor) {
 		return ourCursor

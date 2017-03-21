@@ -2,6 +2,7 @@ package target
 
 import (
 	"encoding/json"
+	"github.com/function61/pyramid/cli/example_target/target/transaction"
 )
 
 // these are events that are used to communicate changes to the domain model
@@ -13,7 +14,7 @@ type CompanyCreated struct {
 	Name string `json:"name"`
 }
 
-func applyCompanyCreated(pa *Target, payload string) error {
+func applyCompanyCreated(tx *transaction.Tx, payload string) error {
 	e := CompanyCreated{}
 
 	if err := json.Unmarshal([]byte(payload), &e); err != nil {
@@ -25,7 +26,7 @@ func applyCompanyCreated(pa *Target, payload string) error {
 		Name: e.Name,
 	}
 
-	return pa.db.WithTransaction(pa.tx).Save(company)
+	return tx.Db.WithTransaction(tx.Tx).Save(company)
 }
 
 // UserCreated {"id": "66cad10b", "ts": "2001-01-27 00:00:00", "name": "Darryl Philbin", "company": "c3d2ff02"}
@@ -36,7 +37,7 @@ type UserCreated struct {
 	Company string `json:"company"`
 }
 
-func applyUserCreated(pa *Target, payload string) error {
+func applyUserCreated(tx *transaction.Tx, payload string) error {
 	e := UserCreated{}
 
 	if err := json.Unmarshal([]byte(payload), &e); err != nil {
@@ -49,7 +50,7 @@ func applyUserCreated(pa *Target, payload string) error {
 		Company: e.Company,
 	}
 
-	return pa.db.WithTransaction(pa.tx).Save(user)
+	return tx.Db.WithTransaction(tx.Tx).Save(user)
 }
 
 // UserNameChanged {"user_id": "66cad10b", "ts": "2016-06-06 06:06:06", "new_name": "Phyllis Vance", "reason": ".."}
@@ -60,20 +61,20 @@ type UserNameChanged struct {
 	Reason  string `json:"reason"`
 }
 
-func applyUserNameChanged(pa *Target, payload string) error {
+func applyUserNameChanged(tx *transaction.Tx, payload string) error {
 	e := UserNameChanged{}
 
 	if err := json.Unmarshal([]byte(payload), &e); err != nil {
 		return err
 	}
 
-	return pa.db.WithTransaction(pa.tx).Update(&User{
+	return tx.Db.WithTransaction(tx.Tx).Update(&User{
 		ID:   e.UserId,
 		Name: e.NewName,
 	})
 }
 
-var eventNameToApplyFn = map[string]func(*Target, string) error{
+var eventNameToApplyFn = map[string]func(*transaction.Tx, string) error{
 	"CompanyCreated":  applyCompanyCreated,
 	"UserCreated":     applyUserCreated,
 	"UserNameChanged": applyUserNameChanged,

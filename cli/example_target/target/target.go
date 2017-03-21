@@ -3,6 +3,7 @@ package target
 import (
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
+	"github.com/function61/pyramid/cli/example_target/target/transaction"
 	"github.com/function61/pyramid/pusher/pushlib"
 	"github.com/function61/pyramid/util/lineformatsimple"
 	"log"
@@ -13,7 +14,6 @@ import (
 type Target struct {
 	pushListener *pushlib.Listener
 	db           *storm.DB
-	tx           *bolt.Tx
 }
 
 func NewTarget() *Target {
@@ -54,9 +54,34 @@ func (pa *Target) Run() {
 	}
 }
 
-func (pa *Target) PushGetOffset(stream string) (string, bool) {
+// this is where all the magic happens. pushlib calls this function for every
+// incoming event from Pyramid.
+func (pa *Target) PushHandleEvent(eventSerialized string, tx interface{}) error {
+	txReal := tx.(*transaction.Tx)
+
+	// 'FooEvent {"bar": "input here"}'
+	//     => eventType='FooEvent'
+	//     => payload='{"bar": "input here"}'
+	eventType, payload, err := lineformatsimple.Parse(eventSerialized)
+
+	if err != nil {
+		return err
+	}
+
+	if fn, fnExists := eventNameToApplyFn[eventType]; fnExists {
+		return fn(txReal, payload)
+	}
+
+	log.Printf("Target: unknown event: %s", eventSerialized)
+
+	return nil
+}
+
+func (pa *Target) PushGetOffset(stream string, tx interface{}) (string, bool) {
+	txReal := tx.(*transaction.Tx)
+
 	offset := ""
-	if err := pa.db.WithTransaction(pa.tx).Get("cursors", stream, &offset); err != nil {
+	if err := txReal.Db.WithTransaction(txReal.Tx).Get("cursors", stream, &offset); err != nil {
 		if err == storm.ErrNotFound {
 			return "", false
 		}
@@ -68,47 +93,19 @@ func (pa *Target) PushGetOffset(stream string) (string, bool) {
 	return offset, true
 }
 
-func (pa *Target) PushSetOffset(stream string, offset string) {
-	if err := pa.db.WithTransaction(pa.tx).Set("cursors", stream, offset); err != nil {
-		panic(err)
-	}
-}
+func (pa *Target) PushSetOffset(stream string, offset string, tx interface{}) error {
+	txReal := tx.(*transaction.Tx)
 
-// this is where all the magic happens. pushlib calls this function for every
-// incoming event from Pyramid.
-func (pa *Target) PushHandleEvent(eventSerialized string) error {
-	// 'FooEvent {"bar": "input here"}'
-	//     => eventType='FooEvent'
-	//     => payload='{"bar": "input here"}'
-	eventType, payload, err := lineformatsimple.Parse(eventSerialized)
-
-	if err != nil {
+	if err := txReal.Db.WithTransaction(txReal.Tx).Set("cursors", stream, offset); err != nil {
 		return err
 	}
-
-	if fn, fnExists := eventNameToApplyFn[eventType]; fnExists {
-		return fn(pa, payload)
-	}
-
-	log.Printf("Target: unknown event: %s", eventSerialized)
 
 	return nil
 }
 
-func (pa *Target) PushTransaction(run func() error) error {
-	// PushTransaction() is an API that pushlib calls to wrap all the following
-	// operations in a single transaction. we:
-	//
-	//     1) start transaction
-	//     2) store it in our own state (we use it from below mentioned APIs)
-	//     3) call back to pushlib with "run" which will start rapidly calling
-	//        PushHandleEvent() multiple times + PushSetOffset() once
-	//     4) we get back error state from "run" callback indicating if anything went
-	//        wrong. if we get error Bolt rollbacks the TX, if all is fine we commit.
+func (pa *Target) PushWrapTransaction(run func(interface{}) error) error {
 	err := pa.db.Bolt.Update(func(tx *bolt.Tx) error {
-		pa.tx = tx
-
-		return run()
+		return run(&transaction.Tx{pa.db, tx})
 	})
 
 	return err
