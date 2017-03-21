@@ -3,6 +3,7 @@ package target
 import (
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
+	"github.com/function61/pyramid/cli/example_target/target/events"
 	"github.com/function61/pyramid/cli/example_target/target/transaction"
 	"github.com/function61/pyramid/pusher/pushlib"
 	"github.com/function61/pyramid/util/lineformatsimple"
@@ -68,7 +69,7 @@ func (pa *Target) PushHandleEvent(eventSerialized string, tx interface{}) error 
 		return err
 	}
 
-	if fn, fnExists := eventNameToApplyFn[eventType]; fnExists {
+	if fn, fnExists := events.EventNameToApplyFn[eventType]; fnExists {
 		return fn(txReal, payload)
 	}
 
