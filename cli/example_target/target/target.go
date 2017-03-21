@@ -4,6 +4,7 @@ import (
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
 	"github.com/function61/pyramid/pusher/pushlib"
+	"github.com/function61/pyramid/util/lineformatsimple"
 	"log"
 	"net/http"
 )
@@ -76,15 +77,20 @@ func (pa *Target) PushSetOffset(stream string, offset string) {
 // this is where all the magic happens. pushlib calls this function for every
 // incoming event from Pyramid.
 func (pa *Target) PushHandleEvent(eventSerialized string) error {
-	handled, err := applySerializedEvent(eventSerialized, pa)
+	// 'FooEvent {"bar": "input here"}'
+	//     => eventType='FooEvent'
+	//     => payload='{"bar": "input here"}'
+	eventType, payload, err := lineformatsimple.Parse(eventSerialized)
 
 	if err != nil {
 		return err
 	}
 
-	if !handled {
-		log.Printf("Target: unknown event: %s", eventSerialized)
+	if fn, fnExists := eventNameToApplyFn[eventType]; fnExists {
+		return fn(pa, payload)
 	}
+
+	log.Printf("Target: unknown event: %s", eventSerialized)
 
 	return nil
 }
