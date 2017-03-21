@@ -1,7 +1,7 @@
 package target
 
 import (
-	"errors"
+	"fmt"
 	"regexp"
 )
 
@@ -11,7 +11,7 @@ func applySerializedEvent(line string, pa *Target) (bool, error) {
 	parsed := parseRe.FindStringSubmatch(line)
 
 	if parsed == nil {
-		panic(errors.New("Unable to parse line: " + line))
+		return false, fmt.Errorf("Unable to parse line: %s", line)
 	}
 
 	typ := parsed[1]
