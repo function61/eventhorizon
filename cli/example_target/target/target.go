@@ -38,6 +38,8 @@ func NewTarget() *Target {
 func (pa *Target) Run() {
 	pa.setupJsonRestApi()
 
+	go pushlib.StartChildProcess("http://127.0.0.1:8080/_pyramid_push")
+
 	// sets up HTTP endpoint for receiving pushes
 	pa.pushListener.AttachPushHandler()
 

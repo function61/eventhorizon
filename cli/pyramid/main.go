@@ -181,21 +181,46 @@ func streamAppendFromFile(args []string) error {
 }
 
 func pusher_(args []string) error {
-	if len(args) != 1 {
+	if len(args) != 2 {
 		// try "http://127.0.0.1:8080/_pyramid_push"
-		return usage("<Target>")
+		return usage("<StopOnStdinEof> <Target>")
 	}
 
 	if err := cli.CheckForS3AccessKeys(); err != nil {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	httpTarget := transport.NewHttpJsonTransport(args[0])
+	httpTarget := transport.NewHttpJsonTransport(args[1])
 
 	psh := pusher.New(config.NewContext(), httpTarget)
 	go psh.Run()
 
-	log.Println(cli.WaitForInterrupt())
+	stdinEofOrInterrupt := make(chan bool)
+
+	go func() {
+		if args[0] != "y" {
+			return
+		}
+
+		// this is for when Pusher is started as a child process of the endpoint
+		// application. it makes zero sense for the child to exist after the parent
+		// dies, so our parent gives us STDIN pipe which never gets written into
+		// but is kept open to detect EOF (parent either exited gracefully or
+		// uncleanly - doesn't matter because the OS cleans up the FDs).
+		// http://stackoverflow.com/a/42924532
+		cli.WaitForStdinEof()
+
+		log.Printf("pusher: EOF encountered")
+
+		stdinEofOrInterrupt <- true
+	}()
+	go func() {
+		log.Println(cli.WaitForInterrupt())
+
+		stdinEofOrInterrupt <- true
+	}()
+
+	<-stdinEofOrInterrupt
 
 	psh.Close()
 
