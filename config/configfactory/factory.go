@@ -102,5 +102,9 @@ func parseS3Url() *url.URL {
 		panic("only supporting S3 for now")
 	}
 
+	if urlParsed.User == nil {
+		panic("Failed to parse Userinfo portion of the S3 URL")
+	}
+
 	return urlParsed
 }
