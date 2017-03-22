@@ -59,7 +59,7 @@ Legal license: Apache 2.0 - free software.
 Moral license: if you benefit commercially from the use of this project, any help
 would be appreciated (though not legally required):
 
-- Order support contract/consulting from us
+- Order [support contract/consulting from us](https://function61.com/consulting/)
 - Contribute with new features, bug fixes and/or help with issues
 - Become a sponsor
 - Donate money
