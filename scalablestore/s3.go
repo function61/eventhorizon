@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/function61/pyramid/config"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,10 @@ func NewS3Manager(confCtx *config.Context) *S3Manager {
 	if !provided {
 		panic("Secret access key not provided")
 	}
+
+	// cannot represent '/' char in secret access key,
+	// it is represented by '_' (not used in secret access keys)
+	secretAccessKey = strings.Replace(secretAccessKey, "_", "/", -1)
 
 	manualCredential := credentials.NewStaticCredentials(
 		url.User.Username(), // AWS_ACCESS_KEY_ID
