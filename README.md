@@ -21,6 +21,9 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 Docs
 ----
 
+- [Quickstart](docs/quickstart.md)
+- [Example app using Pyramid](https://github.com/function61/pyramid-exampleapp-go)
+  (best way to grasp what Pyramid is about, but you should also read quickstart)
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
 - [Roadmap](docs/roadmap.md)
@@ -45,7 +48,7 @@ Quick glance:
 - Once the Pusher learns of new events, it issues a read to either:
 	- a Writer if it's live data OR
 	- S3 if it's older data.
-- Pusher then pushes this read to your application. The application transactionally
+- Pusher then pushes this read to your application. Your application transactionally
   verifies that the read offset is at the offset of last stored write in database.
   If not, error is returned along with the correct offset, and Pusher continues
   to read from the correct offset.
