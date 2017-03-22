@@ -268,6 +268,7 @@ func main() {
 		"pubsub-subscribe":      pubsubSubscribe,
 		"pusher":                pusher_,
 		"writer":                writer_,
+		"writer-bootstrap":      writerBootstrap,
 	}
 
 	if len(os.Args) < 2 {
