@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 )
 
@@ -28,7 +29,7 @@ func Build() *config.Context {
 
 		// was NotExist => read discovery information from scalablestore
 
-		if err := storeCachedDiscovery(); err != nil {
+		if err := retrieveDiscoveryAndCache(NewBootstrap()); err != nil {
 			panic(err)
 		}
 
@@ -39,7 +40,12 @@ func Build() *config.Context {
 		}
 	}
 
-	return config.NewContext(discovery)
+	return config.NewContext(discovery, parseS3Url())
+}
+
+// needed for accessing S3 pre-discovery-file-download
+func NewBootstrap() *config.Context {
+	return config.NewContext(nil, parseS3Url())
 }
 
 func readCachedDiscovery() (*ctypes.DiscoveryFile, error) {
@@ -57,10 +63,10 @@ func readCachedDiscovery() (*ctypes.DiscoveryFile, error) {
 	return &df, nil
 }
 
-func storeCachedDiscovery() error {
+func retrieveDiscoveryAndCache(confCtx *config.Context) error {
 	log.Printf("configfactory: downloading discovery file")
 
-	s3 := scalablestore.NewS3Manager()
+	s3 := scalablestore.NewS3Manager(confCtx)
 
 	response, err := s3.Get(DiscoveryFileRemotePath)
 	if err != nil {
@@ -78,4 +84,23 @@ func storeCachedDiscovery() error {
 	}
 
 	return nil
+}
+
+// s3://keyid:keysecret@us-east-1/eventhorizon.fn61.net
+func parseS3Url() *url.URL {
+	storeSpec := os.Getenv("STORE")
+	if storeSpec == "" {
+		panic("STORE undefined")
+	}
+
+	urlParsed, err := url.Parse(storeSpec)
+	if err != nil {
+		panic(err)
+	}
+
+	if urlParsed.Scheme != "s3" {
+		panic("only supporting S3 for now")
+	}
+
+	return urlParsed
 }

@@ -33,7 +33,10 @@ func writerBootstrap(args []string) error {
 		panic(err)
 	}
 
-	s3 := scalablestore.NewS3Manager()
+	confCtx := configfactory.NewBootstrap()
+
+	s3 := scalablestore.NewS3Manager(confCtx)
+
 	if err := s3.Put(configfactory.DiscoveryFileRemotePath, bytes.NewReader(discoveryFileJson)); err != nil {
 		panic(err)
 	}

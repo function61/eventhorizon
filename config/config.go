@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	ctypes "github.com/function61/pyramid/config/types"
+	"net/url"
 )
 
 const (
@@ -13,10 +14,6 @@ const (
 	COMPRESSED_ENCRYPTED_STORE_PATH = "/pyramid-data/store-compressed_and_encrypted"
 
 	BOLTDB_DIR = "/pyramid-data"
-
-	S3_BUCKET = "eventhorizon.fn61.net"
-
-	S3_BUCKET_REGION = "us-east-1"
 
 	PUBSUB_PORT = 9091
 
@@ -29,11 +26,12 @@ const (
 
 // configuration context is used to pass configuration to different components
 type Context struct {
-	discovery *ctypes.DiscoveryFile
+	discovery        *ctypes.DiscoveryFile
+	scalableStoreUrl *url.URL
 }
 
-func NewContext(discovery *ctypes.DiscoveryFile) *Context {
-	return &Context{discovery}
+func NewContext(discovery *ctypes.DiscoveryFile, scalableStoreUrl *url.URL) *Context {
+	return &Context{discovery, scalableStoreUrl}
 }
 
 func (c *Context) AuthToken() string {
@@ -62,4 +60,8 @@ func (c *Context) GetPubSubServerAddr() string {
 	// FIXME: currently expecting pub/sub server to be located on the same box
 	//        as the writer
 	return fmt.Sprintf("%s:%d", c.GetWriterIp(), PUBSUB_PORT)
+}
+
+func (c *Context) ScalableStoreUrl() *url.URL {
+	return c.scalableStoreUrl
 }

@@ -3,6 +3,7 @@ package longtermshipper
 import (
 	"errors"
 	"github.com/boltdb/bolt"
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
 	"github.com/function61/pyramid/reader/store"
 	"github.com/function61/pyramid/scalablestore"
@@ -41,11 +42,11 @@ type Shipper struct {
 	s3Manager                *scalablestore.S3Manager
 }
 
-func New() *Shipper {
+func New(confCtx *config.Context) *Shipper {
 	return &Shipper{
 		shipmentOperationsDone:   &sync.WaitGroup{},
 		compressedEncryptedStore: store.NewCompressedEncryptedStore(),
-		s3Manager:                scalablestore.NewS3Manager(),
+		s3Manager:                scalablestore.NewS3Manager(confCtx),
 	}
 }
 

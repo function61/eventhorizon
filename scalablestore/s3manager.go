@@ -3,6 +3,7 @@ package scalablestore
 import (
 	"context"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/function61/pyramid/config"
@@ -19,15 +20,29 @@ type S3Manager struct {
 	s3Client   *s3.S3
 }
 
-func NewS3Manager() *S3Manager {
+func NewS3Manager(confCtx *config.Context) *S3Manager {
 	awsSession, err := session.NewSession()
 	if err != nil {
 		panic(err)
 	}
 
-	s3Client := s3.New(awsSession, aws.NewConfig().WithRegion(config.S3_BUCKET_REGION))
+	url := confCtx.ScalableStoreUrl()
 
-	s := &S3Manager{config.S3_BUCKET, s3Client}
+	secretAccessKey, provided := url.User.Password()
+	if !provided {
+		panic("Secret access key not provided")
+	}
+
+	manualCredential := credentials.NewStaticCredentials(
+		url.User.Username(), // AWS_ACCESS_KEY_ID
+		secretAccessKey,     // AWS_SECRET_ACCESS_KEY
+		"")
+
+	s3Client := s3.New(awsSession, aws.NewConfig().WithCredentials(manualCredential).WithRegion(url.Host))
+
+	bucketName := url.Path[1:] // '/bucket-name' => 'bucket-name'
+
+	s := &S3Manager{bucketName, s3Client}
 
 	return s
 }

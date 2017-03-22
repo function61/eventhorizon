@@ -37,7 +37,7 @@ func New(confCtx *config.Context) *EventstoreWriter {
 	e := &EventstoreWriter{
 		streamToChunkName: make(map[string]*types.ChunkSpec),
 		mu:                sync.Mutex{},
-		shipper:           longtermshipper.New(),
+		shipper:           longtermshipper.New(confCtx),
 		metrics:           NewMetrics(),
 		confCtx:           confCtx,
 	}
