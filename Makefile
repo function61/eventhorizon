@@ -6,7 +6,8 @@ fmt:
 	go fmt ./...
 
 pyramid:
-	cd cli/pyramid/ && go build
+	# compile statically so this works on Alpine that doesn't have glibc
+	cd cli/pyramid/ && CGO_ENABLED=0 go build --ldflags '-extldflags "-static"'
 
 test:
 	go test ./...
