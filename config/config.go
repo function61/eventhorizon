@@ -2,11 +2,10 @@ package config
 
 import (
 	"fmt"
+	ctypes "github.com/function61/pyramid/config/types"
 )
 
 const (
-	AUTH_TOKEN = "foo"
-
 	WALMANAGER_DATADIR = "/pyramid-data/store-live"
 
 	SEEKABLE_STORE_PATH = "/pyramid-data/store-seekable"
@@ -30,14 +29,19 @@ const (
 
 // configuration context is used to pass configuration to different components
 type Context struct {
+	discovery *ctypes.DiscoveryFile
 }
 
-func NewContext() *Context {
-	return &Context{}
+func NewContext(discovery *ctypes.DiscoveryFile) *Context {
+	return &Context{discovery}
+}
+
+func (c *Context) AuthToken() string {
+	return c.discovery.AuthToken
 }
 
 func (c *Context) GetWriterIp() string {
-	return "127.0.0.1"
+	return c.discovery.WriterIp
 }
 
 func (c *Context) GetWriterPort() int {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/function61/pyramid/cli"
-	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/config/configfactory"
 	"github.com/function61/pyramid/pubsub/client"
 	"github.com/function61/pyramid/pubsub/server"
 	"github.com/function61/pyramid/pusher"
@@ -39,7 +39,7 @@ func writer_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	confCtx := config.NewContext()
+	confCtx := configfactory.Build()
 
 	// start pub/sub server
 	pubSubServer := server.New(confCtx)
@@ -74,7 +74,7 @@ func streamAppend(args []string) error {
 		return usage("<Stream> <Line>")
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	req := &wtypes.AppendToStreamRequest{
 		Stream: args[0],
@@ -89,7 +89,7 @@ func streamSubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	req := &wtypes.SubscribeToStreamRequest{
 		Stream:         args[0],
@@ -104,7 +104,7 @@ func streamCreate(args []string) error {
 		return usage("<Stream>")
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	req := &wtypes.CreateStreamRequest{
 		Name: args[0],
@@ -118,7 +118,7 @@ func streamUnsubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	req := &wtypes.UnsubscribeFromStreamRequest{
 		Stream:         args[0],
@@ -133,7 +133,7 @@ func pubsubSubscribe(args []string) error {
 		return usage("<Topic>")
 	}
 
-	pubSubClient := client.New(config.NewContext())
+	pubSubClient := client.New(configfactory.Build())
 	pubSubClient.Subscribe(args[0])
 
 	go func() {
@@ -160,7 +160,7 @@ func streamAppendFromFile(args []string) error {
 		return usage("<Stream> <FilePath>")
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	started := time.Now()
 
@@ -192,7 +192,7 @@ func pusher_(args []string) error {
 
 	httpTarget := transport.NewHttpJsonTransport(args[1])
 
-	psh := pusher.New(config.NewContext(), httpTarget)
+	psh := pusher.New(configfactory.Build(), httpTarget)
 	go psh.Run()
 
 	stdinEofOrInterrupt := make(chan bool)
@@ -237,7 +237,7 @@ func streamLiveRead(args []string) error {
 		return atoiErr
 	}
 
-	wclient := writerclient.New(config.NewContext())
+	wclient := writerclient.New(configfactory.Build())
 
 	req := &wtypes.LiveReadInput{
 		Cursor:         args[0],

@@ -12,6 +12,8 @@ import (
 )
 
 func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
+	ctx := eventWriter.GetConfigurationContext()
+
 	// $ curl -d '{"Cursor": "/tenants/foo:0:0"}' http://localhost:9092/liveread
 	http.Handle("/liveread", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req wtypes.LiveReadInput
@@ -42,5 +44,5 @@ func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}
-	})))
+	}), ctx))
 }

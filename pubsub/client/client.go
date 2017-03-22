@@ -26,6 +26,7 @@ type PubSubClient struct {
 	disconnected         chan error
 	subscriptionsChanged chan bool
 	incomingMessages     chan []string
+	confCtx              *config.Context
 }
 
 func New(confCtx *config.Context) *PubSubClient {
@@ -41,6 +42,7 @@ func New(confCtx *config.Context) *PubSubClient {
 		disconnected:         make(chan error, 1),
 		subscriptionsChanged: make(chan bool, 1),
 		incomingMessages:     make(chan []string, 10),
+		confCtx:              confCtx,
 	}
 
 	go p.reconnectForeverUntilStopped(confCtx.GetPubSubServerAddr())
@@ -101,7 +103,7 @@ func (p *PubSubClient) reconnect(serverAddress string) error {
 	// immediately unblocks the reader. reader publishes to incomingMessages
 	go p.handleReads(conn, writerAndReaderStopped)
 
-	authMsg := msgformat.Serialize([]string{"AUTH", config.AUTH_TOKEN})
+	authMsg := msgformat.Serialize([]string{"AUTH", p.confCtx.AuthToken()})
 	p.writeCh <- authMsg
 
 	// trigger resync of subscriptionsChanged

@@ -59,6 +59,7 @@ type PubSubServer struct {
 	stopMainLoop            chan bool
 	clientDisconnected      chan *ServerClient
 	messageReceived         chan *IncomingMessage
+	confCtx                 *config.Context
 }
 
 func New(confCtx *config.Context) *PubSubServer {
@@ -78,6 +79,7 @@ func New(confCtx *config.Context) *PubSubServer {
 		stopMainLoop:            make(chan bool),
 		clientDisconnected:      make(chan *ServerClient, 100),
 		messageReceived:         make(chan *IncomingMessage, 1000),
+		confCtx:                 confCtx,
 	}
 
 	go e.acceptorLoop(listener.(*net.TCPListener))
@@ -210,7 +212,7 @@ func (e *PubSubServer) mainLogicLoop() {
 
 				client.conn.Write([]byte(msgformat.Serialize([]string{"OK"})))
 			} else if msgType == "AUTH" && len(msg) == 2 {
-				if msg[1] == config.AUTH_TOKEN {
+				if msg[1] == e.confCtx.AuthToken() {
 					client.authenticated = true
 				}
 			} else if msgType == "BYE" && len(msg) == 1 {

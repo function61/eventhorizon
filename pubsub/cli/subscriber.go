@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/config/configfactory"
 	"github.com/function61/pyramid/pubsub/client"
 	"log"
 	"time"
@@ -12,7 +12,7 @@ type Stats struct {
 }
 
 func startSubscriber(topic string) {
-	pubSubClient := client.New(config.NewContext())
+	pubSubClient := client.New(configfactory.Build())
 	pubSubClient.Subscribe(topic)
 
 	stats := Stats{}

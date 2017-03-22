@@ -107,6 +107,10 @@ func New(confCtx *config.Context) *EventstoreWriter {
 	return e
 }
 
+func (e *EventstoreWriter) GetConfigurationContext() *config.Context {
+	return e.confCtx
+}
+
 func (e *EventstoreWriter) CreateStream(streamName string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()

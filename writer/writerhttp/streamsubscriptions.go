@@ -10,6 +10,8 @@ import (
 )
 
 func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
+	ctx := eventWriter.GetConfigurationContext()
+
 	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/subscribe
 	http.Handle("/subscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var subscribeToStreamRequest wtypes.SubscribeToStreamRequest
@@ -24,10 +26,12 @@ func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 		}
 
 		io.WriteString(w, "OK\n")
-	})))
+	}), ctx))
 }
 
 func UnsubscribeFromStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
+	ctx := eventWriter.GetConfigurationContext()
+
 	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/unsubscribe
 	http.Handle("/unsubscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var unsubscribeFromStreamRequest wtypes.UnsubscribeFromStreamRequest
@@ -42,5 +46,5 @@ func UnsubscribeFromStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 		}
 
 		io.WriteString(w, "OK\n")
-	})))
+	}), ctx))
 }

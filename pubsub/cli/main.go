@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/function61/pyramid/cli"
-	"github.com/function61/pyramid/config"
+	"github.com/function61/pyramid/config/configfactory"
 	"github.com/function61/pyramid/pubsub/server"
 	"log"
 )
@@ -29,7 +29,7 @@ func main() {
 	} else if *subTopic != "" {
 		startSubscriber(*subTopic)
 	} else {
-		pubSubServer := server.New(config.NewContext())
+		pubSubServer := server.New(configfactory.Build())
 
 		log.Println(cli.WaitForInterrupt())
 

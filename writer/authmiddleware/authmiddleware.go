@@ -9,7 +9,9 @@ import (
 // Implements bearer token authentication, looks like:
 //   Authorization: Bearer TOKEN_HERE
 
-func Protect(next http.Handler) http.Handler {
+func Protect(next http.Handler, confCtx *config.Context) http.Handler {
+	tokenShouldBe := confCtx.AuthToken()
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		foundToken := ""
@@ -23,7 +25,7 @@ func Protect(next http.Handler) http.Handler {
 			return
 		}
 
-		if foundToken != config.AUTH_TOKEN {
+		if foundToken != tokenShouldBe {
 			http.Error(w, "Incorrect token", http.StatusUnauthorized)
 			return
 		}

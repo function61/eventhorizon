@@ -10,6 +10,8 @@ import (
 )
 
 func AppendToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
+	ctx := eventWriter.GetConfigurationContext()
+
 	// $ curl -d '{"Stream": "/foostream", "Lines": [ "line 1" ]}' http://localhost:9092/append
 	http.Handle("/append", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var appendToStreamRequest wtypes.AppendToStreamRequest
@@ -25,5 +27,5 @@ func AppendToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 
 		w.WriteHeader(http.StatusCreated)
 		io.WriteString(w, "OK\n")
-	})))
+	}), ctx))
 }

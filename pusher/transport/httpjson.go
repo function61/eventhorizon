@@ -30,7 +30,7 @@ func (h *HttpJsonTransport) Push(input *ptypes.PushInput) (*ptypes.PushOutput, e
 
 	req, _ := http.NewRequest("POST", h.address, bytes.NewBuffer(requestBody))
 
-	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.AUTH_TOKEN))
+	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", "foo"))
 
 	client := &http.Client{}
 	resp, networkErr := client.Do(req)

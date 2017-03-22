@@ -72,7 +72,7 @@ func (c *Client) handleSuccessOnly(url string, asJson []byte, expectedCode int) 
 func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte, expectedCode int) (body []byte, statusCode int, err error) {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", config.AUTH_TOKEN))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.confCtx.AuthToken()))
 
 	client := &http.Client{}
 	resp, networkErr := client.Do(req)
