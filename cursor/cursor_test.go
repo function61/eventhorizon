@@ -77,15 +77,29 @@ func TestPositionEqualsPanicsWithDifferingStreams(t *testing.T) {
 }
 
 func TestToChunkPath(t *testing.T) {
-	cursor := CursorFromserializedMust("/tenants/foo:3:42")
+	ass.EqualString(
+		t,
+		CursorFromserializedMust("/tenants/foo:3:42").ToChunkPath(),
+		"/tenants/foo/_/3.log")
 
-	ass.EqualString(t, cursor.ToChunkPath(), "/tenants/foo/_/3.log")
+	// root
+	ass.EqualString(
+		t,
+		CursorFromserializedMust("/:3:42").ToChunkPath(),
+		"/_/3.log")
 }
 
 func TestToChunkSafePath(t *testing.T) {
-	cursor := CursorFromserializedMust("/tenants/foo:3:42")
+	ass.EqualString(
+		t,
+		CursorFromserializedMust("/tenants/foo:3:42").ToChunkSafePath(),
+		"_tenants_foo___3.log")
 
-	ass.EqualString(t, cursor.ToChunkSafePath(), "_tenants_foo___3.log")
+	// root
+	ass.EqualString(
+		t,
+		CursorFromserializedMust("/:3:42").ToChunkSafePath(),
+		"___3.log")
 }
 
 func TestCursorTooFewComponents(t *testing.T) {

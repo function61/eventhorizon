@@ -78,12 +78,14 @@ func (c *Cursor) IsAheadComparedTo(other *Cursor) bool {
 	}
 }
 
-// "/tenants/root/_/0.log"
+// "/tenants/foo" => "/tenants/foo/_/0.log"
+// "/" => "/tenants/foo/_/0.log"
 func (c *Cursor) ToChunkPath() string {
-	return fmt.Sprintf("%s/_/%d.log", c.Stream, c.Chunk)
+	// trim as not to have // for root stream. stream names ending in / are not legal anyway
+	return fmt.Sprintf("%s/_/%d.log", strings.TrimRight(c.Stream, "/"), c.Chunk)
 }
 
-// "_tenants_root___0.log"
+// "_tenants_foo___0.log"
 func (c *Cursor) ToChunkSafePath() string {
 	return strings.Replace(c.ToChunkPath(), "/", "_", -1)
 }
