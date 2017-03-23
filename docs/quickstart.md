@@ -2,19 +2,18 @@ Summary
 -------
 
 - Prepare your AWS account:
-	- Create S3 bucket
+	- Create [S3 bucket](https://aws.amazon.com/s3/)
 	- Create API keys to access the bucket
 - Set up Writer ("the server")
 - Run an example application feeding off of Pyramid
 
-Pyramid runs just fine whether you have the server and application on the same server or not.
-You decide what you'll do.
+Pyramid runs just fine whether you have the Writer and application on the same server or not.
 
 
 Make a bucket in S3
 -------------------
 
-I created a bucket named `eventhorizon1.fn61.net` in region `EU (Frankfurt)`.
+I created an S3 bucket named `eventhorizon1.fn61.net` in region `EU (Frankfurt)`.
 
 So our details are:
 
@@ -34,7 +33,7 @@ Assembling your ENV variable
 ----------------------------
 
 Pyramid is configured via one ENV variable: `STORE`. It contains the S3 details
-and all the rest configuration is determined automatically.
+and all the rest is handled automatically.
 
 The variable looks like this:
 
