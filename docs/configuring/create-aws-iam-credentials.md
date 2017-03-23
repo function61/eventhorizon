@@ -20,11 +20,13 @@ We just got two sets of access keys generated:
 - eventhorizon-writer = AKIAIZQ7QCQOTMYODIAA secret = ...
 - eventhorizon-pusher = AKIAJPNFVKAFJQHRBY3A secret = ...
 
+(of course API key IDs will be different for you)
+
 
 Set up custom policies for both accounts
 ----------------------------------------
 
-Now, go to eventhorizon-writer > add inline policy > custom policy:
+Now, go to `IAM > eventhorizon-writer > add inline policy > custom policy`:
 
 ```
 {
@@ -47,7 +49,7 @@ Now, go to eventhorizon-writer > add inline policy > custom policy:
 
 Policy name: s3-eventhorizon-readwrite
 
-And now go to eventhorizon-pusher > add inline policy:
+And now go to `IAM > eventhorizon-pusher > add inline policy > custom policy`:
 
 ```
 {
@@ -67,4 +69,4 @@ And now go to eventhorizon-pusher > add inline policy:
 }
 ```
 
-Policy name: s3-eventhorizon-read
+Policy name: s3-eventhorizon-read.

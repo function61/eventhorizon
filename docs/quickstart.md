@@ -53,13 +53,7 @@ NOTE: temporarily you have to replace `/` chars in secret key with `_`.
 Install & configure Writer on the server
 ----------------------------------------
 
-Enter Pyramid container so you can bootstrap the Writer cluster:
-
-```
-$ docker run -it --rm --net=host -e STORE=... fn61/pyramid sh
-```
-
-Find out the public IP address of the server:
+Find out the **public IP address** of your Writer server:
 
 ```
 $ ifconfig eth0
@@ -67,7 +61,7 @@ eth0      Link encap:Ethernet  HWaddr 06:2B:12:10:B3:0B
           inet addr:1.2.3.4
 ```
 
-Now bootstrap the cluster with that IP address:
+[Enter Pyramid CLI](enter-pyramid-cli.md) (on any machine) and bootstrap the Writer cluster:
 
 ```
 $ pyramid writer-bootstrap
@@ -76,8 +70,7 @@ $ pyramid writer-bootstrap 1.2.3.4
 2017/03/22 14:28:30 bootstrap: bootstrapped Writer cluster with {"writer_ip":"1.2.3.4","auth_token":"..."}
 ```
 
-Okay we're done, exit the container (it gets removed),
-and now start the Writer server for real:
+Now (in your Writer server), start the Writer server:
 
 ```
 $ docker run --name pyramid -d --net=host -v /pyramid-data:/pyramid-data -e STORE=... fn61/pyramid pyramid writer
@@ -97,16 +90,7 @@ $ docker logs pyramid
 ...
 ```
 
-Everything seems ok.
-
-Now we can launch temporary CLI container from which we'll poke Pyramid from.
-This can be done from any machine with internet connectivity as long as we supply
-the correct store, as clients will auto-discover the writers via S3.
-The connection from clients to the Writer is secured with TLS + an auth token.
-
-```
-$ docker run --rm -it -e STORE=... fn61/pyramid sh
-```
+Everything seems ok. Now enter Pyramid CLI again to poke with the system.
 
 We'll now create the minimum two streams required to run the system. Create root stream:
 
