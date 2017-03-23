@@ -61,7 +61,7 @@ eth0      Link encap:Ethernet  HWaddr 06:2B:12:10:B3:0B
           inet addr:1.2.3.4
 ```
 
-[Enter Pyramid CLI](enter-pyramid-cli.md) (on any machine) and bootstrap the Writer cluster:
+[Enter Pyramid CLI](enter-pyramid-cli.md) and bootstrap the Writer cluster:
 
 ```
 $ pyramid writer-bootstrap
@@ -70,7 +70,10 @@ $ pyramid writer-bootstrap 1.2.3.4
 2017/03/22 14:28:30 bootstrap: bootstrapped Writer cluster with {"writer_ip":"1.2.3.4","auth_token":"..."}
 ```
 
-Now (in your Writer server), start the Writer server:
+The above command essentially uploads a JSON file to your S3 bucket to let clients
+know how to connect to Writer servers.
+
+Now start the Writer on the server:
 
 ```
 $ docker run --name pyramid -d --net=host -v /pyramid-data:/pyramid-data -e STORE=... fn61/pyramid pyramid writer
