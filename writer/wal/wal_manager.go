@@ -67,8 +67,8 @@ func (w *WalManager) AppendToFile(fileName string, content string, tx *transacti
 	//       because this whole transaction must be cancellable
 
 	if exists {
-		if (fileEntry.walSize + contentLen) > config.WAL_SIZE_THRESHOLD {
-			log.Printf("WalManager: AppendToFile: WAL size %d exceeded for chunk %s", config.WAL_SIZE_THRESHOLD, fileName)
+		if (fileEntry.walSize + contentLen) > config.WalSizeThreshold {
+			log.Printf("WalManager: AppendToFile: WAL size %d exceeded for chunk %s", config.WalSizeThreshold, fileName)
 
 			tx.NeedsWALCompaction = append(tx.NeedsWALCompaction, fileName)
 		}
@@ -277,10 +277,10 @@ func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.Eventst
 }
 
 func (w *WalManager) ensureDataDirectoryExists() {
-	if _, err := os.Stat(config.WALMANAGER_DATADIR); os.IsNotExist(err) {
-		log.Printf("WalManager: ensureDataDirectoryExists: mkdir %s", config.WALMANAGER_DATADIR)
+	if _, err := os.Stat(config.WalManagerDataDir); os.IsNotExist(err) {
+		log.Printf("WalManager: ensureDataDirectoryExists: mkdir %s", config.WalManagerDataDir)
 
-		if err = os.MkdirAll(config.WALMANAGER_DATADIR, 0755); err != nil {
+		if err = os.MkdirAll(config.WalManagerDataDir, 0755); err != nil {
 			panic(err)
 		}
 	}

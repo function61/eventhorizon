@@ -12,10 +12,10 @@ type SeekableStore struct {
 }
 
 func NewSeekableStore() *SeekableStore {
-	if _, err := os.Stat(config.SEEKABLE_STORE_PATH); os.IsNotExist(err) {
-		log.Printf("SeekableStore: mkdir %s", config.SEEKABLE_STORE_PATH)
+	if _, err := os.Stat(config.SeekableStorePath); os.IsNotExist(err) {
+		log.Printf("SeekableStore: mkdir %s", config.SeekableStorePath)
 
-		if err = os.MkdirAll(config.SEEKABLE_STORE_PATH, 0755); err != nil {
+		if err = os.MkdirAll(config.SeekableStorePath, 0755); err != nil {
 			panic(err)
 		}
 	}
@@ -51,5 +51,5 @@ func (s *SeekableStore) Has(cursor *cursor.Cursor) bool {
 }
 
 func (s *SeekableStore) localPath(cursor *cursor.Cursor) string {
-	return fmt.Sprintf("%s/%s", config.SEEKABLE_STORE_PATH, cursor.ToChunkSafePath())
+	return fmt.Sprintf("%s/%s", config.SeekableStorePath, cursor.ToChunkSafePath())
 }

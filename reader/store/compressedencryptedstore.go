@@ -73,10 +73,10 @@ type CompressedEncryptedStore struct {
 }
 
 func NewCompressedEncryptedStore() *CompressedEncryptedStore {
-	if _, err := os.Stat(config.COMPRESSED_ENCRYPTED_STORE_PATH); os.IsNotExist(err) {
-		log.Printf("CompressedEncryptedStore: mkdir %s", config.COMPRESSED_ENCRYPTED_STORE_PATH)
+	if _, err := os.Stat(config.CompressedEncryptedStorePath); os.IsNotExist(err) {
+		log.Printf("CompressedEncryptedStore: mkdir %s", config.CompressedEncryptedStorePath)
 
-		if err = os.MkdirAll(config.COMPRESSED_ENCRYPTED_STORE_PATH, 0755); err != nil {
+		if err = os.MkdirAll(config.CompressedEncryptedStorePath, 0755); err != nil {
 			panic(err)
 		}
 	}
@@ -220,5 +220,5 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 }
 
 func (c *CompressedEncryptedStore) localPath(cur *cursor.Cursor) string {
-	return fmt.Sprintf("%s/%s", config.COMPRESSED_ENCRYPTED_STORE_PATH, cur.ToChunkSafePath())
+	return fmt.Sprintf("%s/%s", config.CompressedEncryptedStorePath, cur.ToChunkSafePath())
 }

@@ -54,5 +54,5 @@ func computeInternalPath(fileName string) string {
 	// "/tenants/foo/_/0.log" => "_tenants_foo___0.log"
 	fileNameSafe := strings.Replace(fileName, "/", "_", -1)
 
-	return config.WALMANAGER_DATADIR + "/" + fileNameSafe
+	return config.WalManagerDataDir + "/" + fileNameSafe
 }

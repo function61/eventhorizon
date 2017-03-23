@@ -9,7 +9,7 @@ import (
 )
 
 func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool) {
-	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WRITER_HTTP_PORT)}
+	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WriterHttpPort)}
 
 	MetricsHandlerInit(eventWriter)
 	ReadHandlerInit(eventWriter)

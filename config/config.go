@@ -7,21 +7,21 @@ import (
 )
 
 const (
-	WALMANAGER_DATADIR = "/pyramid-data/store-live"
+	WalManagerDataDir = "/pyramid-data/store-live"
 
-	SEEKABLE_STORE_PATH = "/pyramid-data/store-seekable"
+	SeekableStorePath = "/pyramid-data/store-seekable"
 
-	COMPRESSED_ENCRYPTED_STORE_PATH = "/pyramid-data/store-compressed_and_encrypted"
+	CompressedEncryptedStorePath = "/pyramid-data/store-compressed_and_encrypted"
 
-	BOLTDB_DIR = "/pyramid-data"
+	BoltDbDir = "/pyramid-data"
 
-	PUBSUB_PORT = 9091
+	WriterHttpPort = 9092
 
-	WRITER_HTTP_PORT = 9092
+	WalSizeThreshold = uint64(4 * 1024 * 1024)
 
-	WAL_SIZE_THRESHOLD = uint64(4 * 1024 * 1024)
+	ChunkRotateThreshold = 8 * 1024 * 1024
 
-	CHUNK_ROTATE_THRESHOLD = 8 * 1024 * 1024
+	pubSubPort = 9091
 )
 
 // configuration context is used to pass configuration to different components
@@ -43,23 +43,23 @@ func (c *Context) GetWriterIp() string {
 }
 
 func (c *Context) GetWriterPort() int {
-	return WRITER_HTTP_PORT
+	return WriterHttpPort
 }
 
 func (c *Context) GetWriterServerAddr() string {
-	return fmt.Sprintf("%s:%d", c.GetWriterIp(), WRITER_HTTP_PORT)
+	return fmt.Sprintf("%s:%d", c.GetWriterIp(), WriterHttpPort)
 }
 
 func (c *Context) GetPubSubServerBindAddr() string {
 	// FIXME: currently expecting pub/sub server to be located on the same box
 	//        as the writer
-	return fmt.Sprintf("0.0.0.0:%d", PUBSUB_PORT)
+	return fmt.Sprintf("0.0.0.0:%d", pubSubPort)
 }
 
 func (c *Context) GetPubSubServerAddr() string {
 	// FIXME: currently expecting pub/sub server to be located on the same box
 	//        as the writer
-	return fmt.Sprintf("%s:%d", c.GetWriterIp(), PUBSUB_PORT)
+	return fmt.Sprintf("%s:%d", c.GetWriterIp(), pubSubPort)
 }
 
 func (c *Context) ScalableStoreUrl() *url.URL {

@@ -48,7 +48,7 @@ func New(confCtx *config.Context) *EventstoreWriter {
 
 	// DB will be created if not exists
 
-	dbLocation := config.BOLTDB_DIR + "/evenstore-wal.boltdb"
+	dbLocation := config.BoltDbDir + "/evenstore-wal.boltdb"
 
 	log.Printf("EventstoreWriter: opening DB %s", dbLocation)
 
@@ -305,7 +305,7 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 
 	var rotatedCursor *cursor.Cursor
 
-	if lengthAfterAppend > config.CHUNK_ROTATE_THRESHOLD {
+	if lengthAfterAppend > config.ChunkRotateThreshold {
 		rotatedCursor = e.nextChunkCursorFromCurrentChunkSpec(chunkSpec)
 	}
 
@@ -328,7 +328,7 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		e.confCtx.GetWriterIp())
 
 	if rotatedCursor != nil {
-		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.CHUNK_ROTATE_THRESHOLD, streamName)
+		log.Printf("EventstoreWriter: AppendToStream: starting rotate, %d threshold exceeded: %s", config.ChunkRotateThreshold, streamName)
 
 		// FIXME: this affects cursor as well
 		if err := e.rotateStreamChunk(rotatedCursor, tx); err != nil {
@@ -520,10 +520,10 @@ func (e *EventstoreWriter) startPubSubClient() {
 }
 
 func (e *EventstoreWriter) makeBoltDbDirIfNotExist() {
-	if _, err := os.Stat(config.BOLTDB_DIR); os.IsNotExist(err) {
-		log.Printf("EventstoreWriter: mkdir %s", config.BOLTDB_DIR)
+	if _, err := os.Stat(config.BoltDbDir); os.IsNotExist(err) {
+		log.Printf("EventstoreWriter: mkdir %s", config.BoltDbDir)
 
-		if err = os.MkdirAll(config.BOLTDB_DIR, 0755); err != nil {
+		if err = os.MkdirAll(config.BoltDbDir, 0755); err != nil {
 			panic(err)
 		}
 	}
