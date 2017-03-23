@@ -25,8 +25,15 @@ Note: read the [Quickstart](quickstart.md) tutorial to know how to specify the S
 Run Pyramid CLI from Docker image
 ---------------------------------
 
+Launching the CLI container is simple:
+
 ```
 $ docker run --rm -it -e STORE=s3://... fn61/pyramid sh
+```
+
+You should now be able to issue commands against the Writer cluster:
+
+```
 $ pyramid stream-liveread /:0:0 10
 ```
 
