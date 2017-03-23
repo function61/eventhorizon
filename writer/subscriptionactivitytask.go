@@ -127,7 +127,7 @@ func (t *SubscriptionActivityTask) broadcastSubscriptionActivities(tx *transacti
 		// FIXME: this will fail all subscriptions if even one subscription stream is deleted later.
 		//        automatically unsubscribe if subscription stream does not exist?
 
-		if err := t.writer.appendToStreamInternal(subscriptionStreamPath(subscription), nil, subscriptionActivityEvent.Serialize(), tx); err != nil {
+		if err := t.writer.appendToStreamInternal(subscription, nil, subscriptionActivityEvent.Serialize(), tx); err != nil {
 			return err
 		}
 	}

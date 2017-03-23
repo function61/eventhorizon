@@ -6,7 +6,8 @@ import (
 )
 
 func subscriptionStreamPath(subscriptionId string) string {
-	return "/_subscriptions/" + subscriptionId
+	//
+	return "/_sub/" + subscriptionId
 }
 
 func getSubscriptionsForStream(streamName string, tx *bolt.Tx) []string {

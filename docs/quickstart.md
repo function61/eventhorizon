@@ -101,10 +101,10 @@ We'll now create the minimum two streams required to run the system. Create root
 $ pyramid stream-create /
 ```
 
-Create /_subscriptions stream:
+Create `/_sub` stream (subscriptions will reside as sub-streams under this path):
 
 ```
-$ pyramid stream-create /_subscriptions
+$ pyramid stream-create /_sub
 ```
 
 Ok now the Writer has been properly set up!

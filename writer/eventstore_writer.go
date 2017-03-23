@@ -163,6 +163,10 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 
 	subscribedEvent := metaevents.NewSubscribed(subscriptionId)
 
+	if !strings.HasPrefix(subscriptionId, subscriptionStreamPath("")) {
+		return errors.New("SubscribeToStream: subscription is not a subscription stream")
+	}
+
 	if strings.HasPrefix(streamName, subscriptionStreamPath("")) {
 		// this would cause an endless SubscriptionActivity notification loop
 		return errors.New("SubscribeToStream: cannot subscribe to a subscription stream")
@@ -173,7 +177,7 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
-		if !e.streamExists(subscriptionStreamPath(subscriptionId), tx) {
+		if !e.streamExists(subscriptionId, tx) {
 			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s does not exist", subscriptionId))
 		}
 

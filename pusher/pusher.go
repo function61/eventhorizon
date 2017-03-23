@@ -57,12 +57,10 @@ func (p *Pusher) Run() {
 		return
 	}
 
-	subscriptionStreamPath := "/_subscriptions/" + subscriptionId
-
 	p.pubSubClient.Subscribe("sub:" + subscriptionId)
 
-	p.streams[subscriptionStreamPath] = &StreamStatus{
-		Stream:    subscriptionStreamPath,
+	p.streams[subscriptionId] = &StreamStatus{
+		Stream:    subscriptionId,
 		shouldRun: true,
 	}
 
