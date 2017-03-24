@@ -1,29 +1,54 @@
+Prerequisites
+-------------
 
-Getting up and running
+Read the [Quickstart](quickstart.md) guide first (you have to be learn to define
+the `STORE` variable), maybe run the example app so you get comfortable with the
+concepts first.
+
+To contribute, follow these steps:
+
+1. Clone this repo
+2. Build the Docker dev image
+3. Enter the container
+4. Compile Pyramid
+5. Make your change, compile & test
+6. Commit to a feature branch, send a pull request in GitHub
+
+
+Build the Docker image
 ----------------------
 
-
-Contributing
-------------
-
-1. Clone this repo.
-2. Enter dev container: `$ docker run --rm -it -v "$(pwd):/app" pyramid-dev`
-3. Define S3 credentials:
-```
-export AWS_ACCESS_KEY_ID="..."
-export AWS_SECRET_ACCESS_KEY="..."
-```
-3. Install dependencies: `$ go get -d ./...`
-4. Change a file (or test building before changing anything).
-5. Run `$ go build`
-6. Run `$ ./app server`
-7. `$ go fmt ./...`
-8. Commit to a feature branch & push & send a PR.
-
-
-Building the dev Docker image
------------------------------
+Development is done inside the Docker image produced by `Dockerfile-dev`. Build it:
 
 ```
 $ docker build -t pyramid-dev -f Dockerfile-dev .
 ```
+
+Enter the container:
+
+```
+$ docker run --name pyramid-dev -it -v "$(pwd):/app" -e STORE=... pyramid-dev
+```
+
+Building
+--------
+
+Install dependencies:
+
+```
+$ go get -d ./...
+```
+
+Build:
+
+```
+$ make
+```
+
+This produces the `pyramid` binary, which is you can now run:
+
+```
+$ pyramid
+```
+
+It is also symlinked to `/usr/bin/pyramid` so you can run it from any directory.
