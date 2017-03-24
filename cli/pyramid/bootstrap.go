@@ -9,6 +9,7 @@ import (
 	"github.com/function61/pyramid/config/configfactory"
 	ctypes "github.com/function61/pyramid/config/types"
 	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/pyramid/util/cryptorandombytes"
 	"github.com/function61/pyramid/util/sslca"
 	"log"
 )
@@ -30,7 +31,7 @@ func writerBootstrap(args []string) error {
 
 	log.Printf("bootstrap: generating auth token")
 
-	authToken := generateAuthToken(16)
+	authToken := cryptorandombytes.Hex(16)
 
 	log.Printf("bootstrap: generating discovery file")
 
@@ -59,14 +60,4 @@ func writerBootstrap(args []string) error {
 	log.Printf("bootstrap: bootstrapped Writer cluster for ip %s", writerIp)
 
 	return nil
-}
-
-func generateAuthToken(bytesLen int) string {
-	randBytes := make([]byte, bytesLen)
-
-	if _, err := rand.Read(randBytes); err != nil {
-		panic(err)
-	}
-
-	return hex.EncodeToString(randBytes)
 }
