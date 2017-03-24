@@ -16,6 +16,7 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 | Data stored at          | AWS S3. Google Storage support planned.                                                  |
 | Encryption at transport | TLS (CA & server certs automatically managed)                                            |
 | Encryption at rest      | AES-CBC. Encryption keys are not trusted to AWS (=> not using S3 server-side encryption) |
+| Security                | [Our security policy & information](https://function61.com/security/)                    |
 
 
 Docs
