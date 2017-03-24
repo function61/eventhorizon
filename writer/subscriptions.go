@@ -6,7 +6,6 @@ import (
 )
 
 func subscriptionStreamPath(subscriptionId string) string {
-	//
 	return "/_sub/" + subscriptionId
 }
 
