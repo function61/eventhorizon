@@ -28,6 +28,7 @@ Docs
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
 - [Security](docs/architecture/security.md)
+- [Network](docs/architecture/network.md)
 - [TODO & roadmap](docs/todo-roadmap.md)
 - [Alternatives](docs/alternatives.md)
 
