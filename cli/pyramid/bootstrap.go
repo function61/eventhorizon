@@ -9,6 +9,7 @@ import (
 	"github.com/function61/pyramid/config/configfactory"
 	ctypes "github.com/function61/pyramid/config/types"
 	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/pyramid/util/sslca"
 	"log"
 )
 
@@ -23,15 +24,29 @@ func writerBootstrap(args []string) error {
 
 	writerIp := args[0]
 
+	log.Printf("bootstrap: generating certificate authority")
+
+	caCert, caPrivateKey := sslca.GenerateCaCert()
+
+	log.Printf("bootstrap: generating auth token")
+
+	authToken := generateAuthToken(16)
+
+	log.Printf("bootstrap: generating discovery file")
+
 	discoveryFile := ctypes.DiscoveryFile{
-		WriterIp:  writerIp,
-		AuthToken: generateAuthToken(16),
+		WriterIp:      writerIp,
+		AuthToken:     authToken,
+		CaCertificate: string(caCert),
+		CaPrivateKey:  string(caPrivateKey),
 	}
 
-	discoveryFileJson, err := json.Marshal(discoveryFile)
+	discoveryFileJson, err := json.MarshalIndent(discoveryFile, "", "    ")
 	if err != nil {
 		panic(err)
 	}
+
+	log.Printf("bootstrap: uploading discovery file to scalablestore")
 
 	confCtx := configfactory.NewBootstrap()
 
@@ -41,7 +56,7 @@ func writerBootstrap(args []string) error {
 		panic(err)
 	}
 
-	log.Printf("bootstrap: bootstrapped Writer cluster with %s", string(discoveryFileJson))
+	log.Printf("bootstrap: bootstrapped Writer cluster for ip %s", writerIp)
 
 	return nil
 }

@@ -1,8 +1,11 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	ctypes "github.com/function61/pyramid/config/types"
+	"github.com/function61/pyramid/util/sslca"
 	"net/url"
 )
 
@@ -28,10 +31,13 @@ const (
 type Context struct {
 	discovery        *ctypes.DiscoveryFile
 	scalableStoreUrl *url.URL
+
+	// on-the-fly signed server cert for this server instance
+	serverKeyPair *tls.Certificate
 }
 
 func NewContext(discovery *ctypes.DiscoveryFile, scalableStoreUrl *url.URL) *Context {
-	return &Context{discovery, scalableStoreUrl}
+	return &Context{discovery, scalableStoreUrl, nil}
 }
 
 func (c *Context) AuthToken() string {
@@ -64,4 +70,36 @@ func (c *Context) GetPubSubServerAddr() string {
 
 func (c *Context) ScalableStoreUrl() *url.URL {
 	return c.scalableStoreUrl
+}
+
+// since we control both the servers and clients, it's easy being our own CA.
+// Just configure our sole CA cert as the sole trust anchor.
+func (c *Context) GetCaCertificates() *x509.CertPool {
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM([]byte(c.discovery.CaCertificate)) {
+		panic("failed to append CA certificate")
+	}
+	return caPool
+}
+
+// signs a server cert on-the-fly for our IP address
+func (c *Context) GetSignedServerCertificate() tls.Certificate {
+	// cache it, so if many server components ask for this it is done only once
+	if c.serverKeyPair == nil {
+		// sign server cert on-the-fly for this IP. it's easy being a CA when we
+		// control the configuration of both the servers and clients
+		cert, privKey := sslca.SignServerCert(
+			c.GetWriterIp(),
+			c.discovery.CaCertificate,
+			c.discovery.CaPrivateKey)
+
+		keyPair, err := tls.X509KeyPair(cert, privKey)
+		if err != nil {
+			panic(err)
+		}
+
+		c.serverKeyPair = &keyPair
+	}
+
+	return *c.serverKeyPair
 }

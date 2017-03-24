@@ -14,7 +14,7 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 | Data durability         | All writes transactionally backed by Write-Ahead-Log just like in databases.             |
 | High availability       | Planned, going to use Hashicorp's Raft implementation.                                   |
 | Data stored at          | AWS S3. Google Storage support planned.                                                  |
-| Encryption at transport | TLS                                                                                      |
+| Encryption at transport | TLS (CA & server certs automatically managed)                                            |
 | Encryption at rest      | AES-CBC. Encryption keys are not trusted to AWS (=> not using S3 server-side encryption) |
 
 
