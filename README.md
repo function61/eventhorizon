@@ -31,8 +31,8 @@ Docs
 - [Alternatives](docs/alternatives.md)
 
 
-Architecture
-------------
+Architecture summary
+--------------------
 
 Writer manages writes to streams. Streams are divided into ~8 MB chunks which
 are stored compressed & encrypted in AWS S3, except the last, "live", chunk that
@@ -53,6 +53,14 @@ Quick glance:
   verifies that the read offset is at the offset of last stored write in database.
   If not, error is returned along with the correct offset, and Pusher continues
   to read from the correct offset.
+
+Programming language support:
+
+- You only have to implement the tiny [pushlib](pusher/pushlib) for your
+  programming language (look at the architecture diagram), which essentially is
+  just one HTTP path with incoming JSON data.
+- pushlib is already implemented for these programming languages:
+	- Go ([example app](https://github.com/function61/pyramid-exampleapp-go))
 
 
 License & fair play
