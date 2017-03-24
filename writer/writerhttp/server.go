@@ -1,6 +1,7 @@
 package writerhttp
 
 import (
+	"crypto/tls"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/writer"
 	"log"
@@ -8,7 +9,7 @@ import (
 	"strconv"
 )
 
-func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool) {
+func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool, confCtx *config.Context) {
 	srv := &http.Server{Addr: ":" + strconv.Itoa(config.WriterHttpPort)}
 
 	MetricsHandlerInit(eventWriter)
@@ -21,7 +22,11 @@ func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done ch
 	go func() {
 		log.Printf("WriterHttp: binding to %s", srv.Addr)
 
-		if err := srv.ListenAndServe(); err != nil {
+		srv.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{confCtx.GetSignedServerCertificate()},
+		}
+
+		if err := srv.ListenAndServeTLS("", ""); err != nil {
 			// cannot panic, because this probably is an intentional close
 			log.Printf("WriterHttp: ListenAndServe() error: %s", err)
 		}

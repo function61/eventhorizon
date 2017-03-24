@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"crypto/tls"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
@@ -84,7 +85,11 @@ func (p *PubSubClient) reconnectForeverUntilStopped(serverAddress string) {
 // error = nil if intentional disconnect.
 // error != nil if I/O error.
 func (p *PubSubClient) reconnect(serverAddress string) error {
-	conn, err := net.Dial("tcp", serverAddress)
+	tlsConfig := tls.Config{
+		RootCAs: p.confCtx.GetCaCertificates(),
+	}
+
+	conn, err := tls.Dial("tcp", serverAddress, &tlsConfig)
 	if err != nil {
 		return err
 	}

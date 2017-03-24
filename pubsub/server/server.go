@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"crypto/tls"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/pubsub/msgformat"
 	"github.com/function61/pyramid/pubsub/partitionedlossyqueue"
@@ -67,7 +68,9 @@ func New(confCtx *config.Context) *PubSubServer {
 
 	log.Printf("PubSubServer: binding to %s", bindAddr)
 
-	listener, err := net.Listen("tcp", bindAddr)
+	listener, err := tls.Listen("tcp", bindAddr, &tls.Config{
+		Certificates: []tls.Certificate{confCtx.GetSignedServerCertificate()},
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +85,7 @@ func New(confCtx *config.Context) *PubSubServer {
 		confCtx:                 confCtx,
 	}
 
-	go e.acceptorLoop(listener.(*net.TCPListener))
+	go e.acceptorLoop(listener)
 	go e.mainLogicLoop()
 
 	return e
@@ -235,12 +238,12 @@ func (e *PubSubServer) mainLogicLoop() {
 	}
 }
 
-func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
+func (e *PubSubServer) acceptorLoop(listener net.Listener) {
 	log.Printf("PubSubServer: starting acceptorLoop")
 	defer func() { e.acceptorAndMainLoopDone <- true }()
 
 	for {
-		conn, err := listener.AcceptTCP()
+		conn, err := listener.Accept()
 		if err != nil {
 			// not much sense in doing anything with error, unless we can distinquish
 			// the error from the error triggered by listener.Close() which gets
@@ -249,12 +252,9 @@ func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 		}
 
 		// enable keepalive, so broken connections are cleaned up
-		if err := conn.SetKeepAlivePeriod(60 * time.Second); err != nil {
-			log.Printf("PubSubServer: unable to set keepalive period: %s", err.Error())
-		}
-		if err := conn.SetKeepAlive(true); err != nil {
-			log.Printf("PubSubServer: unable to enable keepalive: %s", err.Error())
-		}
+		// FIXME: http://stackoverflow.com/questions/33066946/cannot-convert-tls-listener-to-net-tcplistener-on-golang
+		//        does Golang by default enable TLS heartbeats?
+		// enableTcpKeepalives(conn)
 
 		log.Printf("PubSubServer: accepted connection from %s", conn.RemoteAddr())
 
@@ -269,7 +269,6 @@ func (e *PubSubServer) acceptorLoop(listener *net.TCPListener) {
 		go e.writeForOneClient(&cl)
 		go e.readFromOneClient(&cl)
 	}
-
 }
 
 func (e *PubSubServer) removeClientSubscriptions(cl *ServerClient) {
@@ -300,5 +299,21 @@ func (e *PubSubServer) removeClientSubscriptions(cl *ServerClient) {
 		} else {
 			log.Printf("PubSubServer: removeClientSubscriptions: sub not found. SHOULD NOT HAPPEN. topic=%s", topic)
 		}
+	}
+}
+
+func enableTcpKeepalives(conn net.Conn) {
+	tcpConn, isTcp := conn.(*net.TCPConn)
+	if !isTcp {
+		log.Printf("PubSubServer: curiously, not a TCP connection")
+		return
+	}
+
+	// enable keepalive, so broken connections are cleaned up
+	if err := tcpConn.SetKeepAlivePeriod(60 * time.Second); err != nil {
+		log.Printf("PubSubServer: unable to set keepalive period: %s", err.Error())
+	}
+	if err := tcpConn.SetKeepAlive(true); err != nil {
+		log.Printf("PubSubServer: unable to enable keepalive: %s", err.Error())
 	}
 }

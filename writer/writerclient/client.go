@@ -2,6 +2,7 @@ package writerclient
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,12 +15,20 @@ import (
 )
 
 type Client struct {
-	confCtx *config.Context
+	confCtx      *config.Context
+	tlsTransport *http.Transport
 }
 
 func New(confCtx *config.Context) *Client {
+	tlsTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: confCtx.GetCaCertificates(),
+		},
+	}
+
 	return &Client{
-		confCtx: confCtx,
+		confCtx:      confCtx,
+		tlsTransport: tlsTransport,
 	}
 }
 
@@ -74,7 +83,10 @@ func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.confCtx.AuthToken()))
 
-	client := &http.Client{}
+	client := &http.Client{
+		Transport: c.tlsTransport,
+	}
+
 	resp, networkErr := client.Do(req)
 	if networkErr != nil { // this is only network level errors
 		return nil, 0, networkErr
@@ -103,5 +115,5 @@ func (c *Client) url(server string, path string) string {
 	// looks like "127.0.0.1:9092"
 	writerServerAddr := fmt.Sprintf("%s:%d", server, c.confCtx.GetWriterPort())
 
-	return "http://" + writerServerAddr + path
+	return "https://" + writerServerAddr + path
 }

@@ -48,7 +48,7 @@ func writer_(args []string) error {
 
 	httpCloser := make(chan bool)
 	httpCloserDone := make(chan bool)
-	writerhttp.HttpServe(esServer, httpCloser, httpCloserDone)
+	writerhttp.HttpServe(esServer, httpCloser, httpCloserDone, confCtx)
 
 	log.Printf("main: waiting for stop signal")
 
