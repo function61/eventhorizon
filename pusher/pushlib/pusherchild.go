@@ -1,5 +1,12 @@
 package pushlib
 
+// A convenience feature for automatically starting and stopping the Pusher
+// component alongside with your app start/stop. Just call StartChildProcess()
+// from your app and the lifecycle of Pusher is automatically managed for you.
+//
+// You could also easily just start pusher manually/automatically by other
+// mechanisms, so you don't need this file.
+
 import (
 	"io"
 	"log"
@@ -13,7 +20,8 @@ func StartChildProcess(url string) {
 
 	cmd := exec.Command("pyramid", "pusher", "y", url)
 
-	// keep dummy STDIN pipe open, so child can detect parent dying by EOF
+	// keep dummy STDIN pipe open, so child (Pusher) can detect
+	// parent (us) dying by EOF and stop
 	_, err := cmd.StdinPipe()
 	if err != nil {
 		panic(err)
