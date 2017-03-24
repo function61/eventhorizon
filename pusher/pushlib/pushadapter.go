@@ -1,5 +1,8 @@
 package pushlib
 
+// this is the interface your application has to fulfill in order to receive
+// pushes from Pusher over HTTP + JSON
+
 /*	Sequence of events, success:
 	----------------------------
 
@@ -18,8 +21,8 @@ package pushlib
 		PushHandleEvent => error => stop
 */
 type PushAdapter interface {
-	// PushTransaction() is an API that pushlib calls to wrap all the following
-	// operations in a single transaction. we:
+	// PushWrapTransaction() is an API that pushlib calls to wrap all
+	// following operations in a single transaction. we:
 	//
 	//     1) start transaction
 	//     2) call back to pushlib with "run" with the transaction, after which pusher calls:

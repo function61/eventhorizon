@@ -37,7 +37,7 @@ func GenerateCaCert() ([]byte, []byte) {
 	notBefore := time.Now().Add(time.Hour * -1) // account for clock drift
 	notAfter := notBefore.AddDate(20, 0, 0)     // years
 
-	template := x509.Certificate{
+	certTemplate := x509.Certificate{
 		SerialNumber: generateSerialNumber(),
 		Subject: pkix.Name{
 			Organization: []string{organisationName},
@@ -54,7 +54,7 @@ func GenerateCaCert() ([]byte, []byte) {
 		IsCA: true,
 	}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(caPrivateKey), caPrivateKey)
+	derBytes, err := x509.CreateCertificate(rand.Reader, &certTemplate, &certTemplate, publicKey(caPrivateKey), caPrivateKey)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
@@ -68,7 +68,7 @@ func GenerateCaCert() ([]byte, []byte) {
 	return certBuffer.Bytes(), keyBuffer.Bytes()
 }
 
-// signs a server certificate based for an IP address
+// signs a server certificate for an IP address
 func SignServerCert(ipSerialized string, caSerialized string, caPrivateKeySerialized string) ([]byte, []byte) {
 	ca, err := parsePemCertificate(caSerialized)
 	if err != nil {

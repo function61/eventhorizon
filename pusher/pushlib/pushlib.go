@@ -1,5 +1,9 @@
 package pushlib
 
+// This small library receives pushes over HTTP + JSON and feeds them to your
+// application via PushAdapter (you have to implement this), which essentially
+// is a bridge between handling events and persisting the results to a database.
+
 import (
 	"encoding/json"
 	"github.com/function61/pyramid/cursor"

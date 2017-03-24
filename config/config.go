@@ -72,8 +72,8 @@ func (c *Context) ScalableStoreUrl() *url.URL {
 	return c.scalableStoreUrl
 }
 
-// since we control both the servers and clients, it's easy being our own CA.
-// Just configure our sole CA cert as the sole trust anchor.
+// since we control both the servers and clients, it's easy being our own CA when
+// we control both the servers and clients. Just configure our sole CA cert as the trust anchor.
 func (c *Context) GetCaCertificates() *x509.CertPool {
 	caPool := x509.NewCertPool()
 	if !caPool.AppendCertsFromPEM([]byte(c.discovery.CaCertificate)) {
@@ -82,12 +82,11 @@ func (c *Context) GetCaCertificates() *x509.CertPool {
 	return caPool
 }
 
-// signs a server cert on-the-fly for our IP address
+// returns a valid server certificate for this Writer's IP address
 func (c *Context) GetSignedServerCertificate() tls.Certificate {
-	// cache it, so if many server components ask for this it is done only once
+	// cache it, many server components might ask for this
 	if c.serverKeyPair == nil {
-		// sign server cert on-the-fly for this IP. it's easy being a CA when we
-		// control the configuration of both the servers and clients
+		// sign server cert on-the-fly for this IP
 		cert, privKey := sslca.SignServerCert(
 			c.GetWriterIp(),
 			c.discovery.CaCertificate,
