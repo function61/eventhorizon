@@ -134,8 +134,14 @@ func (l *Listener) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.
 	}
 }
 
-func (l *Listener) AttachPushHandler() {
-	http.Handle("/_pyramid_push", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// attach to receive Pusher's pushes at a defined path, example: "/_pyramid_push?auth=a1ae4d61"
+func (l *Listener) AttachPushHandler(path string, authToken string) {
+	http.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("auth") != authToken {
+			http.Error(w, "invalid auth token", http.StatusUnauthorized)
+			return
+		}
+
 		var push ptypes.PushInput
 		if err := json.NewDecoder(r.Body).Decode(&push); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
