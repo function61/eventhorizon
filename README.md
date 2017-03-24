@@ -27,6 +27,7 @@ Docs
   (best way to grasp what Pyramid is about, but you should also read quickstart)
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
+- [Security](architecture/security.md)
 - [TODO & roadmap](docs/todo-roadmap.md)
 - [Alternatives](docs/alternatives.md)
 
@@ -40,7 +41,7 @@ we're writing into.
 
 ![](docs/architecture/diagram.png)
 
-Quick glance:
+Data flow at a glance:
 
 - Somebody contacts Writer to append a line to the stream
 - Writer notifies pub/sub that a stream has new lines
