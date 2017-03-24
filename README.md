@@ -27,7 +27,7 @@ Docs
   (best way to grasp what Pyramid is about, but you should also read quickstart)
 - [Building & contributing](docs/building-and-contributing.md)
 - [Operating](docs/operating.md)
-- [Security](architecture/security.md)
+- [Security](docs/architecture/security.md)
 - [TODO & roadmap](docs/todo-roadmap.md)
 - [Alternatives](docs/alternatives.md)
 
