@@ -24,7 +24,7 @@ type EventstoreReader struct {
 	confCtx                  *config.Context
 }
 
-func New(confCtx *config.Context) *EventstoreReader {
+func New(confCtx *config.Context, writerClient *writerclient.Client) *EventstoreReader {
 	seekableStore := store.NewSeekableStore()
 	compressedEncryptedStore := store.NewCompressedEncryptedStore()
 	s3manager := scalablestore.NewS3Manager(confCtx)
@@ -33,7 +33,7 @@ func New(confCtx *config.Context) *EventstoreReader {
 		s3manager:                s3manager,
 		seekableStore:            seekableStore,
 		compressedEncryptedStore: compressedEncryptedStore,
-		writerClient:             writerclient.New(confCtx),
+		writerClient:             writerClient,
 		confCtx:                  confCtx,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/function61/pyramid/pubsub/client"
 	ptypes "github.com/function61/pyramid/pusher/types"
 	"github.com/function61/pyramid/reader"
+	"github.com/function61/pyramid/writer/writerclient"
 	"log"
 	"sync"
 	"time"
@@ -25,10 +26,12 @@ type Pusher struct {
 }
 
 func New(confCtx *config.Context, target ptypes.Transport) *Pusher {
+	writerClient := writerclient.New(confCtx)
+
 	return &Pusher{
 		target:       target,
 		pubSubClient: client.New(confCtx),
-		reader:       reader.New(confCtx),
+		reader:       reader.New(confCtx, writerClient),
 		done:         &sync.WaitGroup{},
 		streams:      make(map[string]*StreamStatus),
 	}
