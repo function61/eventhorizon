@@ -81,10 +81,10 @@ License & fair play
 Legal license: Apache 2.0 - free software.
 
 Moral license: if you benefit commercially from the use of this project, any help
-would be appreciated (though not legally required):
+would be appreciated (but not legally required):
 
 - Order [support contract/consulting from us](https://function61.com/consulting/)
 - Contribute with new features, bug fixes and/or help with issues
-- Become a sponsor
+- Become a sponsor (get your company + link listed here in README as a sponsor)
 - Donate money
 - If you find Pyramid useful, please spread the word! :)
