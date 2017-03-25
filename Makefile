@@ -1,4 +1,4 @@
-.PHONY: all fmt pyramid test vet release
+.PHONY: all fmt pyramid test vet release release-pkg
 
 all: fmt pyramid
 
@@ -15,4 +15,7 @@ test:
 vet:
 	go vet ./...
 
-release: fmt test vet pyramid
+release: fmt test vet pyramid release-pkg
+
+release-pkg:
+	./make-release-pkg.sh
