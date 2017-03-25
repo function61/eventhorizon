@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config/configfactory"
