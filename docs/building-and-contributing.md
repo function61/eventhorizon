@@ -45,10 +45,10 @@ Build:
 $ make
 ```
 
-This produces the `pyramid` binary, which is you can now run:
+This produces the `pyramid` binary, which you can now run:
 
 ```
 $ pyramid
 ```
 
-It is also symlinked to `/usr/bin/pyramid` so you can run it from any directory.
+(it is symlinked to `/usr/bin/pyramid` so you can run it from any directory)
