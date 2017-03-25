@@ -12,8 +12,7 @@ import (
 func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 	ctx := eventWriter.GetConfigurationContext()
 
-	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/subscribe
-	http.Handle("/subscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/writer/subscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var subscribeToStreamRequest wtypes.SubscribeToStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&subscribeToStreamRequest); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -32,8 +31,7 @@ func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 func UnsubscribeFromStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 	ctx := eventWriter.GetConfigurationContext()
 
-	// $ curl -d '{"Stream": "/foostream", "SubscriptionId": "88c20701"}' http://localhost:9092/unsubscribe
-	http.Handle("/unsubscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/writer/unsubscribe", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var unsubscribeFromStreamRequest wtypes.UnsubscribeFromStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&unsubscribeFromStreamRequest); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

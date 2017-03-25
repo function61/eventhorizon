@@ -36,7 +36,7 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFil
 	cur := cursor.CursorFromserializedMust(input.Cursor)
 	reqJson, _ := json.Marshal(input)
 
-	body, statusCode, err := c.handleAndReturnBodyAndStatusCode(c.url(cur.Server, "/liveread"), reqJson, http.StatusOK)
+	body, statusCode, err := c.handleAndReturnBodyAndStatusCode(c.url(cur.Server, "/writer/liveread"), reqJson, http.StatusOK)
 
 	if err != nil {
 		wasFileNotExist := statusCode == http.StatusNotFound
@@ -49,7 +49,7 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFil
 func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) (*wtypes.CreateStreamOutput, error) {
 	reqJson, _ := json.Marshal(req)
 
-	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/create_stream"), reqJson, http.StatusCreated)
+	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/writer/create_stream"), reqJson, http.StatusCreated)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) (*wtypes.CreateSt
 func (c *Client) Append(req *wtypes.AppendToStreamRequest) (*wtypes.AppendToStreamOutput, error) {
 	reqJson, _ := json.Marshal(req)
 
-	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/append"), reqJson, http.StatusCreated)
+	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/writer/append"), reqJson, http.StatusCreated)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +81,13 @@ func (c *Client) Append(req *wtypes.AppendToStreamRequest) (*wtypes.AppendToStre
 func (c *Client) SubscribeToStream(req *wtypes.SubscribeToStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("", "/subscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("", "/writer/subscribe"), reqJson, http.StatusOK)
 }
 
 func (c *Client) UnsubscribeFromStream(req *wtypes.UnsubscribeFromStreamRequest) error {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("", "/unsubscribe"), reqJson, http.StatusOK)
+	return c.handleSuccessOnly(c.url("", "/writer/unsubscribe"), reqJson, http.StatusOK)
 }
 
 // less specific version for callers that are only interested about success, but

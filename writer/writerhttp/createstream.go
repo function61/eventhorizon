@@ -11,8 +11,7 @@ import (
 func CreateStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 	ctx := eventWriter.GetConfigurationContext()
 
-	// $ curl -d '{"Name": "/foostream"}' http://localhost:9092/create_stream
-	http.Handle("/create_stream", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Handle("/writer/create_stream", authmiddleware.Protect(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var createStreamRequest wtypes.CreateStreamRequest
 		if err := json.NewDecoder(r.Body).Decode(&createStreamRequest); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
