@@ -52,10 +52,20 @@ func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) error {
 	return c.handleSuccessOnly(c.url("", "/create_stream"), reqJson, http.StatusCreated)
 }
 
-func (c *Client) Append(req *wtypes.AppendToStreamRequest) error {
+func (c *Client) Append(req *wtypes.AppendToStreamRequest) (*wtypes.AppendToStreamOutput, error) {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("", "/append"), reqJson, http.StatusCreated)
+	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/append"), reqJson, http.StatusCreated)
+	if err != nil {
+		return nil, err
+	}
+
+	var output wtypes.AppendToStreamOutput
+	if err := json.Unmarshal(resJson, &output); err != nil {
+		return nil, err
+	}
+
+	return &output, nil
 }
 
 func (c *Client) SubscribeToStream(req *wtypes.SubscribeToStreamRequest) error {

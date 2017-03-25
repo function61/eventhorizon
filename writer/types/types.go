@@ -9,6 +9,10 @@ type AppendToStreamRequest struct {
 	Lines  []string
 }
 
+type AppendToStreamOutput struct {
+	Offset string
+}
+
 type LiveReadInput struct {
 	Cursor         string
 	MaxLinesToRead int

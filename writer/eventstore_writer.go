@@ -260,7 +260,7 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 	return nil
 }
 
-func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) error {
+func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string) (*types.AppendToStreamOutput, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -272,16 +272,20 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 		return e.appendToStreamInternal(streamName, contentArr, "", tx)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := e.applySideEffects(tx); err != nil {
-		return err
+		return nil, err
 	}
 
 	e.metrics.AppendToStreamOps.Inc()
 
-	return nil
+	output := &types.AppendToStreamOutput{
+		Offset: tx.AffectedStreams[streamName],
+	}
+
+	return output, nil
 }
 
 func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string, tx *transaction.EventstoreTransaction) error {

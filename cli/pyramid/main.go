@@ -81,7 +81,8 @@ func streamAppend(args []string) error {
 		Lines:  []string{args[1]},
 	}
 
-	return wclient.Append(req)
+	_, err := wclient.Append(req)
+	return err
 }
 
 func streamSubscribe(args []string) error {
@@ -172,7 +173,8 @@ func streamAppendFromFile(args []string) error {
 
 		log.Printf("Appending %d lines", len(batch))
 
-		return wclient.Append(appendRequest)
+		_, err := wclient.Append(appendRequest)
+		return err
 	})
 
 	log.Printf("Done. Imported %d lines in %s.", linesRead, time.Since(started))
