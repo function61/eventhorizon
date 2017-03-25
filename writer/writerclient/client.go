@@ -46,10 +46,20 @@ func (c *Client) LiveRead(input *wtypes.LiveReadInput) (reader io.Reader, wasFil
 	return bytes.NewReader(body), false, nil
 }
 
-func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) error {
+func (c *Client) CreateStream(req *wtypes.CreateStreamRequest) (*wtypes.CreateStreamOutput, error) {
 	reqJson, _ := json.Marshal(req)
 
-	return c.handleSuccessOnly(c.url("", "/create_stream"), reqJson, http.StatusCreated)
+	resJson, _, err := c.handleAndReturnBodyAndStatusCode(c.url("", "/create_stream"), reqJson, http.StatusCreated)
+	if err != nil {
+		return nil, err
+	}
+
+	var output wtypes.CreateStreamOutput
+	if err := json.Unmarshal(resJson, &output); err != nil {
+		return nil, err
+	}
+
+	return &output, nil
 }
 
 func (c *Client) Append(req *wtypes.AppendToStreamRequest) (*wtypes.AppendToStreamOutput, error) {

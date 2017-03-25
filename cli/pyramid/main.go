@@ -111,7 +111,8 @@ func streamCreate(args []string) error {
 		Name: args[0],
 	}
 
-	return wclient.CreateStream(req)
+	_, err := wclient.CreateStream(req)
+	return err
 }
 
 func streamUnsubscribe(args []string) error {

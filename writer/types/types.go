@@ -4,6 +4,10 @@ type CreateStreamRequest struct {
 	Name string
 }
 
+type CreateStreamOutput struct {
+	Name string
+}
+
 type AppendToStreamRequest struct {
 	Stream string
 	Lines  []string

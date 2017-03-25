@@ -111,7 +111,7 @@ func (e *EventstoreWriter) GetConfigurationContext() *config.Context {
 	return e.confCtx
 }
 
-func (e *EventstoreWriter) CreateStream(streamName string) error {
+func (e *EventstoreWriter) CreateStream(streamName string) (*types.CreateStreamOutput, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -143,16 +143,21 @@ func (e *EventstoreWriter) CreateStream(streamName string) error {
 		return e.openChunkLocally(streamFirstChunkCursor, tx)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := e.applySideEffects(tx); err != nil {
-		return err
+		// TODO: transaction is committed - no much point in returning error?
+		return nil, err
 	}
 
 	e.metrics.CreateStreamOps.Inc()
 
-	return nil
+	output := &types.CreateStreamOutput{
+		Name: streamName,
+	}
+
+	return output, nil
 }
 
 func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId string) error {

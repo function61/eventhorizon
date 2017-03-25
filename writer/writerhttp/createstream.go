@@ -5,7 +5,6 @@ import (
 	"github.com/function61/pyramid/writer"
 	"github.com/function61/pyramid/writer/authmiddleware"
 	wtypes "github.com/function61/pyramid/writer/types"
-	"io"
 	"net/http"
 )
 
@@ -20,12 +19,13 @@ func CreateStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
-		if err := eventWriter.CreateStream(createStreamRequest.Name); err != nil {
+		output, err := eventWriter.CreateStream(createStreamRequest.Name)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		io.WriteString(w, "OK\n")
+		json.NewEncoder(w).Encode(output)
 	}), ctx))
 }
