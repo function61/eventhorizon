@@ -5,6 +5,7 @@ import (
 	"github.com/function61/pyramid/cursor"
 	"github.com/function61/pyramid/pubsub/client"
 	ptypes "github.com/function61/pyramid/pusher/types"
+	"github.com/function61/pyramid/pusher/writerproxy"
 	"github.com/function61/pyramid/reader"
 	"github.com/function61/pyramid/writer/writerclient"
 	"log"
@@ -23,6 +24,7 @@ type Pusher struct {
 	stopping     bool
 	done         *sync.WaitGroup
 	streams      map[string]*StreamStatus
+	writerProxy  *writerproxy.Proxy
 }
 
 func New(confCtx *config.Context, target ptypes.Transport) *Pusher {
@@ -34,6 +36,7 @@ func New(confCtx *config.Context, target ptypes.Transport) *Pusher {
 		reader:       reader.New(confCtx, writerClient),
 		done:         &sync.WaitGroup{},
 		streams:      make(map[string]*StreamStatus),
+		writerProxy:  writerproxy.New(confCtx, writerClient),
 	}
 }
 
@@ -41,6 +44,8 @@ func (p *Pusher) Close() {
 	p.stopping = true
 
 	log.Printf("Pusher: stopping")
+
+	p.writerProxy.Close()
 
 	p.done.Wait()
 
@@ -51,6 +56,8 @@ func (p *Pusher) Close() {
 
 func (p *Pusher) Run() {
 	responseCh := make(chan *WorkResponse, 1)
+
+	go p.writerProxy.Run()
 
 	// this design is a bit awkward because we have to send work items
 	// to Worker now from two places (here and the below loop) because we can't
