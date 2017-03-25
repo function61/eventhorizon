@@ -61,18 +61,18 @@ Programming language support
 ----------------------------
 
 To use Pyramid somewhere, that language has to be able to receive events over
-HTTP + JSON, in just one HTTP path. There's a helper library (pushlib - look at the
-architecture giagram) for that, and it's only a small amount of code.
+HTTP + JSON, in just one HTTP path. There's even a helper library (pushlib - look
+at the architecture diagram) for that, and it's only a small amount of code.
 
 Existing implementations of pushlib:
 
-- Go ([example app](https://github.com/function61/pyramid-exampleapp-go))
+- Go
+	- [library](pusher/pushlib/) managed in this main repo
+	- [example application](https://github.com/function61/pyramid-exampleapp-go)
 - node.js (coming soon)
 - PHP (coming soon)
-
-Your programming language not yet supported? You only have to implement the tiny
-[pushlib](pusher/pushlib) for your programming language (look at the architecture
-diagram), which essentially is just one HTTP path with incoming JSON data.
+- Your programming language not yet supported?
+	- It's somewhat easy to implement - contributions appreciated :)
 
 
 License & fair play
@@ -87,3 +87,4 @@ would be appreciated (though not legally required):
 - Contribute with new features, bug fixes and/or help with issues
 - Become a sponsor
 - Donate money
+- If you find Pyramid useful, please spread the word! :)
