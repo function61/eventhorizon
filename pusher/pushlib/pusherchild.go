@@ -6,6 +6,10 @@ package pushlib
 //
 // You could also easily just start pusher manually/automatically by other
 // mechanisms, so you don't need this file.
+//
+// Note: a security drawback of using this is that because we start Pusher from
+// your application, your application has to know the "STORE" variable. If you
+// manage Pusher separately, then your application won't see the "master key".
 
 import (
 	"io"
