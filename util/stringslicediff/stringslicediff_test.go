@@ -5,22 +5,6 @@ import (
 	"testing"
 )
 
-func runScenario(t *testing.T, base []string, other []string, expected string) {
-	result := Diff(base, other)
-
-	resultSerialized := ""
-
-	for _, val := range result.Added {
-		resultSerialized += " +" + val
-	}
-
-	for _, val := range result.Removed {
-		resultSerialized += " -" + val
-	}
-
-	ass.EqualString(t, resultSerialized, expected)
-}
-
 func TestDiff(t *testing.T) {
 	runScenario(t,
 		[]string{"foo"},
@@ -46,4 +30,20 @@ func TestDiff(t *testing.T) {
 		[]string{"foo", "bar", "baz"},
 		[]string{"foo", "shizzle"},
 		" +shizzle -bar -baz")
+}
+
+func runScenario(t *testing.T, base []string, other []string, expected string) {
+	result := Diff(base, other)
+
+	resultSerialized := ""
+
+	for _, val := range result.Added {
+		resultSerialized += " +" + val
+	}
+
+	for _, val := range result.Removed {
+		resultSerialized += " -" + val
+	}
+
+	ass.EqualString(t, resultSerialized, expected)
 }
