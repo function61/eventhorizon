@@ -26,3 +26,13 @@ type SubscriberNotification struct {
 	SubscriptionId         string
 	LatestCursorSerialized string
 }
+
+type SubscribeToStreamRequest struct {
+	Stream         string
+	SubscriptionId string
+}
+
+type UnsubscribeFromStreamRequest struct {
+	Stream         string
+	SubscriptionId string
+}
