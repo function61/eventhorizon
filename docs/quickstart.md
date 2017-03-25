@@ -1,17 +1,20 @@
+Quickstart
+==========
+
 Summary
 -------
 
 - Prepare your AWS account:
 	- Create [S3 bucket](https://aws.amazon.com/s3/)
-	- Create API keys to access the bucket
+	- Create IAM credentials for S3
 - Set up Writer ("the server")
 - Run an example application feeding off of Pyramid
 
 Pyramid runs just fine whether you have the Writer and application on the same server or not.
 
 
-Make a bucket in S3
--------------------
+Create S3 bucket
+----------------
 
 I created an S3 bucket named `eventhorizon1.fn61.net` in region `EU (Frankfurt)`.
 
@@ -23,8 +26,8 @@ So our details are:
 You'll need these later.
 
 
-Make IAM credentials for S3
----------------------------
+Create IAM credentials for S3
+-----------------------------
 
 [Create AWS IAM credentials](configuring/create-aws-iam-credentials.md)
 
