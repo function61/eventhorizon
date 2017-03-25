@@ -12,13 +12,13 @@ import (
 	"net/http"
 )
 
-type Listener struct {
+type Library struct {
 	subscriptionId string
 	adapter        PushAdapter
 }
 
-func New(subscriptionId string, adapter PushAdapter) *Listener {
-	return &Listener{
+func New(subscriptionId string, adapter PushAdapter) *Library {
+	return &Library{
 		subscriptionId: subscriptionId,
 		adapter:        adapter,
 	}
@@ -26,7 +26,7 @@ func New(subscriptionId string, adapter PushAdapter) *Listener {
 
 // called by the HTTP endpoint for pushing.
 // returns PushOutput for sending status back to Pusher
-func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
+func (l *Library) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	var output *ptypes.PushOutput
 
 	// ask adapter to provide us with a transaction
@@ -40,7 +40,7 @@ func (l *Listener) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	return output, err
 }
 
-func (l *Listener) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes.PushOutput, error) {
+func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes.PushOutput, error) {
 	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
 		return ptypes.NewPushOutputIncorrectSubscriptionId(l.subscriptionId), nil
@@ -81,7 +81,7 @@ func (l *Listener) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptype
 					shouldStartFrom := l.isRemoteAhead(remoteCursor, tx)
 
 					if shouldStartFrom != nil {
-						log.Printf("Listener: remote ahead of us: %s", remoteCursorSerialized)
+						log.Printf("Library: remote ahead of us: %s", remoteCursorSerialized)
 
 						behindCursors[remoteCursor.Stream] = shouldStartFrom.Serialize()
 					}
@@ -111,7 +111,7 @@ func (l *Listener) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptype
 	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
-func (l *Listener) queryOffset(stream string, tx interface{}) *cursor.Cursor {
+func (l *Library) queryOffset(stream string, tx interface{}) *cursor.Cursor {
 	cursorSerialized, exists := l.adapter.PushGetOffset(stream, tx)
 
 	// we can trust that it is a valid stream because all pushes are based on
@@ -124,7 +124,7 @@ func (l *Listener) queryOffset(stream string, tx interface{}) *cursor.Cursor {
 	return cursor.CursorFromserializedMust(cursorSerialized)
 }
 
-func (l *Listener) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.Cursor {
+func (l *Library) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.Cursor {
 	ourCursor := l.queryOffset(remote.Stream, tx)
 
 	if remote.IsAheadComparedTo(ourCursor) {
@@ -135,7 +135,7 @@ func (l *Listener) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.
 }
 
 // attach to receive Pusher's pushes at a defined path, example: "/_pyramid_push?auth=a1ae4d61"
-func (l *Listener) AttachPushHandler(path string, authToken string) {
+func (l *Library) AttachPushHandler(path string, authToken string) {
 	http.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("auth") != authToken {
 			http.Error(w, "invalid auth token", http.StatusUnauthorized)
