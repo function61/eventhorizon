@@ -111,12 +111,15 @@ func New(confCtx *config.Context, writerClient *writerclient.Client) *Proxy {
 
 func (p *Proxy) Run() {
 	p.serverDone.Add(1)
-	defer p.serverDone.Done()
 
-	if err := p.server.ListenAndServe(); err != nil {
-		// cannot panic, because this probably is an intentional close
-		log.Printf("writerproxy: ListenAndServe() error: %s", err)
-	}
+	go func() {
+		defer p.serverDone.Done()
+
+		if err := p.server.ListenAndServe(); err != nil {
+			// cannot panic, because this probably is an intentional close
+			log.Printf("writerproxy: ListenAndServe() error: %s", err)
+		}
+	}()
 }
 
 func (p *Proxy) Close() {

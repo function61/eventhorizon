@@ -57,7 +57,7 @@ func (p *Pusher) Close() {
 func (p *Pusher) Run() {
 	responseCh := make(chan *WorkResponse, 1)
 
-	go p.writerProxy.Run()
+	p.writerProxy.Run()
 
 	// this design is a bit awkward because we have to send work items
 	// to Worker now from two places (here and the below loop) because we can't
