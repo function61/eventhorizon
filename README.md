@@ -22,10 +22,10 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 Docs
 ----
 
-- [Quickstart](docs/quickstart.md)
+- [Quickstart](docs/quickstart.md) (for users)
 - [Example app using Pyramid](https://github.com/function61/pyramid-exampleapp-go)
   (best way to grasp what Pyramid is about, but you should also read quickstart)
-- [Building & contributing](docs/building-and-contributing.md)
+- [Building & contributing](docs/building-and-contributing.md) (for developers)
 - [Operating](docs/operating.md)
 - [Security](docs/architecture/security.md)
 - [Network](docs/architecture/network.md)
