@@ -68,9 +68,13 @@ eth0      Link encap:Ethernet  HWaddr 06:2B:12:10:B3:0B
 
 ```
 $ pyramid writer-bootstrap
-2017/03/22 13:31:16 writer-bootstrap: Usage: <WriterIp>
+2017/03/25 16:35:30 writer-bootstrap: Usage: <WriterIp>
 $ pyramid writer-bootstrap 1.2.3.4
-2017/03/22 14:28:30 bootstrap: bootstrapped Writer cluster with {"writer_ip":"1.2.3.4","auth_token":"..."}
+2017/03/25 16:35:51 bootstrap: generating certificate authority
+2017/03/25 16:35:51 bootstrap: generating auth token
+2017/03/25 16:35:51 bootstrap: generating discovery file
+2017/03/25 16:35:51 bootstrap: uploading discovery file to scalablestore
+2017/03/25 16:35:51 bootstrap: bootstrapped Writer cluster for ip 1.2.3.4
 ```
 
 The above command essentially uploads a JSON file to your S3 bucket to let clients
