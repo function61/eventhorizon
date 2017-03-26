@@ -88,10 +88,6 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 				}
 			}
 		} else {
-			if line.Content == "" {
-				log.Printf("Pusher: empty line %v", line)
-			}
-
 			if err := l.adapter.PushHandleEvent(line.Content, tx); err != nil {
 				return nil, err
 			}
