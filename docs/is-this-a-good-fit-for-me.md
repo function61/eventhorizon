@@ -1,18 +1,19 @@
 Is this a good fit for me?
 ==========================
 
-TL;DR: Pyramid is good for EventSourcing, but it is up to you to weigh in if
+TL;DR: Pyramid is good for EventSourcing, but it is up to you to weigh if
 EventSourcing is a good architecture for you.
 
 Like advertised, Pyramid is a good fit for log-based architectures or anything
-in log form like big data.
+else in log form like big data.
 
 In this document I'm going to focus on EventSourcing (a more concrete form of
 log-based architectures) as a use case and if it's a good fit for you.
 
 I'm not going to lie and tell you that EventSourcing is the right tool for you
-or that Pyramid is good for everything else as well. Pyramid is bad as a
-database, but good as a realtime source of truth.
+or that Pyramid is good for everything else as well. Pyramid is bad as an
+operational database, but good as a realtime source of truth or for computing
+something (maybe reports) from large amounts of data over large spans of time.
 
 
 Good things about EventSourcing
@@ -42,6 +43,13 @@ Good things about EventSourcing
   that builds the custom message to be sent to the partner's system.
 - You can use polyglot persistence (= different databases for each optimized use
   case), if that benefits you.
+- If your event database is backed up (Pyramid's use of S3 yields 99.999999999%
+  durability), your **operational databases don't need backups**. **Event stream
+  is the incremental backup**. However, if you only have a single operational
+  database (= single point of failure => you shouldn't, if time to recovery is
+  crucial) and you are concerned about time to recovery, you can always snapshot
+  your database and restore efficiently by applying delta, which you don't have
+  to write code for because Pyramid works by pushing deltas.
 
 
 Bad things about EventSourcing
