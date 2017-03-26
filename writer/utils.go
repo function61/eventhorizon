@@ -16,7 +16,7 @@ func stringArrayToRawLines(contentArr []string) (string, error) {
 
 	for _, line := range contentArr {
 		if strings.Contains(line, "\n") {
-			return "", errors.New("EventstoreWriter.AppendToStream: content cannot contain \n")
+			return "", errors.New("content cannot contain \\n")
 		}
 
 		buf += metaevents.EscapeRegularLine(line) + "\n"

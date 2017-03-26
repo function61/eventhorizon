@@ -25,3 +25,9 @@ func TestStringArrayToRawLines(t *testing.T) {
 	ass.EqualString(t, satrl([]string{"foo", "bar"}), "foo\nbar\n")
 	ass.EqualString(t, satrl([]string{".foo", "\\bar", "baz"}), "\\.foo\n\\\\bar\nbaz\n")
 }
+
+func TestStringArrayToRawLinesFails(t *testing.T) {
+	_, err := stringArrayToRawLines([]string{"foo\nbar"})
+
+	ass.EqualString(t, err.Error(), "content cannot contain \\n")
+}
