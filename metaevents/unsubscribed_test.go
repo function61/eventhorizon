@@ -6,7 +6,7 @@ import (
 )
 
 func TestUnsubscribed(t *testing.T) {
-	isMeta, _, event := Parse(".Unsubscribed {\"subscription_id\":\"6894605c-2a8e\",\"ts\":\"2017-02-27T17:12:31.446Z\"}")
+	isMeta, _, event := Parse("/Unsubscribed {\"subscription_id\":\"6894605c-2a8e\",\"ts\":\"2017-02-27T17:12:31.446Z\"}")
 
 	ass.True(t, isMeta)
 

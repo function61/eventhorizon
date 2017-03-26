@@ -19,7 +19,7 @@ func stringArrayToRawLines(contentArr []string) (string, error) {
 			return "", errors.New("content cannot contain \\n")
 		}
 
-		buf += metaevents.EscapeRegularLine(line) + "\n"
+		buf += metaevents.EncodeRegularLine(line) + "\n"
 	}
 
 	return buf, nil

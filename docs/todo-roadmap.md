@@ -14,7 +14,6 @@ Short-term TODO
 
 - At-rest encryption
 - Have subdir structure for storages as not to have too many files in one dir
-- Have each line have a type prefix (meta line, regular line, binary line etc.)
 - Previous block sha256
 - Stats about stream (# of lines, # of bytes etc.)
 - "Training wheels"? i.e. separate append-only log for backup until we trust

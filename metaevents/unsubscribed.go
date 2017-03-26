@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// .Unsubscribed {"subscription_id":"6894605c-2a8e","ts":"2017-02-27T17:12:31.446Z"}
+// /Unsubscribed {"subscription_id":"6894605c-2a8e","ts":"2017-02-27T17:12:31.446Z"}
 type Unsubscribed struct {
 	SubscriptionId string `json:"subscription_id"`
 	Timestamp      string `json:"ts"`
@@ -14,7 +14,7 @@ type Unsubscribed struct {
 func (u *Unsubscribed) Serialize() string {
 	asJson, _ := json.Marshal(u)
 
-	return ".Unsubscribed " + string(asJson) + "\n"
+	return "/Unsubscribed " + string(asJson) + "\n"
 }
 
 func NewUnsubscribed(subscriptionId string) *Unsubscribed {

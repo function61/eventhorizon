@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// .Subscribed {"subscription_id":"6894605c-2a8e","ts":"2017-02-27T17:12:31.446Z"}
+// /Subscribed {"subscription_id":"6894605c-2a8e","ts":"2017-02-27T17:12:31.446Z"}
 type Subscribed struct {
 	SubscriptionId string `json:"subscription_id"`
 	Timestamp      string `json:"ts"`
@@ -14,7 +14,7 @@ type Subscribed struct {
 func (s *Subscribed) Serialize() string {
 	asJson, _ := json.Marshal(s)
 
-	return ".Subscribed " + string(asJson) + "\n"
+	return "/Subscribed " + string(asJson) + "\n"
 }
 
 func NewSubscribed(subscriptionId string) *Subscribed {

@@ -22,13 +22,22 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 Docs
 ----
 
+How-to's & tutorials:
+
 - [Quickstart](docs/quickstart.md) (for users)
 - [Example app using Pyramid](https://github.com/function61/pyramid-exampleapp-go)
   (best way to grasp what Pyramid is about, but you should also read quickstart)
 - [Building & contributing](docs/building-and-contributing.md) (for developers)
 - [Operating](docs/operating.md)
+
+Architecture:
+
+- [Raw storage format](docs/architecture/raw-storage-format.md)
 - [Security](docs/architecture/security.md)
 - [Network](docs/architecture/network.md)
+
+Meta:
+
 - [TODO & roadmap](docs/todo-roadmap.md)
 - [Alternatives](docs/alternatives.md)
 

@@ -5,48 +5,53 @@ import (
 	"testing"
 )
 
+func TestEncodeRegularLine(t *testing.T) {
+	// empty line
+	ass.EqualString(t, EncodeRegularLine(""), " ")
+
+	// regular line with normal chars
+	ass.EqualString(t, EncodeRegularLine("a"), " a")
+	ass.EqualString(t, EncodeRegularLine("foobar"), " foobar")
+}
+
 func TestUnknownMeta(t *testing.T) {
-	isMeta, line, event := Parse(".poop {\"foo\": \"bar\"}")
+	isMeta, line, event := Parse("/poop {\"foo\": \"bar\"}")
 
 	ass.True(t, isMeta)
 
 	_, castSucceeded := event.(Rotated)
 
 	ass.False(t, castSucceeded)
-	ass.EqualString(t, line, ".poop {\"foo\": \"bar\"}")
+	ass.EqualString(t, line, "poop {\"foo\": \"bar\"}")
 }
 
 func TestRegularText(t *testing.T) {
-	isMeta, line, _ := Parse("foobar")
+	isMeta, line, _ := Parse(" foobar")
 
 	ass.False(t, isMeta)
 	ass.EqualString(t, line, "foobar")
 }
 
 func TestEmptyLine(t *testing.T) {
-	isMeta, line, _ := Parse("")
+	defer func() {
+		ass.EqualString(t, recover().(error).Error(), errorEmptyLine.Error())
+	}()
 
-	ass.False(t, isMeta)
-	ass.EqualString(t, line, "")
+	Parse("")
 }
 
-func TestDotEscapedRegularLine(t *testing.T) {
-	isMeta, line, _ := Parse("\\.Rotated")
+func TestInvalidMetaLine(t *testing.T) {
+	defer func() {
+		ass.EqualString(t, recover().(error).Error(), "Unable to parse meta line: /fooMissingPayload")
+	}()
 
-	ass.False(t, isMeta)
-	ass.EqualString(t, line, ".Rotated")
+	Parse("/fooMissingPayload")
 }
 
-func TestBackslashEscapedRegularLine(t *testing.T) {
-	isMeta, line, _ := Parse("\\\\foo")
+func TestUnknownType(t *testing.T) {
+	defer func() {
+		ass.EqualString(t, recover().(error).Error(), errorUnknownType.Error())
+	}()
 
-	ass.False(t, isMeta)
-	ass.EqualString(t, line, "\\foo")
-}
-
-func TestNotMetaEvent(t *testing.T) {
-	isMeta, line, _ := Parse("yes oh hai")
-
-	ass.False(t, isMeta)
-	ass.EqualString(t, line, "yes oh hai")
+	Parse("yes oh hai")
 }

@@ -21,9 +21,8 @@ func TestStringArrayToRawLines(t *testing.T) {
 		return ret
 	}
 
-	ass.EqualString(t, satrl([]string{"foo"}), "foo\n")
-	ass.EqualString(t, satrl([]string{"foo", "bar"}), "foo\nbar\n")
-	ass.EqualString(t, satrl([]string{".foo", "\\bar", "baz"}), "\\.foo\n\\\\bar\nbaz\n")
+	ass.EqualString(t, satrl([]string{"foo"}), " foo\n")
+	ass.EqualString(t, satrl([]string{"foo", "bar"}), " foo\n bar\n")
 }
 
 func TestStringArrayToRawLinesFails(t *testing.T) {
