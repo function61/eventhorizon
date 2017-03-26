@@ -25,8 +25,8 @@ These low-level details will not leak to consumers, as the reader component pars
 these implementation details into a higher-level representation.
 
 
-1. Meta event line
-------------------
+Type 1: Meta event line
+-----------------------
 
 Meta event lines look like this:
 
@@ -41,8 +41,8 @@ Concrete example (\n omitted):
 ```
 
 
-2. Regular text line
---------------------
+Type 2: Regular text line
+-------------------------
 
 These look like this:
 
