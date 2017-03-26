@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config/configfactory"
 	"github.com/function61/pyramid/pubsub/client"
 	"github.com/function61/pyramid/pubsub/server"
 	"github.com/function61/pyramid/pusher"
 	"github.com/function61/pyramid/pusher/transport"
+	"github.com/function61/pyramid/util/clicommon"
 	"github.com/function61/pyramid/writer"
 	wtypes "github.com/function61/pyramid/writer/types"
 	"github.com/function61/pyramid/writer/writerclient"
@@ -35,7 +35,7 @@ func writer_(args []string) error {
 
 	banner()
 
-	if err := cli.CheckForS3AccessKeys(); err != nil {
+	if err := clicommon.CheckForS3AccessKeys(); err != nil {
 		log.Fatalf("main: %s", err.Error())
 	}
 
@@ -52,7 +52,7 @@ func writer_(args []string) error {
 
 	log.Printf("main: waiting for stop signal")
 
-	log.Println(cli.WaitForInterrupt())
+	log.Println(clicommon.WaitForInterrupt())
 
 	// stop serving HTTP
 
@@ -149,7 +149,7 @@ func pubsubSubscribe(args []string) error {
 		}
 	}()
 
-	cli.WaitForInterrupt()
+	clicommon.WaitForInterrupt()
 
 	pubSubClient.Close()
 
@@ -189,7 +189,7 @@ func pusher_(args []string) error {
 		return usage("<StopOnStdinEof> <Target>")
 	}
 
-	if err := cli.CheckForS3AccessKeys(); err != nil {
+	if err := clicommon.CheckForS3AccessKeys(); err != nil {
 		log.Fatalf("main: %s", err.Error())
 	}
 
@@ -211,14 +211,14 @@ func pusher_(args []string) error {
 		// but is kept open to detect EOF (parent either exited gracefully or
 		// uncleanly - doesn't matter because the OS cleans up the FDs).
 		// http://stackoverflow.com/a/42924532
-		cli.WaitForStdinEof()
+		clicommon.WaitForStdinEof()
 
 		log.Printf("pusher: EOF encountered")
 
 		stdinEofOrInterrupt <- true
 	}()
 	go func() {
-		log.Println(cli.WaitForInterrupt())
+		log.Println(clicommon.WaitForInterrupt())
 
 		stdinEofOrInterrupt <- true
 	}()

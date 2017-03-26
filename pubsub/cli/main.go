@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config/configfactory"
 	"github.com/function61/pyramid/pubsub/server"
+	"github.com/function61/pyramid/util/clicommon"
 	"log"
 )
 
@@ -31,7 +31,7 @@ func main() {
 	} else {
 		pubSubServer := server.New(configfactory.Build())
 
-		log.Println(cli.WaitForInterrupt())
+		log.Println(clicommon.WaitForInterrupt())
 
 		pubSubServer.Close()
 	}

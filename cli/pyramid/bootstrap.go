@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/function61/pyramid/cli"
 	"github.com/function61/pyramid/config/configfactory"
 	ctypes "github.com/function61/pyramid/config/types"
 	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/pyramid/util/clicommon"
 	"github.com/function61/pyramid/util/cryptorandombytes"
 	"github.com/function61/pyramid/util/sslca"
 	"log"
@@ -17,7 +17,7 @@ func writerBootstrap(args []string) error {
 		return usage("<WriterIp>")
 	}
 
-	if err := cli.CheckForS3AccessKeys(); err != nil {
+	if err := clicommon.CheckForS3AccessKeys(); err != nil {
 		log.Fatalf("main: %s", err.Error())
 	}
 
