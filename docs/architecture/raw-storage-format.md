@@ -50,6 +50,13 @@ These look like this:
 " " <line content>
 ```
 
+NOTE: currently, newline (\n) is not allowed in meta or regular lines. It's not a
+problem for meta lines as they're JSON and thus contain \n in escaped form.
+
+Currently, if you need newlines in regular text lines, your best bet is to
+either use JSON or at application level encode/decode the format with escape
+sequences for \n.
+
 Concrete example:
 
 ```
