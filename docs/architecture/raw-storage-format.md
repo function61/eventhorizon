@@ -75,4 +75,4 @@ we could support binary-safe content by allowing \n in the content:
 
 - though that would mean more complex parsing than just splitting by \n
 - for simplicity we would probably implement escape sequences for
-  newline => "\n" and "\" => "\\"
+  newline => "\n" and "\\" => "\\\\"
