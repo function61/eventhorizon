@@ -270,6 +270,7 @@ func main() {
 		"stream-liveread":       streamLiveRead,
 		"pubsub-subscribe":      pubsubSubscribe,
 		"pusher":                pusher_,
+		"reader-read":           readerRead,
 		"writer":                writer_,
 		"writer-bootstrap":      writerBootstrap,
 	}
