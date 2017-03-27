@@ -33,6 +33,7 @@ How-to's & tutorials:
 
 Architecture:
 
+- [Pusher wire protocol](docs/architecture/pusher-wire-protocol.md)
 - [Raw storage format](docs/architecture/raw-storage-format.md)
 - [Security](docs/architecture/security.md)
 - [Network](docs/architecture/network.md)
