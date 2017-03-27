@@ -2,7 +2,7 @@ Pusher wire protocol
 ====================
 
 Pusher is entirely stateless - all it knows is the application's endpoint URL to
-which send the wire protocol requests. It learns the state on-the-fly from the
+which to send the wire protocol requests. It learns the state on-the-fly from the
 app and eventually converges the app's subscription to the realtime state of the
 system.
 
@@ -17,21 +17,21 @@ High-level summary
 
 Direction arrows:
 
-- > Pusher request to App
-- < App response to Pusher
+- -> Pusher request to App
+- <- App response to Pusher
 
 Bootstrapping Pusher state:
 
-- > Resolve subscription ID
-- < Subscription ID response
-- > (Subscription stream) offset resolve request
-- < (Subscription strean) offset resolve response
+- -> Resolve subscription ID
+- <- Subscription ID response
+- -> (Subscription stream) offset resolve request
+- <- (Subscription strean) offset resolve response
 
 Repeat this as long as Pyramid has newer data than app:
 
 - Read newer data from Pyramid
-- > Push that to app
-- < ACK
+- -> Push that to app
+- <- ACK
 
 Pushing any streams, whether they are subscription streams or application data streams
 follows the exact same semantics. From the app's perspective there is nothing
