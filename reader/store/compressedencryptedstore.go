@@ -1,7 +1,11 @@
 package store
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
 	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/cursor"
@@ -65,14 +69,58 @@ import (
 	http://crypto.stackexchange.com/questions/225/should-i-use-ecb-or-cbc-encryption-mode-for-my-block-cipher
 	http://crypto.stackexchange.com/questions/2476/cipher-feedback-mode
 	http://stackoverflow.com/questions/32329512/golang-file-encryption-with-crypto-aes-lib
+
+	Encrypted file format:
+
+		Header
+			Magic bytes
+			IV (AES block size)
+		Body
+			AES
+				Gzip
+					Content
+
+	NOTES:
+
+	- AES is outer layer so we have to encrypt/decrypt less bytes
+
+	Which mode of operation to use
+	------------------------------
+
+	http://stackoverflow.com/a/22958889
+	http://crypto.stackexchange.com/questions/18538/aes256-cbc-vs-aes256-ctr-in-ssh
+
+	CTR (stream mode) was chosen because:
+	- it does not require padding (no padding oracle attack)
+	- it's parallelizable
+	- transmission errors do not snowball
+
+
+	Which bit size to use?
+	----------------------
+
+	Users of AES-256:
+
+	- AWS S3
+	- Truecrypt/Veracrypt
+	- Keepass
+	- Included in TLS best practices (though also recommends 128bit version)
+		- https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices
+
+	https://security.stackexchange.com/questions/14068/why-most-people-use-256-bit-encryption-instead-of-128-bit
+
+	=> will use AES-256
 */
 
-// TODO: implement encryption
+var (
+	headerMagicBytes = []byte("Pyramid-1/AES256_CTR")
+)
 
 type CompressedEncryptedStore struct {
+	confCtx *config.Context
 }
 
-func NewCompressedEncryptedStore() *CompressedEncryptedStore {
+func NewCompressedEncryptedStore(confCtx *config.Context) *CompressedEncryptedStore {
 	if _, err := os.Stat(config.CompressedEncryptedStorePath); os.IsNotExist(err) {
 		log.Printf("CompressedEncryptedStore: mkdir %s", config.CompressedEncryptedStorePath)
 
@@ -81,7 +129,7 @@ func NewCompressedEncryptedStore() *CompressedEncryptedStore {
 		}
 	}
 
-	return &CompressedEncryptedStore{}
+	return &CompressedEncryptedStore{confCtx}
 }
 
 // TODO: this has a race condition. remove this
@@ -105,7 +153,21 @@ func (c *CompressedEncryptedStore) SaveFromLiveFile(cur *cursor.Cursor, fromFd *
 		return err
 	}
 
-	gzipWriter := gzip.NewWriter(resultingFile)
+	iv := generateRandomAesIv()
+
+	// write header section (magic bytes + IV)
+	if _, err := resultingFile.Write(headerMagicBytes); err != nil {
+		panic(err)
+	}
+	if _, err := resultingFile.Write(iv); err != nil {
+		panic(err)
+	}
+
+	// use the resulting file as a sink for AES stream
+	aesWriter := createAesCtrWriterPipe(c.confCtx.GetStreamEncryptionKey(), iv, resultingFile)
+
+	// use AES writer as a sink for gzip stream
+	gzipWriter := gzip.NewWriter(aesWriter)
 
 	// pumps everything from original live file into gzipped file
 	if _, err := io.Copy(gzipWriter, fromFd); err != nil {
@@ -194,13 +256,23 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 
 	decryptionAndExtractionStarted := time.Now()
 
-	gzipReader, err := gzip.NewReader(localCompressedFile)
+	localPath := c.localPath(cur)
+	localPathTempForSeekable := localPath + ".tmp-toseekable"
+
+	// headerPlusIV := [len(headerMagicBytes) + aes.BlockSize]byte{}
+	headerPlusIV := make([]byte, len(headerMagicBytes)+aes.BlockSize)
+	_, err := io.ReadFull(localCompressedFile, headerPlusIV)
 	if err != nil {
 		panic(err)
 	}
 
-	localPath := c.localPath(cur)
-	localPathTempForSeekable := localPath + ".tmp-toseekable"
+	// verify header
+	if !bytes.Equal(headerPlusIV[0:len(headerMagicBytes)], headerMagicBytes) {
+		panic("incorrect header")
+	}
+
+	// extract IV
+	iv := headerPlusIV[len(headerMagicBytes):]
 
 	// truncates if exists (ok because temp file => undefined state)
 	localTempFileForSeekable, openErr := os.Create(localPathTempForSeekable)
@@ -208,6 +280,19 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 		panic(openErr)
 	}
 
+	// feed AES stream from the file
+	aesReader := createAesCtrReaderPipe(
+		c.confCtx.GetStreamEncryptionKey(),
+		iv,
+		localCompressedFile)
+
+	// feed Gzip decoder stream from AES stream
+	gzipReader, err := gzip.NewReader(aesReader)
+	if err != nil {
+		panic(err)
+	}
+
+	// feed seekable file from uncompressed & decrypted stream
 	if _, err := io.Copy(localTempFileForSeekable, gzipReader); err != nil {
 		panic(err)
 	}
@@ -223,4 +308,43 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 
 func (c *CompressedEncryptedStore) localPath(cur *cursor.Cursor) string {
 	return fmt.Sprintf("%s/%s", config.CompressedEncryptedStorePath, cur.ToChunkSafePath())
+}
+
+func createAesCtrReaderPipe(encryptionKey []byte, iv []byte, input io.Reader) io.Reader {
+	aesCipher, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		panic(err)
+	}
+
+	decrypterReaderWrapper := &cipher.StreamReader{
+		S: cipher.NewCTR(aesCipher, iv),
+		R: input,
+	}
+
+	return decrypterReaderWrapper
+}
+
+func createAesCtrWriterPipe(encryptionKey []byte, iv []byte, writer io.Writer) io.Writer {
+	aesCipher, err := aes.NewCipher(encryptionKey)
+	if err != nil {
+		panic(err)
+	}
+
+	encrypterWriterWrapper := &cipher.StreamWriter{
+		S: cipher.NewCTR(aesCipher, iv),
+		W: writer,
+	}
+
+	return encrypterWriterWrapper
+}
+
+func generateRandomAesIv() []byte {
+	// IV size must equal block size
+	iv := make([]byte, aes.BlockSize)
+
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+
+	return iv
 }

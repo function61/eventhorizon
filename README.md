@@ -16,7 +16,7 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 | High availability          | Planned, going to use Hashicorp's Raft implementation.                                   |
 | Data stored at             | AWS S3. Google Storage support planned.                                                  |
 | Encryption at transport    | TLS (CA & server certs automatically managed)                                            |
-| Encryption at rest         | AES-CBC. Encryption keys are not trusted to AWS (=> not using S3 server-side encryption) |
+| Encryption at rest         | AES256-CTR. Encryption keys are not trusted to AWS.                                      |
 | Security                   | [Our security policy & information](https://function61.com/security/)                    |
 
 

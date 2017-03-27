@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/function61/pyramid/config"
 	"github.com/function61/pyramid/config/configfactory"
 	ctypes "github.com/function61/pyramid/config/types"
 	"github.com/function61/pyramid/scalablestore"
@@ -31,13 +32,18 @@ func writerBootstrap(args []string) error {
 
 	authToken := cryptorandombytes.Hex(16)
 
+	log.Printf("bootstrap: generating encryption master key")
+
+	encryptionMasterKey := cryptorandombytes.Hex(config.AesKeyLenBytes)
+
 	log.Printf("bootstrap: generating discovery file")
 
 	discoveryFile := ctypes.DiscoveryFile{
-		WriterIp:      writerIp,
-		AuthToken:     authToken,
-		CaCertificate: string(caCert),
-		CaPrivateKey:  string(caPrivateKey),
+		WriterIp:            writerIp,
+		AuthToken:           authToken,
+		CaCertificate:       string(caCert),
+		CaPrivateKey:        string(caPrivateKey),
+		EncryptionMasterKey: encryptionMasterKey,
 	}
 
 	discoveryFileJson, err := json.MarshalIndent(discoveryFile, "", "    ")

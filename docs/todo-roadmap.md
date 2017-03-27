@@ -12,7 +12,6 @@ Long term roadmap
 Short-term TODO
 ---------------
 
-- At-rest encryption
 - Have subdir structure for storages as not to have too many files in one dir
 - Previous block sha256
 - Stats about stream (# of lines, # of bytes etc.)

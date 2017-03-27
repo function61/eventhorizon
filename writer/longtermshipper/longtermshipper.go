@@ -45,7 +45,7 @@ type Shipper struct {
 func New(confCtx *config.Context) *Shipper {
 	return &Shipper{
 		shipmentOperationsDone:   &sync.WaitGroup{},
-		compressedEncryptedStore: store.NewCompressedEncryptedStore(),
+		compressedEncryptedStore: store.NewCompressedEncryptedStore(confCtx),
 		s3Manager:                scalablestore.NewS3Manager(confCtx),
 	}
 }
@@ -94,7 +94,7 @@ func (s *Shipper) Ship(ltsf *wtypes.LongTermShippableFile, database *bolt.DB) {
 func (s *Shipper) shipOne(ltsf *wtypes.LongTermShippableFile) error {
 	started := time.Now()
 
-	log.Printf("Shipper: compressing %s", ltsf.Block.ToChunkPath())
+	log.Printf("Shipper: compressing & encrypting %s", ltsf.Block.ToChunkPath())
 
 	fd, err := os.Open(ltsf.FilePath)
 	if err != nil {

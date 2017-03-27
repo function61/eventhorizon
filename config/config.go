@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"fmt"
 	ctypes "github.com/function61/pyramid/config/types"
 	"github.com/function61/pyramid/util/sslca"
@@ -15,6 +16,9 @@ const (
 	SeekableStorePath = "/pyramid-data/store-seekable"
 
 	CompressedEncryptedStorePath = "/pyramid-data/store-compressed_and_encrypted"
+
+	// using AES-256
+	AesKeyLenBytes = 32
 
 	BoltDbDir = "/pyramid-data"
 
@@ -101,4 +105,23 @@ func (c *Context) GetSignedServerCertificate() tls.Certificate {
 	}
 
 	return *c.serverKeyPair
+}
+
+// TODO: have separate key per stream, provisioned in ChildStreamCreated? the
+// only drawback is that then you cannot directly access streams by knowing
+// their name, but rather walk to the stream hierarchy from the root stream to
+// the leaf.
+// TODO: do not store this (at least in plaintext) in scalablestore
+func (c *Context) GetStreamEncryptionKey() []byte {
+	encryptionMasterKeyBytes := make([]byte, hex.DecodedLen(len(c.discovery.EncryptionMasterKey)))
+
+	if _, err := hex.Decode(encryptionMasterKeyBytes, []byte(c.discovery.EncryptionMasterKey)); err != nil {
+		panic(err)
+	}
+
+	if len(encryptionMasterKeyBytes) != AesKeyLenBytes {
+		panic("invalid key len")
+	}
+
+	return encryptionMasterKeyBytes
 }
