@@ -99,8 +99,6 @@ HTTP/1.1 200 OK
 {
 	"Code": "incorrect_base_offset",
 	"AcceptedOffset": "/_sub/example-sub:0:0:?",
-	"CorrectSubscriptionId": "",
-	"BehindCursors": null
 }
 ```
 
@@ -112,7 +110,7 @@ further from the beginning.
 Actual push
 -----------
 
-Now we know app's position on the subscription. Now Pusher does a read against
+Now we know app's position in the subscription. Now Pusher does a read against
 Pyramid and push those events to the app:
 
 ```
@@ -175,7 +173,6 @@ HTTP/1.1 200 OK
 {
 	"Code": "success",
 	"AcceptedOffset": "/_sub/example-sub:0:65:127.0.0.1",
-	"CorrectSubscriptionId": "",
 	"BehindCursors": ["/sampledata:0:0:?"]
 }
 ```
@@ -186,17 +183,20 @@ are hints into other streams that the app is subscribed to, that have had new
 activity.
 
 The app acks the subscription stream forward as long as none of the mentioned
-streams' pointer is ahead. In this case, that acked offset was `/_sub/example-sub:0:65`,
-which tells us that the app acked the `Created` meta event, but stopped at the
-first `SubscriptionActivity` it saw. That means that the app has never touched
-the `/sampledata` stream.
+streams' pointers are ahead.
+
+In this case, the acked offset was `/_sub/example-sub:0:65`, which tells us that
+the app acked the `Created` meta event, but stopped at the first
+`SubscriptionActivity` it saw. That means that the app has never touched the
+`/sampledata` stream.
 
 To help Pusher, the app fills in `BehindCursors` list, which is a list of all
 the unique streams the app saw in all `SubscriptionActivity` that it processed,
-(even if app started acking at the first non-synced cursor).
+that were behind. The app scans all those events it sees, even if the very first
+event indicates a behind cursor.
 
-Pusher now starts workers for each streams that are behind for the app, and
-starts pushing those streams' updates.
+Pusher now starts workers for each streams that are behind for the, and starts
+pushing those streams' updates.
 
 Pusher periodically tries to re-push the subscription stream, and when the app
 has moved forward with the other streams referred to in the subscription stream,
@@ -259,7 +259,7 @@ POST /_pyramid_push?auth=8c382056 HTTP/1.1
 As you can see, stream `/sampledata` consisted of these events:
 
 - Created event (the very first event of all streams)
-- Subscription event (this records that we subscribed to this stream)
+- Subscription event (this records that the app subscribed to this stream)
 - Three dummy application-level events with just timestamps in them.
 
 App responds by ACKing the stream all the way to the top:
@@ -270,7 +270,9 @@ HTTP/1.1 200 OK
 {
 	"Code": "success",
 	"AcceptedOffset": "/sampledata:0:231:127.0.0.1",
-	"CorrectSubscriptionId": "",
 	"BehindCursors": []
 }
 ```
+
+When Pusher re-pushes the subscription stream, app now ACKs `/sampledata` forward
+as long as there are no unseen cursors in it.
