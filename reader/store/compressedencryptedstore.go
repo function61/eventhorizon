@@ -99,7 +99,8 @@ func (c *CompressedEncryptedStore) SaveFromLiveFile(cur *cursor.Cursor, fromFd *
 	localPath := c.localPath(cur)
 	localPathTemp := localPath + ".tmp-fromlive"
 
-	resultingFile, err := os.OpenFile(localPathTemp, os.O_RDWR|os.O_CREATE, 0755)
+	// truncates if exists (ok because temp file => undefined state)
+	resultingFile, err := os.Create(localPathTemp)
 	if err != nil {
 		return err
 	}
@@ -201,7 +202,8 @@ func (c *CompressedEncryptedStore) ExtractToSeekableStore(cur *cursor.Cursor, se
 	localPath := c.localPath(cur)
 	localPathTempForSeekable := localPath + ".tmp-toseekable"
 
-	localTempFileForSeekable, openErr := os.OpenFile(localPathTempForSeekable, os.O_RDWR|os.O_CREATE, 0755)
+	// truncates if exists (ok because temp file => undefined state)
+	localTempFileForSeekable, openErr := os.Create(localPathTempForSeekable)
 	if openErr != nil {
 		panic(openErr)
 	}
