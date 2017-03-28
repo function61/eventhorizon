@@ -148,7 +148,7 @@ func (l *Library) isRemoteAhead(remote *cursor.Cursor, tx interface{}) (*cursor.
 	}
 }
 
-// attach to receive Pusher's pushes at a defined path, example: "/_pyramid_push?auth=a1ae4d61"
+// attach to receive Pusher's pushes at a defined path, example: "/_pyramid_push"
 func (l *Library) AttachPushHandler(path string, authToken string) {
 	http.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("auth") != authToken {
