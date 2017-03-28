@@ -195,7 +195,7 @@ the unique streams the app saw in all `SubscriptionActivity` that it processed,
 that were behind. The app scans all those events it sees, even if the very first
 event indicates a behind cursor.
 
-Pusher now starts workers for each streams that are behind for the, and starts
+Pusher now starts workers for each streams that are behind for the app, and starts
 pushing those streams' updates.
 
 Pusher periodically tries to re-push the subscription stream, and when the app
@@ -274,5 +274,5 @@ HTTP/1.1 200 OK
 }
 ```
 
-When Pusher re-pushes the subscription stream, app now ACKs `/sampledata` forward
-as long as there are no unseen cursors in it.
+When Pusher re-pushes the subscription stream, app now ACKs `/sampledata`'s
+`SubscriptionActivity` events forward as long as there are no behind cursors in it.

@@ -31,7 +31,7 @@ Type 1: Meta event line
 Meta event lines look like this:
 
 ```
-"/" <meta event type> <meta event payload>
+"/" <meta event type> <JSON payload>
 ```
 
 Concrete example (\n omitted):
@@ -50,13 +50,6 @@ These look like this:
 " " <line content>
 ```
 
-NOTE: currently, newline (\n) is not allowed in meta or regular lines. It's not a
-problem for meta lines as they're JSON and thus contain \n in escaped form.
-
-Currently, if you need newlines in regular text lines, your best bet is to
-either use JSON or at application level encode/decode the format with escape
-sequences for \n.
-
 Concrete example:
 
 ```
@@ -66,11 +59,16 @@ Concrete example:
 Notice the leading space. The space was chosen to keep the 99 % case looking
 as normal/noise-less as possible.
 
+NOTE: currently, newline (\n) is not allowed in meta or regular lines. It's not a
+problem for meta lines as they're JSON and thus contain \n in escaped form. If you
+need newlines in regular text lines, your best bet is to either use JSON or at
+application level encode/decode the format with escape sequences for \n.
+
 
 Encountering any other line type
 --------------------------------
 
-Encountering any other types should result in an error, because you cannot know
+Encountering any other types MUST result in an error, because you cannot know
 how to parse it. They are used for future extensibility.
 
 

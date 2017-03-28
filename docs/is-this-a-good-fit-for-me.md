@@ -5,7 +5,7 @@ TL;DR: Pyramid is good for EventSourcing, but it is up to you to weigh if
 EventSourcing is a good architecture for you.
 
 Like advertised, Pyramid is a good fit for log-based architectures or anything
-else in log form like big data.
+else in log form (like big data).
 
 In this document I'm going to focus on EventSourcing (a more concrete form of
 log-based architectures) as a use case and if it's a good fit for you.
@@ -14,6 +14,9 @@ I'm not going to lie and tell you that EventSourcing is the right tool for you
 or that Pyramid is good for everything else as well. Pyramid is bad as an
 operational database, but good as a realtime source of truth or for computing
 something (maybe reports) from large amounts of data over large spans of time.
+
+If you don't yet know about log-based architectures, this is a good read:
+https://www.confluent.io/blog/using-logs-to-build-a-solid-data-infrastructure-or-why-dual-writes-are-a-bad-idea/
 
 
 Good things about EventSourcing
@@ -25,7 +28,7 @@ Good things about EventSourcing
 - Separation of read and write models. Your events are the only write model - your
   read model is how you project those events into your database. It is easier to
   model events based on what happens in the real world, because you don't have
-  to think how that is modelled in the database.
+  to think how that is modeled in the database.
 - Easily separate your operational and analytical databases. They both can have
   optimized data models for their use cases.
 - Enables downtime-free architecture (planned maintenance - unplanned downtime
