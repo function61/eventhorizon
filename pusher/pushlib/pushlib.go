@@ -48,7 +48,7 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 		return ptypes.NewPushOutputIncorrectSubscriptionId(l.subscriptionId), nil
 	}
 
-	fromOffset := cursor.CursorFromserializedMust(input.Read.FromOffset)
+	fromOffset := cursor.CursorFromserializedMust(input.Push.FromOffset)
 
 	// ensure that Pusher is continuing Push of the stream from the stream
 	// offset that we last saved
@@ -68,7 +68,7 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 
 	behindCursors := make(map[string]string)
 
-	for _, line := range input.Read.Lines {
+	for _, line := range input.Push.Lines {
 		if line.MetaType == metaevents.SubscriptionActivityId {
 			payload := line.MetaPayload.(map[string]interface{})
 			activity := payload["activity"].([]interface{})

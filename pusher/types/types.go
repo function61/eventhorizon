@@ -12,22 +12,20 @@ const (
 
 type PushInput struct {
 	SubscriptionId string
-	// TODO: rename to push, fix in wire protocol doc
-	// also link to this file from it
-	Read           *rtypes.ReadResult
+	Push           *rtypes.ReadResult
 }
 
 func NewPushInput(subscriptionId string, readResult *rtypes.ReadResult) *PushInput {
 	return &PushInput{
 		SubscriptionId: subscriptionId,
-		Read:           readResult,
+		Push:           readResult,
 	}
 }
 
 type PushOutput struct {
 	Code                  string
 	AcceptedOffset        string
-	CorrectSubscriptionId string // omit if empty?
+	CorrectSubscriptionId string `json:",omitempty"`
 	BehindCursors         []string
 }
 

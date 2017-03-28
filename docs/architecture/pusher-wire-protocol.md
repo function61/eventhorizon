@@ -11,6 +11,8 @@ with the same JSON stuff going in regardless of Pusher's state. If Pusher doesn'
 know something, it sends a dummy value and receives the correct value back with
 normal flow of validation that the app must do in every normal request anyway.
 
+The [protocol definition](../../pusher/types/types.go) is really simple.
+
 
 High-level summary
 ------------------
@@ -51,7 +53,7 @@ POST /_pyramid_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "_query_",
-	"Read": {
+	"Push": {
 		"FromOffset": "/:-1:-1",
 		"Lines": []
 	}
@@ -84,7 +86,7 @@ POST /_pyramid_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",
-	"Read": {
+	"Push": {
 		"FromOffset": "/_sub/example-sub:-1:-1",
 		"Lines": []
 	}
@@ -118,7 +120,7 @@ POST /_pyramid_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",
-	"Read": {
+	"Push": {
 		"FromOffset": "/_sub/example-sub:0:0:127.0.0.1",
 		"Lines": [{
 			"PtrAfter": "/_sub/example-sub:0:65:127.0.0.1",
@@ -218,7 +220,7 @@ POST /_pyramid_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",
-	"Read": {
+	"Push": {
 		"FromOffset": "/sampledata:0:0:127.0.0.1",
 		"Lines": [{
 			"PtrAfter": "/sampledata:0:65:127.0.0.1",
