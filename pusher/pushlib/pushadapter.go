@@ -30,12 +30,13 @@ type PushAdapter interface {
 	//
 	//     1) start transaction
 	//     2) call back to pushlib with "run" with the transaction, after which pusher calls:
+	//        - PushGetOffset()
 	//        - PushHandleEvent() multiple times
-	//        - PushSetOffset() once
+	//        - PushSetOffset()
 	//     3) app gets back error state from "run" callback indicating if anything went
 	//        wrong. if we get error back we must rollback the transaction, otherwise commit.
-	PushWrapTransaction(func(tx interface{}) error) error
-	PushGetOffset(stream string, tx interface{}) (string, bool)
+	PushWrapTransaction(run func(tx interface{}) error) error
+	PushGetOffset(stream string, tx interface{}) (string, error)
 	PushSetOffset(stream string, offset string, tx interface{}) error
 	PushHandleEvent(line *rtypes.ReadResultLine, tx interface{}) error
 }

@@ -41,6 +41,7 @@ func (l *Library) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	return output, err
 }
 
+// TODO: return nice PushOutput-level errors?
 func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes.PushOutput, error) {
 	// ensure that subscription ID is correct
 	if input.SubscriptionId != l.subscriptionId {
@@ -51,7 +52,10 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 
 	// ensure that Pusher is continuing Push of the stream from the stream
 	// offset that we last saved
-	ourOffset := l.queryOffset(fromOffset.Stream, tx)
+	ourOffset, err := l.queryOffset(fromOffset.Stream, tx)
+	if err != nil {
+		return nil, err
+	}
 
 	if !fromOffset.PositionEquals(ourOffset) {
 		return ptypes.NewPushOutputIncorrectBaseOffset(ourOffset.Serialize()), nil
@@ -83,7 +87,10 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 				_, weAlreadyKnowThisStreamIsBehind := behindCursors[remoteCursor.Stream]
 
 				if !weAlreadyKnowThisStreamIsBehind {
-					shouldStartFrom := l.isRemoteAhead(remoteCursor, tx)
+					shouldStartFrom, err := l.isRemoteAhead(remoteCursor, tx)
+					if err != nil {
+						return nil, err
+					}
 
 					if shouldStartFrom != nil {
 						log.Printf("Library: remote ahead of us: %s", remoteCursorSerialized)
@@ -112,26 +119,32 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 	return ptypes.NewPushOutputSuccess(acceptedOffset, stringMapToSlice(behindCursors)), nil
 }
 
-func (l *Library) queryOffset(stream string, tx interface{}) *cursor.Cursor {
-	cursorSerialized, exists := l.adapter.PushGetOffset(stream, tx)
+func (l *Library) queryOffset(stream string, tx interface{}) (*cursor.Cursor, error) {
+	cursorSerialized, err := l.adapter.PushGetOffset(stream, tx)
+	if err != nil {
+		return nil, err
+	}
 
 	// we can trust that it is a valid stream because all pushes are based on
 	// the subscription ID that is exclusive to us. so if stream does not exist
 	// => allow it to be created
-	if !exists {
-		return cursor.BeginningOfStream(stream, cursor.UnknownServer)
+	if cursorSerialized == "" {
+		return cursor.BeginningOfStream(stream, cursor.UnknownServer), nil
 	}
 
-	return cursor.CursorFromserializedMust(cursorSerialized)
+	return cursor.CursorFromserializedMust(cursorSerialized), nil
 }
 
-func (l *Library) isRemoteAhead(remote *cursor.Cursor, tx interface{}) *cursor.Cursor {
-	ourCursor := l.queryOffset(remote.Stream, tx)
+func (l *Library) isRemoteAhead(remote *cursor.Cursor, tx interface{}) (*cursor.Cursor, error) {
+	ourCursor, err := l.queryOffset(remote.Stream, tx)
+	if err != nil {
+		return nil, err
+	}
 
 	if remote.IsAheadComparedTo(ourCursor) {
-		return ourCursor
+		return ourCursor, nil
 	} else {
-		return nil
+		return nil, nil
 	}
 }
 
