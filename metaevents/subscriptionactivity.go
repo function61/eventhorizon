@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const SubscriptionActivityId = "SubscriptionActivity"
+
 // /SubscriptionActivity {"activity": ["/tenants/foo:0:700", "/tenants/bar:245:14"], "ts":"2017-02-27T17:12:31.446Z"}
 type SubscriptionActivity struct {
 	Activity  []string `json:"activity"` // each unique stream is mentioned only once

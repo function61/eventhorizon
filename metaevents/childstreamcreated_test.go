@@ -6,9 +6,9 @@ import (
 )
 
 func TestChildStreamCreated(t *testing.T) {
-	isMeta, _, event := Parse("/ChildStreamCreated {\"child_stream\": \"/tenants/foo:0:0\", \"ts\":\"2017-02-27T17:12:31.446Z\"}")
+	metaType, _, event := Parse("/ChildStreamCreated {\"child_stream\": \"/tenants/foo:0:0\", \"ts\":\"2017-02-27T17:12:31.446Z\"}")
 
-	ass.True(t, isMeta)
+	ass.True(t, metaType == ChildStreamCreatedId)
 
 	childStreamCreated := event.(ChildStreamCreated)
 

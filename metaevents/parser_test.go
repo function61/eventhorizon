@@ -15,20 +15,20 @@ func TestEncodeRegularLine(t *testing.T) {
 }
 
 func TestUnknownMeta(t *testing.T) {
-	isMeta, line, event := Parse("/poop {\"foo\": \"bar\"}")
+	metaType, line, event := Parse("/poop {\"foo\": \"bar\"}")
 
-	ass.True(t, isMeta)
+	ass.True(t, metaType == "poop")
 
 	_, castSucceeded := event.(Rotated)
 
 	ass.False(t, castSucceeded)
-	ass.EqualString(t, line, "poop {\"foo\": \"bar\"}")
+	ass.EqualString(t, line, "{\"foo\": \"bar\"}")
 }
 
 func TestRegularText(t *testing.T) {
-	isMeta, line, _ := Parse(" foobar")
+	metaType, line, _ := Parse(" foobar")
 
-	ass.False(t, isMeta)
+	ass.True(t, metaType == "")
 	ass.EqualString(t, line, "foobar")
 }
 

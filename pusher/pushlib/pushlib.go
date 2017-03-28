@@ -7,6 +7,7 @@ package pushlib
 import (
 	"encoding/json"
 	"github.com/function61/pyramid/cursor"
+	"github.com/function61/pyramid/metaevents"
 	ptypes "github.com/function61/pyramid/pusher/types"
 	"log"
 	"net/http"
@@ -64,12 +65,16 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 	behindCursors := make(map[string]string)
 
 	for _, line := range input.Read.Lines {
-		if line.IsMeta {
+		if line.MetaType == metaevents.SubscriptionActivityId {
+			payload := line.MetaPayload.(map[string]interface{})
+			activity := payload["activity"].([]interface{})
+
 			// everything we encounter in SubscriptionActivity is something we ourselves
 			// have subscribed to, so we can just check:
 			// => if we're behind
 			// => if we're never heard of the stream => start following it
-			for _, remoteCursorSerialized := range line.SubscriptionActivity {
+			for _, remoteCursorSerialized_ := range activity {
+				remoteCursorSerialized := remoteCursorSerialized_.(string)
 				remoteCursor := cursor.CursorFromserializedMust(remoteCursorSerialized)
 
 				// see if this stream's behind-ness is already confirmed as behind?
@@ -87,10 +92,10 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 					}
 				}
 			}
-		} else {
-			if err := l.adapter.PushHandleEvent(line.Content, tx); err != nil {
-				return nil, err
-			}
+		}
+
+		if err := l.adapter.PushHandleEvent(&line, tx); err != nil {
+			return nil, err
 		}
 
 		// only ACK offsets if no behind streams encountered

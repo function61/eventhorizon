@@ -22,14 +22,14 @@ func EncodeRegularLine(input string) string {
 }
 
 // parses both regular and meta event lines
-func Parse(line string) (isMeta bool, lineContent string, metaEvent interface{}) {
+func Parse(line string) (metaType string, lineContent string, metaEvent interface{}) {
 	// this shouldn't happen, but [0] would panic so
 	if len(line) == 0 {
 		panic(errorEmptyLine)
 	}
 
 	if line[0:1] == " " {
-		return false, line[1:], nil
+		return "", line[1:], nil
 	}
 
 	if line[0:1] != "/" {
@@ -55,44 +55,44 @@ func Parse(line string) (isMeta bool, lineContent string, metaEvent interface{})
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	} else if typ == "Created" {
 		obj := Created{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	} else if typ == "Subscribed" {
 		obj := Subscribed{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	} else if typ == "Unsubscribed" {
 		obj := Unsubscribed{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	} else if typ == "ChildStreamCreated" {
 		obj := ChildStreamCreated{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	} else if typ == "SubscriptionActivity" {
 		obj := SubscriptionActivity{}
 		if err := json.Unmarshal([]byte(payload), &obj); err != nil {
 			panic(errors.New("Unable to parse meta line: " + typ))
 		}
 
-		return true, line[1:], obj
+		return typ, payload, obj
 	}
 
 	// do not crash if we encounter unknown meta types
-	return true, line[1:], nil
+	return typ, payload, nil
 }

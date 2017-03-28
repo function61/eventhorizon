@@ -3,6 +3,10 @@ package pushlib
 // this is the interface your application has to fulfill in order to receive
 // pushes from Pusher over HTTP + JSON
 
+import (
+	rtypes "github.com/function61/pyramid/reader/types"
+)
+
 /*	Sequence of events, success:
 	----------------------------
 
@@ -33,5 +37,5 @@ type PushAdapter interface {
 	PushWrapTransaction(func(tx interface{}) error) error
 	PushGetOffset(stream string, tx interface{}) (string, bool)
 	PushSetOffset(stream string, offset string, tx interface{}) error
-	PushHandleEvent(eventSerialized string, tx interface{}) error
+	PushHandleEvent(line *rtypes.ReadResultLine, tx interface{}) error
 }

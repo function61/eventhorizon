@@ -6,9 +6,9 @@ import (
 )
 
 func TestCreated(t *testing.T) {
-	isMeta, _, event := Parse("/Created {\"ts\":\"2017-02-27T17:12:31.446Z\"}")
+	metaType, _, event := Parse("/Created {\"ts\":\"2017-02-27T17:12:31.446Z\"}")
 
-	ass.True(t, isMeta)
+	ass.True(t, metaType == CreatedId)
 
 	created := event.(Created)
 

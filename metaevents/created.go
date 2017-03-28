@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const CreatedId = "Created"
+
 // /Created {"subscription_ids": "89a3c083-6396", "ts":"2017-02-27T17:12:31.446Z"}
 type Created struct {
 	SubscriptionIds []string `json:"subscription_ids"`

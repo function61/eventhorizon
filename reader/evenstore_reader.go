@@ -2,6 +2,7 @@ package reader
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/function61/pyramid/config"
@@ -147,29 +148,26 @@ func parseFromReader(reader io.Reader, cur *cursor.Cursor, opts *rtypes.ReadOpti
 			previousCursor.Offset+rawLineLen,
 			previousCursor.Server)
 
-		isMetaEvent, parsedLine, event := metaevents.Parse(rawLine)
+		metaType, parsedLine, event := metaevents.Parse(rawLine)
 
-		// as a convenience, parse & unpack SubscriptionActivity events' stream
-		// activity in the resulting data structure, as not to *require* Targets
-		// to have the capability to parse meta events
-		activityUnpacked := []string{}
+		var metaPayload interface{} = nil
 
-		if isMetaEvent {
-			rotated, isRotated := event.(metaevents.Rotated)
-			subscriptionActivity, isSubscriptionActivity := event.(metaevents.SubscriptionActivity)
-
-			if isRotated {
+		if metaType != "" {
+			if metaType == metaevents.RotatedId {
+				rotated := event.(metaevents.Rotated)
 				newCursor = cursor.CursorFromserializedMust(rotated.Next)
-			} else if isSubscriptionActivity {
-				activityUnpacked = append(activityUnpacked, subscriptionActivity.Activity...)
+			}
+
+			if err := json.Unmarshal([]byte(parsedLine), &metaPayload); err != nil {
+				panic(err)
 			}
 		}
 
 		readResultLine := rtypes.ReadResultLine{
-			IsMeta:               isMetaEvent,
-			PtrAfter:             newCursor.Serialize(),
-			Content:              parsedLine,
-			SubscriptionActivity: activityUnpacked,
+			PtrAfter:    newCursor.Serialize(),
+			Content:     parsedLine,
+			MetaType:    metaType,
+			MetaPayload: metaPayload,
 		}
 
 		readResult.Lines = append(readResult.Lines, readResultLine)

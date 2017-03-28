@@ -7,9 +7,9 @@ import (
 )
 
 func TestSubscriptionActivity(t *testing.T) {
-	isMeta, _, event := Parse("/SubscriptionActivity {\"activity\": [\"/tenants/foo:0:700\", \"/tenants/bar:245:14\"], \"ts\":\"2017-02-27T17:12:31.446Z\"}")
+	metaType, _, event := Parse("/SubscriptionActivity {\"activity\": [\"/tenants/foo:0:700\", \"/tenants/bar:245:14\"], \"ts\":\"2017-02-27T17:12:31.446Z\"}")
 
-	ass.True(t, isMeta)
+	ass.True(t, metaType == SubscriptionActivityId)
 
 	subscriptionActivity := event.(SubscriptionActivity)
 

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const ChildStreamCreatedId = "ChildStreamCreated"
+
 // /ChildStreamCreated {"child_stream": "/tenants/foo:0:0", "ts":"2017-02-27T17:12:31.446Z"}
 type ChildStreamCreated struct {
 	ChildStream string `json:"child_stream"`

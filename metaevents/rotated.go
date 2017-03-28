@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const RotatedId = "Rotated"
+
 // /Rotated {"next":"/tenants/foo:1:0:127.0.0.1","ts":"2017-03-03T19:33:49.709Z"}
 type Rotated struct {
 	Next      string `json:"next"`
