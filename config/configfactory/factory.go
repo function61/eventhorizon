@@ -16,11 +16,17 @@ import (
 
 const (
 	DiscoveryFileRemotePath = "/_discovery.json"
-
-	discoveryfileCachePath = "/tmp/discovery.json"
 )
 
 func Build() *config.Context {
+	if _, err := os.Stat(config.BoltDbDir); os.IsNotExist(err) {
+		log.Printf("configfactory: mkdir %s", config.BoltDbDir)
+
+		if err = os.MkdirAll(config.BoltDbDir, 0755); err != nil {
+			panic(err)
+		}
+	}
+
 	discovery, err := readCachedDiscovery()
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -49,7 +55,7 @@ func NewBootstrap() *config.Context {
 }
 
 func readCachedDiscovery() (*ctypes.DiscoveryFile, error) {
-	buf, err := ioutil.ReadFile(discoveryfileCachePath)
+	buf, err := ioutil.ReadFile(config.BoltDbDir + "/_discovery.json")
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +79,7 @@ func retrieveDiscoveryAndCache(confCtx *config.Context) error {
 		return err
 	}
 
-	fd, err := os.Create(discoveryfileCachePath)
+	fd, err := os.Create(config.BoltDbDir + "/_discovery.json")
 	if err != nil {
 		return err
 	}
