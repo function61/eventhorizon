@@ -29,7 +29,9 @@ How-to's & tutorials:
 
 - [Quickstart](docs/quickstart.md) (for users)
 - [Example app using Pyramid](https://github.com/function61/pyramid-exampleapp-go)
-  (best way to grasp what Pyramid is about, but you should also read quickstart)
+	- Best way to grasp what Pyramid is about, but you should also read quickstart.
+	- Feature highlight: how to live-migrate a under-heavy-writes service with
+	  zero downtime.
 - [Building & contributing](docs/building-and-contributing.md) (for developers)
 - [Operating](docs/operating.md)
 
