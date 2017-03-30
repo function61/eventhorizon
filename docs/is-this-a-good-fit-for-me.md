@@ -23,6 +23,8 @@ Good things about EventSourcing
 -------------------------------
 
 - Guaranteed audit log of everything.
+- [Engineering zero-downtime systems with live migrations are quite possible](https://github.com/function61/pyramid-exampleapp-go),
+  even to an entirely different software stack.
 - EventSourcing has huge scalability if implemented well.
 - EventSourcing is the only type of model that doesn't lose any data.
 - Separation of read and write models. Your events are the only write model - your
