@@ -34,7 +34,7 @@ $ docker run --rm -it -e STORE=s3://... fn61/pyramid sh
 You should now be able to issue commands against the Writer cluster:
 
 ```
-$ pyramid stream-liveread /:0:0 10
+$ pyramid reader-read /:0:0:? 10
 ```
 
 To exit from the container, hit `Ctrl + d` and the temporary container will be deleted.
@@ -56,5 +56,5 @@ $ export STORE=s3://...
 Now you should be able to connect to Pyramid:
 
 ```
-$ pyramid stream-liveread /:0:0 10
+$ pyramid reader-read /:0:0:? 10
 ```
