@@ -5,22 +5,22 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
-	ctypes "github.com/function61/pyramid/config/types"
-	"github.com/function61/pyramid/util/sslca"
+	ctypes "github.com/function61/eventhorizon/config/types"
+	"github.com/function61/eventhorizon/util/sslca"
 	"net/url"
 )
 
 const (
-	WalManagerDataDir = "/pyramid-data/store-live"
+	WalManagerDataDir = "/eventhorizon-data/store-live"
 
-	SeekableStorePath = "/pyramid-data/store-seekable"
+	SeekableStorePath = "/eventhorizon-data/store-seekable"
 
-	CompressedEncryptedStorePath = "/pyramid-data/store-compressed_and_encrypted"
+	CompressedEncryptedStorePath = "/eventhorizon-data/store-compressed_and_encrypted"
 
 	// using AES-256
 	AesKeyLenBytes = 32
 
-	BoltDbDir = "/pyramid-data"
+	BoltDbDir = "/eventhorizon-data"
 
 	WriterHttpPort = 9092
 

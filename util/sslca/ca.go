@@ -23,7 +23,7 @@ import (
 // Some code borrowed from https://golang.org/src/crypto/tls/generate_cert.go
 
 const (
-	organisationName = "Pyramid internal CA"
+	organisationName = "Event Horizon internal CA"
 )
 
 // Generates a CA suitable for signing other certs

@@ -22,7 +22,7 @@ import (
 func StartChildProcess(url string) {
 	log.Printf("pusherchild: starting")
 
-	cmd := exec.Command("pyramid", "pusher", "y", url)
+	cmd := exec.Command("horizon", "pusher", "y", url)
 
 	// keep dummy STDIN pipe open, so child (Pusher) can detect
 	// parent (us) dying by EOF and stop

@@ -6,9 +6,9 @@ package pushlib
 
 import (
 	"encoding/json"
-	"github.com/function61/pyramid/cursor"
-	"github.com/function61/pyramid/metaevents"
-	ptypes "github.com/function61/pyramid/pusher/types"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/metaevents"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
 	"log"
 	"net/http"
 )
@@ -148,7 +148,7 @@ func (l *Library) isRemoteAhead(remote *cursor.Cursor, tx interface{}) (*cursor.
 	}
 }
 
-// attach to receive Pusher's pushes at a defined path, example: "/_pyramid_push"
+// attach to receive Pusher's pushes at a defined path, example: "/_eventhorizon_push"
 func (l *Library) AttachPushHandler(path string, authToken string) {
 	http.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("auth") != authToken {

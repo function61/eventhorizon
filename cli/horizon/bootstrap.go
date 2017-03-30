@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/config/configfactory"
-	ctypes "github.com/function61/pyramid/config/types"
-	"github.com/function61/pyramid/scalablestore"
-	"github.com/function61/pyramid/util/clicommon"
-	"github.com/function61/pyramid/util/cryptorandombytes"
-	"github.com/function61/pyramid/util/sslca"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/config/configfactory"
+	ctypes "github.com/function61/eventhorizon/config/types"
+	"github.com/function61/eventhorizon/scalablestore"
+	"github.com/function61/eventhorizon/util/clicommon"
+	"github.com/function61/eventhorizon/util/cryptorandombytes"
+	"github.com/function61/eventhorizon/util/sslca"
 	"log"
 )
 

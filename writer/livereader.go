@@ -3,7 +3,7 @@ package writer
 import (
 	"bufio"
 	"errors"
-	rtypes "github.com/function61/pyramid/reader/types"
+	rtypes "github.com/function61/eventhorizon/reader/types"
 	"io"
 	"os"
 )

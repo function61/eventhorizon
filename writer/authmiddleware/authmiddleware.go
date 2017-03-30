@@ -1,7 +1,7 @@
 package authmiddleware
 
 import (
-	"github.com/function61/pyramid/config"
+	"github.com/function61/eventhorizon/config"
 	"net/http"
 	"strings"
 )

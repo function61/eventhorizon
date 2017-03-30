@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"github.com/boltdb/bolt"
-	wtypes "github.com/function61/pyramid/writer/types"
+	wtypes "github.com/function61/eventhorizon/writer/types"
 )
 
 type Write struct {

@@ -1,7 +1,7 @@
 package pusher
 
 import (
-	"github.com/function61/pyramid/cursor"
+	"github.com/function61/eventhorizon/cursor"
 	"time"
 )
 

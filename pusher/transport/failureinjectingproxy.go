@@ -3,7 +3,7 @@ package transport
 import (
 	"errors"
 	"fmt"
-	ptypes "github.com/function61/pyramid/pusher/types"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
 )
 
 // this tranport proxies to another transport ("endpoint"), but injects failures

@@ -2,8 +2,8 @@ package store
 
 import (
 	"fmt"
-	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/cursor"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/cursor"
 	"log"
 	"os"
 )

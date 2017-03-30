@@ -4,8 +4,8 @@ FROM golang:1.8.0
 # Alpine (musl) + VirtualBox shared folders is a no-go: https://www.virtualbox.org/ticket/9069
 
 RUN mkdir -p /go/src/github.com/function61 \
-	&& ln -s /app /go/src/github.com/function61/pyramid \
-	&& ln -s /app/cli/pyramid/pyramid /usr/bin/pyramid
+	&& ln -s /app /go/src/github.com/function61/eventhorizon \
+	&& ln -s /app/cli/horizon/horizon /usr/bin/horizon
 
 CMD bash
 

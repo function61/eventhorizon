@@ -1,4 +1,4 @@
 #!/bin/sh
 
 DATE=`date +%Y%m%d`
-tar -czf pyramid.$DATE.linux-amd64.tar.gz -C cli/pyramid pyramid
+tar -czf eventhorizon.$DATE.linux-amd64.tar.gz -C cli/horizon horizon

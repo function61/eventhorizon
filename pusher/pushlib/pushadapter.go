@@ -4,7 +4,7 @@ package pushlib
 // pushes from Pusher over HTTP + JSON
 
 import (
-	rtypes "github.com/function61/pyramid/reader/types"
+	rtypes "github.com/function61/eventhorizon/reader/types"
 )
 
 /*	Sequence of events, success:

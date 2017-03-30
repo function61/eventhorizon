@@ -1,7 +1,7 @@
 package stringslicediff
 
 import (
-	"github.com/function61/pyramid/util/ass"
+	"github.com/function61/eventhorizon/util/ass"
 	"testing"
 )
 

@@ -1,6 +1,6 @@
 package writerproxyclient
 
-// To issue any commands to Pyramid, you must contact a Writer. But that means
+// To issue any commands to Event Horizon, you must contact a Writer. But that means
 // that you have to have correct TLS configuration, know the authentication tokens,
 // know the IP addresses of all the Writers, which Writers are responsible for
 // which streams etc.
@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	wtypes "github.com/function61/pyramid/writer/types"
+	wtypes "github.com/function61/eventhorizon/writer/types"
 	"io/ioutil"
 	"net/http"
 )

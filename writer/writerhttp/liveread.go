@@ -2,11 +2,11 @@ package writerhttp
 
 import (
 	"encoding/json"
-	"github.com/function61/pyramid/cursor"
-	rtypes "github.com/function61/pyramid/reader/types"
-	"github.com/function61/pyramid/writer"
-	"github.com/function61/pyramid/writer/authmiddleware"
-	wtypes "github.com/function61/pyramid/writer/types"
+	"github.com/function61/eventhorizon/cursor"
+	rtypes "github.com/function61/eventhorizon/reader/types"
+	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/eventhorizon/writer/authmiddleware"
+	wtypes "github.com/function61/eventhorizon/writer/types"
 	"net/http"
 	"os"
 )

@@ -2,8 +2,8 @@ package writerhttp
 
 import (
 	"crypto/tls"
-	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/writer"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/writer"
 	"log"
 	"net/http"
 	"strconv"

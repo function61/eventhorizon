@@ -15,8 +15,8 @@ var (
 	metaEventParseRe = regexp.MustCompile("^\\/([a-zA-Z]+) (\\{.+)$")
 )
 
-// encodes a regular line for storing in Pyramid. caller's responsibility is to
-// check that input does not contain \n
+// encodes a regular line for storing in Event Horizon. caller's responsibility
+// is to check that input does not contain \n
 func EncodeRegularLine(input string) string {
 	return " " + input
 }

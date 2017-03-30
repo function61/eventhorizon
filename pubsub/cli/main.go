@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/function61/pyramid/config/configfactory"
-	"github.com/function61/pyramid/pubsub/server"
-	"github.com/function61/pyramid/util/clicommon"
+	"github.com/function61/eventhorizon/config/configfactory"
+	"github.com/function61/eventhorizon/pubsub/server"
+	"github.com/function61/eventhorizon/util/clicommon"
 	"log"
 )
 

@@ -1,7 +1,7 @@
 Raw storage format
 ==================
 
-Pyramid stores all its log-formatted data in append-only text files. The good thing
+Event Horizon stores all its log-formatted data in append-only text files. The good thing
 about this design is that "resultset cursor" is just a byte offset into the chunk,
 and all reads are just one `fseek()` away.
 

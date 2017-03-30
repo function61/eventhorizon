@@ -6,7 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/function61/pyramid/config"
+	"github.com/function61/eventhorizon/config"
 	"io"
 	"strings"
 	"time"

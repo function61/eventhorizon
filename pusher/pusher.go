@@ -1,13 +1,13 @@
 package pusher
 
 import (
-	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/cursor"
-	"github.com/function61/pyramid/pubsub/client"
-	ptypes "github.com/function61/pyramid/pusher/types"
-	"github.com/function61/pyramid/pusher/writerproxy"
-	"github.com/function61/pyramid/reader"
-	"github.com/function61/pyramid/writer/writerclient"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/pubsub/client"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
+	"github.com/function61/eventhorizon/pusher/writerproxy"
+	"github.com/function61/eventhorizon/reader"
+	"github.com/function61/eventhorizon/writer/writerclient"
 	"log"
 	"sync"
 	"time"

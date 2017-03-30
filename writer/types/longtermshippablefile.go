@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/function61/pyramid/cursor"
+	"github.com/function61/eventhorizon/cursor"
 )
 
 type LongTermShippableFile struct {

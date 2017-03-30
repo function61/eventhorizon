@@ -1,7 +1,7 @@
 package wal
 
 import (
-	"github.com/function61/pyramid/config"
+	"github.com/function61/eventhorizon/config"
 	"log"
 	"os"
 	"strings"

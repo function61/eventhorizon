@@ -1,16 +1,16 @@
 package main
 
 import (
-	"github.com/function61/pyramid/config/configfactory"
-	"github.com/function61/pyramid/pubsub/client"
-	"github.com/function61/pyramid/pubsub/server"
-	"github.com/function61/pyramid/pusher"
-	"github.com/function61/pyramid/pusher/transport"
-	"github.com/function61/pyramid/util/clicommon"
-	"github.com/function61/pyramid/writer"
-	wtypes "github.com/function61/pyramid/writer/types"
-	"github.com/function61/pyramid/writer/writerclient"
-	"github.com/function61/pyramid/writer/writerhttp"
+	"github.com/function61/eventhorizon/config/configfactory"
+	"github.com/function61/eventhorizon/pubsub/client"
+	"github.com/function61/eventhorizon/pubsub/server"
+	"github.com/function61/eventhorizon/pusher"
+	"github.com/function61/eventhorizon/pusher/transport"
+	"github.com/function61/eventhorizon/util/clicommon"
+	"github.com/function61/eventhorizon/writer"
+	wtypes "github.com/function61/eventhorizon/writer/types"
+	"github.com/function61/eventhorizon/writer/writerclient"
+	"github.com/function61/eventhorizon/writer/writerhttp"
 	"io"
 	"log"
 	"os"
@@ -20,12 +20,15 @@ import (
 )
 
 func banner() {
-	log.Println("       .")
-	log.Println("      /=\\\\       PyramidDB")
-	log.Println("     /===\\ \\     function61.com")
-	log.Println("    /=====\\  \\")
-	log.Println("   /=======\\  /")
-	log.Println("  /=========\\/")
+	log.Println(" _______ _    _ _______ __   _ _______")
+	log.Println(" |______  \\  /  |______ | \\  |    |     by function61.com")
+	log.Println(" |______   \\/   |______ |  \\_|    |     ver. TODO")
+	// log.Println("                                      ")
+	log.Println(" _     _  _____   ______ _____ ______  _____  __   _")
+	log.Println(" |_____| |     | |_____/   |    ____/ |     | | \\  |")
+	log.Println(" |     | |_____| |    \\_ __|__ /_____ |_____| |  \\_|")
+	log.Println("")
+	// hat tip: http://www.network-science.de/ascii/
 }
 
 func writer_(args []string) error {
@@ -185,7 +188,6 @@ func streamAppendFromFile(args []string) error {
 
 func pusher_(args []string) error {
 	if len(args) != 2 {
-		// try "http://127.0.0.1:8080/_pyramid_push"
 		return usage("<StopOnStdinEof> <Target>")
 	}
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/function61/pyramid/config/configfactory"
-	"github.com/function61/pyramid/pubsub/client"
+	"github.com/function61/eventhorizon/config/configfactory"
+	"github.com/function61/eventhorizon/pubsub/client"
 )
 
 func testPublish(topic string, message string) {

@@ -29,9 +29,9 @@ Bootstrapping Pusher state:
 - -> (Subscription stream) offset resolve request
 - <- (Subscription strean) offset resolve response
 
-Repeat this as long as Pyramid has newer data than app:
+Repeat this as long as Event Horizon has newer data than app:
 
-- Read newer data from Pyramid
+- Read newer data from Event Horizon
 - -> Push that to app
 - <- ACK
 
@@ -49,7 +49,7 @@ Pusher doesn't know what the application's subscription ID is - it has to learn 
 Pusher -> app:
 
 ```
-POST /_pyramid_push?auth=8c382056 HTTP/1.1
+POST /_eventhorizon_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "_query_",
@@ -82,7 +82,7 @@ guaranteed to fail and yield us a correct offset.
 Pusher -> app:
 
 ```
-POST /_pyramid_push?auth=8c382056 HTTP/1.1
+POST /_eventhorizon_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",
@@ -113,10 +113,10 @@ Actual push
 -----------
 
 Now we know app's position in the subscription. Now Pusher does a read against
-Pyramid and push those events to the app:
+Event Horizon and push those events to the app:
 
 ```
-POST /_pyramid_push?auth=8c382056 HTTP/1.1
+POST /_eventhorizon_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",
@@ -216,7 +216,7 @@ Push unsynced stream
 Previously, the app told us that it wants to see `/sampledata` from the beginning. Push:
 
 ```
-POST /_pyramid_push?auth=8c382056 HTTP/1.1
+POST /_eventhorizon_push?auth=8c382056 HTTP/1.1
 
 {
 	"SubscriptionId": "/_sub/example-sub",

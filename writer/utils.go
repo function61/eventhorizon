@@ -2,7 +2,7 @@ package writer
 
 import (
 	"errors"
-	"github.com/function61/pyramid/metaevents"
+	"github.com/function61/eventhorizon/metaevents"
 	"path"
 	"strings"
 )

@@ -7,9 +7,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"github.com/function61/pyramid/config"
-	"github.com/function61/pyramid/cursor"
-	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/eventhorizon/config"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/scalablestore"
 	"io"
 	"log"
 	"os"
@@ -113,7 +113,7 @@ import (
 */
 
 var (
-	headerMagicBytes = []byte("Pyramid-1/AES256_CTR")
+	headerMagicBytes = []byte("EventHorizon-1/AES256_CTR")
 )
 
 type CompressedEncryptedStore struct {

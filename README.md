@@ -1,3 +1,5 @@
+Event Horizon
+=============
 
 Summary
 -------
@@ -8,7 +10,7 @@ Enables log-based architectures with realtime streaming, unlimited storage, comp
 |----------------------------|------------------------------------------------------------------------------------------|
 | Use cases                  | Eventsourcing, high availability software/datacenter failover, microservices, big data.  |
 | Is this a good fit for me? | For log-based architectures, yes. [Read more](docs/is-this-a-good-fit-for-me.md)         |
-| Demo application           | [pyramid-exampleapp-go](https://github.com/function61/pyramid-exampleapp-go)             |
+| Demo application           | [eventhorizon-exampleapp-go](https://github.com/function61/eventhorizon-exampleapp-go)             |
 | Production ready?          | No, not yet. But not too far away.                                                       |
 | Homepage & documentation   | Both project homepage and docs are currently on this README on GitHub                    |
 | Technologies               | Golang, Linux, Docker (not required for use), AWS S3.                                    |
@@ -28,8 +30,8 @@ Docs
 How-to's & tutorials:
 
 - [Quickstart](docs/quickstart.md) (for users)
-- [Example app using Pyramid](https://github.com/function61/pyramid-exampleapp-go)
-	- Best way to grasp what Pyramid is about, but you should also read quickstart.
+- [Example app using Event Horizon](https://github.com/function61/eventhorizon-exampleapp-go)
+	- Best way to grasp what Event Horizon is about, but you should also read quickstart.
 	- Feature highlight: how to live-migrate a under-heavy-writes service with
 	  zero downtime.
 - [Building & contributing](docs/building-and-contributing.md) (for developers)
@@ -75,7 +77,7 @@ Data flow at a glance:
 Programming language support
 ----------------------------
 
-To use Pyramid somewhere, that language has to be able to receive events over
+To use EventHorizon somewhere, that language has to be able to receive events over
 HTTP + JSON, in just one HTTP path. There's even a helper library (pushlib - look
 at the architecture diagram) for that, and it's only a small amount of code.
 
@@ -83,7 +85,7 @@ Existing implementations of pushlib:
 
 - Go
 	- [library](pusher/pushlib/) managed in this main repo
-	- [example application](https://github.com/function61/pyramid-exampleapp-go)
+	- [example application](https://github.com/function61/eventhorizon-exampleapp-go)
 - node.js (coming soon)
 - PHP (coming soon)
 - Your programming language not yet supported?
@@ -102,4 +104,4 @@ significant capacity, any help would be appreciated (but not legally required):
 - Contribute with new features, bug fixes and/or help with issues
 - Become a sponsor (get your company + link listed here in README as a sponsor)
 - Donate money
-- If you find Pyramid useful, please spread the word! :)
+- If you find EventHorizon useful, please spread the word! :)

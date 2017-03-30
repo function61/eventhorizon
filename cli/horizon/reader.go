@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/function61/pyramid/config/configfactory"
-	"github.com/function61/pyramid/cursor"
-	"github.com/function61/pyramid/reader"
-	rtypes "github.com/function61/pyramid/reader/types"
-	"github.com/function61/pyramid/writer/writerclient"
+	"github.com/function61/eventhorizon/config/configfactory"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/reader"
+	rtypes "github.com/function61/eventhorizon/reader/types"
+	"github.com/function61/eventhorizon/writer/writerclient"
 	"strconv"
 )
 

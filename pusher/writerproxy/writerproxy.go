@@ -1,6 +1,6 @@
 package writerproxy
 
-// To issue any commands to Pyramid, you must contact a Writer. But that means
+// To issue any commands to Event Horizon, you must contact a Writer. But that means
 // that you have to have correct TLS configuration, know the authentication tokens,
 // know the IP addresses of all the Writers, which Writers are responsible for
 // which streams etc.
@@ -13,9 +13,9 @@ package writerproxy
 
 import (
 	"encoding/json"
-	"github.com/function61/pyramid/config"
-	wtypes "github.com/function61/pyramid/writer/types"
-	"github.com/function61/pyramid/writer/writerclient"
+	"github.com/function61/eventhorizon/config"
+	wtypes "github.com/function61/eventhorizon/writer/types"
+	"github.com/function61/eventhorizon/writer/writerclient"
 	"log"
 	"net/http"
 	"sync"

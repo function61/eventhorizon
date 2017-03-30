@@ -4,9 +4,9 @@ package configfactory
 
 import (
 	"encoding/json"
-	"github.com/function61/pyramid/config"
-	ctypes "github.com/function61/pyramid/config/types"
-	"github.com/function61/pyramid/scalablestore"
+	"github.com/function61/eventhorizon/config"
+	ctypes "github.com/function61/eventhorizon/config/types"
+	"github.com/function61/eventhorizon/scalablestore"
 	"io"
 	"io/ioutil"
 	"log"

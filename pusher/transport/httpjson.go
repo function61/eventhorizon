@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	ptypes "github.com/function61/pyramid/pusher/types"
+	ptypes "github.com/function61/eventhorizon/pusher/types"
 	"io/ioutil"
 	"net/http"
 )

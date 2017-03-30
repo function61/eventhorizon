@@ -2,9 +2,9 @@ package writer
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/function61/pyramid/cursor"
-	"github.com/function61/pyramid/metaevents"
-	"github.com/function61/pyramid/writer/transaction"
+	"github.com/function61/eventhorizon/cursor"
+	"github.com/function61/eventhorizon/metaevents"
+	"github.com/function61/eventhorizon/writer/transaction"
 	"log"
 	"time"
 )
