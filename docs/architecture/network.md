@@ -9,14 +9,18 @@ This document describes networking considerations per each component.
 Writer
 ------
 
-Inbound connections:
+It is recommended that you run Writer on an Internet-routable IP (= public IP),
+though advertising Writer on a LAN-only IP should work too.
 
-- Writer API (HTTPS)
 
-Outbound connections:
+Inbound (other components connect to):
 
-- scalablestore (HTTPS)
-- Pub/sub server (TCP/TLS)
+- Writer API (:9092 HTTPS)
+
+Outbound (opens connections to):
+
+- scalablestore (:443 HTTPS)
+- Pub/sub server (:9091 TCP/TLS)
 
 
 Pub/sub server
@@ -24,20 +28,27 @@ Pub/sub server
 
 NOTE: currently pub/sub server is embedded with Writer server.
 
-Inbound connections:
+Inbound (other components connect to):
 
-- Pub/sub server (TCP/TLS)
+- Pub/sub server (:9091 TCP/TLS)
 
 
 Pusher
 ------
 
-Inbound connections:
+Pusher is usually ran alongside each application instance. There is no limit
+on the number of Pusher instances - they are stateless.
 
-- Writer proxy (loopback HTTP)
+Only inbound connection to Pusher is from loopback, therefore Pusher doesn't need
+much on networking/firewall side.
 
-Outbound connections:
+Inbound (other components connect to):
 
-- Writer API (HTTPS)
-- scalablestore (HTTPS)
+- Writer proxy (:9093 loopback HTTP)
+
+Outbound (opens connections to):
+
+- Writer API (:9092 HTTPS)
+- Pub/sub server (:9091 TCP/TLS)
+- scalablestore (:443 HTTPS)
 - Endpoint (loopback HTTP)
