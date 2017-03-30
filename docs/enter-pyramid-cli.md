@@ -28,7 +28,8 @@ Run Pyramid CLI from Docker image
 Launching the CLI container is simple:
 
 ```
-$ docker run --rm -it -e STORE=s3://... fn61/pyramid sh
+$ export STORE=s3://..
+$ docker run --rm -it -e "STORE=$STORE" fn61/pyramid sh
 ```
 
 You should now be able to issue commands against the Writer cluster:
