@@ -83,7 +83,7 @@ know how to connect to Writer servers.
 Now start the Writer on the server:
 
 ```
-$ docker run --name pyramid -d --net=host -v /pyramid-data:/pyramid-data -e STORE=... fn61/pyramid pyramid writer
+$ docker run --name pyramid -d --net=host -e "STORE=$STORE" fn61/pyramid
 
 then check the logs:
 
