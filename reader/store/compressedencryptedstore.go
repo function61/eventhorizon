@@ -169,7 +169,7 @@ func (c *CompressedEncryptedStore) SaveFromLiveFile(cur *cursor.Cursor, fromFd *
 	// use AES writer as a sink for gzip stream
 	gzipWriter := gzip.NewWriter(aesWriter)
 
-	// pumps everything from original live file into gzipped file
+	// pump the original file through the pipeline: gzip -> AES -> result
 	if _, err := io.Copy(gzipWriter, fromFd); err != nil {
 		return err
 	}
@@ -180,7 +180,6 @@ func (c *CompressedEncryptedStore) SaveFromLiveFile(cur *cursor.Cursor, fromFd *
 		return err
 	}
 
-	// also important because otherwise the seek pointer would be off for next read
 	if err := resultingFile.Close(); err != nil {
 		return err
 	}
