@@ -33,15 +33,17 @@ Now, go to `IAM > eventhorizon-writer > add inline policy > custom policy`:
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "",
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::eventhorizon1.fn61.net"]
+        },
+        {
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:PutObject"
+                "s3:PutObject",
+                "s3:GetObject"
             ],
-            "Resource": [
-                "arn:aws:s3:::eventhorizon1.fn61.net/*"
-            ]
+            "Resource": ["arn:aws:s3:::eventhorizon1.fn61.net/*"]
         }
     ]
 }
@@ -56,7 +58,11 @@ And now go to `IAM > eventhorizon-pusher > add inline policy > custom policy`:
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "",
+            "Effect": "Allow",
+            "Action": ["s3:ListBucket"],
+            "Resource": ["arn:aws:s3:::eventhorizon1.fn61.net"]
+        },
+        {
             "Effect": "Allow",
             "Action": [
                 "s3:GetObject"
