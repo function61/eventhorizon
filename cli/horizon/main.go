@@ -8,6 +8,7 @@ import (
 	"github.com/function61/eventhorizon/pusher/transport"
 	"github.com/function61/eventhorizon/util/clicommon"
 	"github.com/function61/eventhorizon/writer"
+	"github.com/function61/eventhorizon/writer/bootstrap"
 	wtypes "github.com/function61/eventhorizon/writer/types"
 	"github.com/function61/eventhorizon/writer/writerclient"
 	"github.com/function61/eventhorizon/writer/writerhttp"
@@ -41,7 +42,19 @@ func writer_(args []string) error {
 		log.Fatalf("main: %s", err.Error())
 	}
 
-	confCtx := configfactory.Build()
+	confCtx, err := configfactory.Build()
+	if err != nil {
+		log.Printf("main: failed to get discovery file - trying to bootstrap.")
+
+		// unable to fetch config from scalablestore. we'll assume that
+		// scalablestore has _bootstrap flag which means we can run bootstrap
+		// automatically. if it doesn't have, we can't do anything and we'll panic.
+		if err := bootstrap.Run(); err != nil {
+			log.Fatalf("main: bootstrap failed: %s", err.Error())
+		}
+
+		confCtx = configfactory.BuildMust()
+	}
 
 	// start pub/sub server
 	pubSubServer := server.New(confCtx)
@@ -273,7 +286,6 @@ func main() {
 		"pusher":                pusher_,
 		"reader-read":           readerRead,
 		"writer":                writer_,
-		"writer-bootstrap":      writerBootstrap,
 	}
 
 	if len(os.Args) < 2 {

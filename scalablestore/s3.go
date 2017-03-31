@@ -86,3 +86,18 @@ func (s *S3Manager) Get(key string) (*ScalableStoreGetResponse, error) {
 		Body: response.Body,
 	}, nil
 }
+
+// bucket is eligible for bootstrap if it is completely empty
+func (s *S3Manager) IsEligibleForBootstrap() (bool, error) {
+	result, err := s.s3Client.ListObjects(&s3.ListObjectsInput{
+		Bucket: &s.bucketName,
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	eligibleForBootstrap := len(result.Contents) == 0 && !*result.IsTruncated
+
+	return eligibleForBootstrap, nil
+}

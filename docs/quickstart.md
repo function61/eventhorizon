@@ -52,33 +52,17 @@ STORE=s3://APIKEY_ID:APIKEY_SECRET@S3_REGION/S3_BUCKET
 
 NOTE: temporarily you have to replace `/` chars in secret key with `_`.
 
-
-Install & configure Writer on the server
-----------------------------------------
-
-Find out the **public IP address** of your Writer server:
+Define the ENV variable on your Writer server:
 
 ```
-$ ifconfig eth0
-eth0      Link encap:Ethernet  HWaddr 06:2B:12:10:B3:0B
-          inet addr:1.2.3.4
+$ export STORE="s3://..."
 ```
 
-[Enter Horizon CLI](enter-horizon-cli.md) and bootstrap the Writer cluster:
+(or pass it inline to Docker's `-e` argument)
 
-```
-$ horizon writer-bootstrap
-2017/03/25 16:35:30 writer-bootstrap: Usage: <WriterIp>
-$ horizon writer-bootstrap 1.2.3.4
-2017/03/25 16:35:51 bootstrap: generating certificate authority
-2017/03/25 16:35:51 bootstrap: generating auth token
-2017/03/25 16:35:51 bootstrap: generating discovery file
-2017/03/25 16:35:51 bootstrap: uploading discovery file to scalablestore
-2017/03/25 16:35:51 bootstrap: bootstrapped Writer cluster for ip 1.2.3.4
-```
 
-The above command essentially uploads a JSON file to your S3 bucket to let clients
-know how to connect to Writer servers.
+Start Writer on the server
+--------------------------
 
 Now start the Writer on the server:
 
@@ -88,31 +72,46 @@ $ docker run --name eventhorizon -d --net=host -e "STORE=$STORE" fn61/eventhoriz
 then check the logs:
 
 $ docker logs eventhorizon
-2017/03/22 14:30:58 configfactory: downloading discovery file
-2017/03/22 14:30:58 PubSubServer: binding to 0.0.0.0:9091
-2017/03/22 14:30:58 CompressedEncryptedStore: mkdir /eventhorizon-data/store-compressed_and_encrypted
+2017/03/31 11:08:59 configfactory: downloading discovery file
+2017/03/31 11:09:00 main: failed to get discovery file - trying to bootstrap.
+2017/03/31 11:09:00 bootstrap: starting bootstrap process
+2017/03/31 11:09:00 bootstrap: resolving public IP from ipify.org
+2017/03/31 11:09:00 bootstrap: public IP to advertise: 207.154.237.26
+2017/03/31 11:09:00 bootstrap: generating certificate authority
+2017/03/31 11:09:00 bootstrap: generating auth token
+2017/03/31 11:09:00 bootstrap: generating encryption master key
+2017/03/31 11:09:00 bootstrap: generating discovery file
+2017/03/31 11:09:00 bootstrap: uploading discovery file to scalablestore
+2017/03/31 11:09:00 bootstrap: discovery file uploaded to scalablestore
 ...
+2017/03/31 11:09:00 PubSubServer: starting mainLogicLoop
+2017/03/31 11:09:00 main: waiting for stop signal
+2017/03/31 11:09:00 WriterHttp: binding to :9092
 ```
 
-Everything seems ok. Now enter Horizon CLI again to poke with the system.
-
-We'll now create the minimum two streams required to run the system. Create root stream:
-
-```
-$ horizon stream-create /
-```
-
-Create `/_sub` stream (subscriptions will reside as sub-streams under this path):
+Now let's verify that all is working. Enter [Enter Horizon CLI](enter-horizon-cli.md)
+and read from the root stream (`/`):
 
 ```
-$ horizon stream-create /_sub
+$ horizon reader-read /:0:0:? 10
+/Created {"subscription_ids":[],"ts":"2017-03-31T11:09:00.643Z"}
+/ChildStreamCreated {"child_stream":"/_sub:0:0:207.154.237.26","ts":"2017-03-31T11:09:00.647Z"}
 ```
 
-Ok now the Writer has been properly set up!
+Everything seems ok. You're done setting up!
+
+Event Horizon is built on brutal simplicity. Under the hood lots of things were
+done for you like discovering public IP address, provisioning certificate
+authority, provisioning SSL cert, generating auth tokens and bootstrapping root
+and subscription streams.
+
+NOTE: if you don't have internet-routable IP address or want to explicitly use
+this in a LAN-only setting, you can define ENV `WRITER_IP_TO_ADVERTISE=127.0.0.1`.
 
 
 Now run your example application
 --------------------------------
 
 Go run [the example app](https://github.com/function61/eventhorizon-exampleapp-go),
-either on the same server or a different server.
+either on the same server or a different server. This tutorial will get you up
+to speed on the data model and concepts.
