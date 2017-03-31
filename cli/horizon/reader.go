@@ -34,7 +34,11 @@ func readerRead(args []string) error {
 	}
 
 	for _, line := range result.Lines {
-		fmt.Println(line.Content)
+		if line.MetaType == "" {
+			fmt.Println(line.Content)
+		} else {
+			fmt.Printf("/%s %s\n", line.MetaType, line.Content)
+		}
 	}
 
 	return nil
