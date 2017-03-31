@@ -23,7 +23,6 @@ func banner() {
 	log.Println(" _______ _    _ _______ __   _ _______")
 	log.Println(" |______  \\  /  |______ | \\  |    |     by function61.com")
 	log.Println(" |______   \\/   |______ |  \\_|    |     ver. TODO")
-	// log.Println("                                      ")
 	log.Println(" _     _  _____   ______ _____ ______  _____  __   _")
 	log.Println(" |_____| |     | |_____/   |    ____/ |     | | \\  |")
 	log.Println(" |     | |_____| |    \\_ __|__ /_____ |_____| |  \\_|")
