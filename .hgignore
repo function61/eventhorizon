@@ -1,8 +1,7 @@
 syntax: glob
 
 # binaries
-cli/pyramid/pyramid
-cli/example_target/example_target
+cli/horizon/horizon
 
 # temp stuff
 simulator3
