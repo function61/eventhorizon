@@ -6,7 +6,7 @@ import (
 )
 
 func testPublish(topic string, message string) {
-	pubSubClient := client.New(configfactory.Build())
+	pubSubClient := client.New(configfactory.BuildMust())
 	// for i := 0; i < 10000; i++ {
 	for {
 		pubSubClient.Publish(topic, message)

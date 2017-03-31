@@ -29,7 +29,7 @@ func main() {
 	} else if *subTopic != "" {
 		startSubscriber(*subTopic)
 	} else {
-		pubSubServer := server.New(configfactory.Build())
+		pubSubServer := server.New(configfactory.BuildMust())
 
 		log.Println(clicommon.WaitForInterrupt())
 

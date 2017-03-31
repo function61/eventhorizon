@@ -12,7 +12,7 @@ type Stats struct {
 }
 
 func startSubscriber(topic string) {
-	pubSubClient := client.New(configfactory.Build())
+	pubSubClient := client.New(configfactory.BuildMust())
 	pubSubClient.Subscribe(topic)
 
 	stats := Stats{}

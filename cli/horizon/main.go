@@ -77,7 +77,7 @@ func streamAppend(args []string) error {
 		return usage("<Stream> <Line>")
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	req := &wtypes.AppendToStreamRequest{
 		Stream: args[0],
@@ -93,7 +93,7 @@ func streamSubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	req := &wtypes.SubscribeToStreamRequest{
 		Stream:         args[0],
@@ -108,7 +108,7 @@ func streamCreate(args []string) error {
 		return usage("<Stream>")
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	req := &wtypes.CreateStreamRequest{
 		Name: args[0],
@@ -123,7 +123,7 @@ func streamUnsubscribe(args []string) error {
 		return usage("<Stream> <SubscriptionId>")
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	req := &wtypes.UnsubscribeFromStreamRequest{
 		Stream:         args[0],
@@ -138,7 +138,7 @@ func pubsubSubscribe(args []string) error {
 		return usage("<Topic>")
 	}
 
-	pubSubClient := client.New(configfactory.Build())
+	pubSubClient := client.New(configfactory.BuildMust())
 	pubSubClient.Subscribe(args[0])
 
 	go func() {
@@ -165,7 +165,7 @@ func streamAppendFromFile(args []string) error {
 		return usage("<Stream> <FilePath>")
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	started := time.Now()
 
@@ -197,7 +197,7 @@ func pusher_(args []string) error {
 
 	httpTarget := transport.NewHttpJsonTransport(args[1])
 
-	psh := pusher.New(configfactory.Build(), httpTarget)
+	psh := pusher.New(configfactory.BuildMust(), httpTarget)
 	go psh.Run()
 
 	stdinEofOrInterrupt := make(chan bool)
@@ -242,7 +242,7 @@ func streamLiveRead(args []string) error {
 		return atoiErr
 	}
 
-	wclient := writerclient.New(configfactory.Build())
+	wclient := writerclient.New(configfactory.BuildMust())
 
 	req := &wtypes.LiveReadInput{
 		Cursor:         args[0],

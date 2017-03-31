@@ -20,7 +20,7 @@ func readerRead(args []string) error {
 		return atoiErr
 	}
 
-	confCtx := configfactory.Build()
+	confCtx := configfactory.BuildMust()
 
 	rdr := reader.New(confCtx, writerclient.New(confCtx))
 

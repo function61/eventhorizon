@@ -18,7 +18,16 @@ const (
 	DiscoveryFileRemotePath = "/_discovery.json"
 )
 
-func Build() *config.Context {
+func BuildMust() *config.Context {
+	ctx, err := Build()
+	if err != nil {
+		panic(err)
+	}
+
+	return ctx
+}
+
+func Build() (*config.Context, error) {
 	if _, err := os.Stat(config.BoltDbDir); os.IsNotExist(err) {
 		log.Printf("configfactory: mkdir %s", config.BoltDbDir)
 
@@ -36,7 +45,8 @@ func Build() *config.Context {
 		// was NotExist => read discovery information from scalablestore
 
 		if err := retrieveDiscoveryAndCache(NewBootstrap()); err != nil {
-			panic(err)
+			// not found => bootstrap file not present
+			return nil, err
 		}
 
 		discovery, err = readCachedDiscovery()
@@ -46,7 +56,7 @@ func Build() *config.Context {
 		}
 	}
 
-	return config.NewContext(discovery, parseS3Url())
+	return config.NewContext(discovery, parseS3Url()), nil
 }
 
 // needed for accessing S3 pre-discovery-file-download
