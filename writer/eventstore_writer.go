@@ -499,6 +499,8 @@ func (e *EventstoreWriter) Close() {
 
 	e.database.Close()
 
+	e.metrics.Close()
+
 	log.Printf("EventstoreWriter: Closed")
 }
 
