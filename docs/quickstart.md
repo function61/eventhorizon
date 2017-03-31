@@ -89,7 +89,7 @@ $ docker logs eventhorizon
 2017/03/31 11:09:00 WriterHttp: binding to :9092
 ```
 
-Now let's verify that all is working. Enter [Enter Horizon CLI](enter-horizon-cli.md)
+Now let's verify that all is working. Enter [Horizon CLI](enter-horizon-cli.md)
 and read from the root stream (`/`):
 
 ```
