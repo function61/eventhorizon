@@ -5,6 +5,13 @@ This document describes networking considerations per each component.
 
 ![](diagram.png)
 
+Overview of ports
+-----------------
+
+- 9091 Pub/sub server
+- 9092 Writer API server
+- 9093 Pusher writerproxy
+- 9094 Writer metrics
 
 Writer
 ------
