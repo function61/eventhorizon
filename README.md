@@ -34,6 +34,7 @@ How-to's & tutorials:
 	- Best way to grasp what Event Horizon is about, but you should also read quickstart.
 	- Feature highlight: how to live-migrate a under-heavy-writes service with
 	  zero downtime.
+- Example: [subscribing to all streams recursively](cli/example-allsubscriber)
 - [Building & contributing](docs/building-and-contributing.md) (for developers)
 - [Operating](docs/operating.md)
 
