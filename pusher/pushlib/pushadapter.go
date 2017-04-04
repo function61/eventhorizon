@@ -38,5 +38,5 @@ type PushAdapter interface {
 	PushWrapTransaction(run func(tx interface{}) error) error
 	PushGetOffset(stream string, tx interface{}) (string, error)
 	PushSetOffset(stream string, offset string, tx interface{}) error
-	PushHandleEvent(line *rtypes.ReadResultLine, tx interface{}) error
+	PushHandleEvent(stream string, line *rtypes.ReadResultLine, tx interface{}) error
 }

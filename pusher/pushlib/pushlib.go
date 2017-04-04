@@ -101,7 +101,7 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 			}
 		}
 
-		if err := l.adapter.PushHandleEvent(&line, tx); err != nil {
+		if err := l.adapter.PushHandleEvent(fromOffset.Stream, &line, tx); err != nil {
 			return nil, err
 		}
 
