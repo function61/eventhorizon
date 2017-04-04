@@ -166,8 +166,6 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	log.Printf("EventstoreWriter: SubscribeToStream: %s", streamName)
-
 	subscribedEvent := metaevents.NewSubscribed(subscriptionId)
 
 	if !strings.HasPrefix(subscriptionId, subscriptionStreamPath("")) {
@@ -184,6 +182,7 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 	err := e.database.Update(func(boltTx *bolt.Tx) error {
 		tx.BoltTx = boltTx
 
+		// TODO: cannot do this check in a clustered context
 		if !e.streamExists(subscriptionId, tx) {
 			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s does not exist", subscriptionId))
 		}
@@ -191,7 +190,10 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
 
 		if stringslice.ItemIndex(subscriptionId, existingSubscriptions) != -1 {
-			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s already subscribed", subscriptionId))
+			// is already subscribed => NOOP. cannot return error, as this could
+			// be a re-try due to previous ACK not getting delivered
+			log.Printf("EventstoreWriter: subscribe: subscription already exists")
+			return nil
 		}
 
 		newSubscriptions := append(existingSubscriptions, subscriptionId)
@@ -226,8 +228,6 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	log.Printf("EventstoreWriter: UnsubscribeFromStream: %s", streamName)
-
 	unsubscribedEvent := metaevents.NewUnsubscribed(subscriptionId)
 
 	tx := transaction.NewEventstoreTransaction(e.database)
@@ -243,7 +243,10 @@ func (e *EventstoreWriter) UnsubscribeFromStream(streamName string, subscription
 		idxInSlice := stringslice.ItemIndex(subscriptionId, existingSubscriptions)
 
 		if idxInSlice == -1 {
-			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s is not subscribed", subscriptionId))
+			// subscription does not exist => cannot unsubscribe => NOOP, as we
+			// cannot error because this could be a re-try due to a lost ACK
+			log.Printf("EventstoreWriter: unsubscribe for a non-existing subscription")
+			return nil
 		}
 
 		newSubscriptions := append(existingSubscriptions[:idxInSlice], existingSubscriptions[idxInSlice+1:]...)
