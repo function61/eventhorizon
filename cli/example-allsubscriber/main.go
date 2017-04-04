@@ -45,7 +45,6 @@ func NewAllSubscriberApp() *AllSubscriberApp {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// defer db.Close()
 
 	a := &AllSubscriberApp{
 		db:             db,
@@ -133,6 +132,10 @@ func (a *AllSubscriberApp) Close() {
 	log.Printf("AllSubscriberApp: shutting down")
 
 	if err := a.srv.Shutdown(nil); err != nil {
+		panic(err)
+	}
+
+	if err := a.db.Close(); err != nil {
 		panic(err)
 	}
 }
