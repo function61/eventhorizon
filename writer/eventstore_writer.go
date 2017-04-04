@@ -132,7 +132,9 @@ func (e *EventstoreWriter) CreateStream(streamName string) (*types.CreateStreamO
 		parentStream := parentStreamName(streamName)
 
 		if parentStream != streamName { // only equal when "/" (root stream)
-			childStreamCreated := metaevents.NewChildStreamCreated(streamFirstChunkCursor.Serialize())
+			childStreamCreated := metaevents.NewChildStreamCreated(
+				streamFirstChunkCursor.Stream,
+				streamFirstChunkCursor.Serialize())
 
 			// errors also if parent stream does not exist
 			if err := e.appendToStreamInternal(parentStream, nil, childStreamCreated.Serialize(), tx); err != nil {

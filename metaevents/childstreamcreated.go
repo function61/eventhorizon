@@ -7,10 +7,11 @@ import (
 
 const ChildStreamCreatedId = "ChildStreamCreated"
 
-// /ChildStreamCreated {"child_stream": "/tenants/foo:0:0", "ts":"2017-02-27T17:12:31.446Z"}
+// /ChildStreamCreated {"name": "/tenants/foo", "cursor": "/tenants/foo:0:0", "ts":"2017-02-27T17:12:31.446Z"}
 type ChildStreamCreated struct {
-	ChildStream string `json:"child_stream"`
-	Timestamp   string `json:"ts"`
+	Name      string `json:"name"`
+	Cursor    string `json:"cursor"`
+	Timestamp string `json:"ts"`
 }
 
 func (c *ChildStreamCreated) Serialize() string {
@@ -19,9 +20,10 @@ func (c *ChildStreamCreated) Serialize() string {
 	return "/ChildStreamCreated " + string(asJson) + "\n"
 }
 
-func NewChildStreamCreated(childStream string) *ChildStreamCreated {
+func NewChildStreamCreated(name string, cursor string) *ChildStreamCreated {
 	return &ChildStreamCreated{
-		ChildStream: childStream,
-		Timestamp:   time.Now().Format("2006-01-02T15:04:05.999Z"),
+		Name:      name,
+		Cursor:    cursor,
+		Timestamp: time.Now().Format("2006-01-02T15:04:05.999Z"),
 	}
 }

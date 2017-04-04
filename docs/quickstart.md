@@ -95,7 +95,7 @@ and read from the root stream (`/`):
 ```
 $ horizon reader-read /:0:0:? 10
 /Created {"subscription_ids":[],"ts":"2017-03-31T11:09:00.643Z"}
-/ChildStreamCreated {"child_stream":"/_sub:0:0:207.154.237.26","ts":"2017-03-31T11:09:00.647Z"}
+/ChildStreamCreated {"name":"/_sub","cursor":"/_sub:0:0:207.154.237.26","ts":"2017-03-31T11:09:00.647Z"}
 ```
 
 Everything seems ok. You're done setting up!
