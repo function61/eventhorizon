@@ -31,7 +31,7 @@ How-to's & tutorials:
 
 - [Quickstart](docs/quickstart.md) (for users)
 - [Example app using Event Horizon](https://github.com/function61/eventhorizon-exampleapp-go)
-	- Best way to grasp what Event Horizon is about, but you should also read quickstart.
+	- Best way to grasp what Event Horizon is about, but you should also read the quickstart.
 	- Feature highlight: how to live-migrate a under-heavy-writes service with
 	  zero downtime.
 - Example: [subscribing to all streams recursively](cli/example-allsubscriber)
