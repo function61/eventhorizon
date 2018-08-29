@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/function61/eventhorizon.svg?branch=master)](https://travis-ci.org/function61/eventhorizon)
+[![Download](https://api.bintray.com/packages/function61/eventhorizon/main/images/download.svg)](https://bintray.com/function61/eventhorizon/main/_latestVersion#files)
+
 Event Horizon
 =============
 
