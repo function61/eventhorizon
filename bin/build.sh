@@ -21,11 +21,12 @@ staticAnalysis() {
 }
 
 buildLinuxArm() {
-	(cd cli/horizon && GOOS=linux GOARCH=arm go build -o ../../rel/horizon_linux-arm)
+	# compile statically so this works on Alpine that doesn't have glibc
+	(cd cli/horizon && CGO_ENABLED=0 GOOS=linux GOARCH=arm go build --ldflags '-extldflags "-static"' -o ../../rel/horizon_linux-arm)
 }
 
 buildLinuxAmd64() {
-	(cd cli/horizon && GOOS=linux GOARCH=amd64 go build -o ../../rel/horizon_linux-amd64)
+	(cd cli/horizon && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build --ldflags '-extldflags "-static"' -o ../../rel/horizon_linux-amd64)
 }
 
 uploadBuildArtefacts() {
