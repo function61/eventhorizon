@@ -1,5 +1,4 @@
-FROM golang:1.8.0
-# FROM golang:1.10.0
+FROM golang:1.10.0
 
 WORKDIR /go/src/github.com/function61/eventhorizon
 
