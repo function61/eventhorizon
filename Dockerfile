@@ -9,4 +9,4 @@ CMD horizon writer
 ENV METRICS_ENDPOINT=:9094/metrics
 LABEL METRICS_ENDPOINT=:9094/metrics
 
-COPY cli/horizon/horizon /usr/bin/horizon
+COPY rel/horizon_linux-amd64 /usr/bin/horizon

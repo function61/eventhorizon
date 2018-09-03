@@ -9,5 +9,12 @@
 			"dev_command": ["bash"],
 			"pass_envs": ["BINTRAY_APIKEY"]
 		}
+	],
+	"docker_images": [
+		{
+			"image": "fn61/eventhorizon",
+			"dockerfile_path": "Dockerfile",
+			"auth_type": "creds_from_env"
+		}
 	]
 }
