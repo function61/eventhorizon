@@ -69,7 +69,9 @@ func (s *S3Manager) Get(key string) (*ScalableStoreGetResponse, error) {
 		Key:    &key,
 	})
 
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// cancel is advised to be used always, even on successes
 	// TODO: doesn't seem to work here, probably Send() returns before the whole request is read, because
 	//       we got unexpected EOF with cancel(). that's good because it means S3 client supports streaming

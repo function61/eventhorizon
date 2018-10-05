@@ -15,6 +15,9 @@ func startSubscriber(topic string) {
 	pubSubClient := client.New(configfactory.BuildMust())
 	pubSubClient.Subscribe(topic)
 
+	defer pubSubClient.Close()
+	defer log.Printf("Closing")
+
 	stats := Stats{}
 
 	ticker := time.NewTicker(10 * time.Second)
@@ -50,8 +53,4 @@ func startSubscriber(topic string) {
 		stats.messagesProcessed++
 		// log.Printf("Incoming: %v", msg)
 	}
-
-	log.Printf("Closing")
-
-	pubSubClient.Close()
 }
