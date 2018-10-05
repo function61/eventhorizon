@@ -33,8 +33,8 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 			responseCh <- &WorkResponse{
 				Request:               input,
 				ShouldContinueRunning: true,
-				Error: err,
-				Sleep: 1 * time.Second,
+				Error:                 err,
+				Sleep:                 1 * time.Second,
 			}
 			return
 		}
@@ -62,8 +62,8 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 		responseCh <- &WorkResponse{
 			Request:               input,
 			ShouldContinueRunning: true,
-			Error: readerErr,
-			Sleep: 1 * time.Second,
+			Error:                 readerErr,
+			Sleep:                 1 * time.Second,
 		}
 		return
 	}
@@ -90,8 +90,8 @@ func Worker(p *Pusher, input *WorkRequest, responseCh chan *WorkResponse) {
 		responseCh <- &WorkResponse{
 			Request:               input,
 			ShouldContinueRunning: true,
-			Error: pushNetworkErr,
-			Sleep: 1 * time.Second,
+			Error:                 pushNetworkErr,
+			Sleep:                 1 * time.Second,
 		}
 		return
 	}

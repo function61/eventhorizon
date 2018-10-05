@@ -34,7 +34,7 @@ type SubscriptionActivityTask struct {
 
 func NewSubscriptionActivityTask(writer *EventstoreWriter) *SubscriptionActivityTask {
 	t := &SubscriptionActivityTask{
-		writer: writer,
+		writer:                   writer,
 		subscriptionActivityStop: make(chan bool),
 		subscriptionActivityDone: make(chan bool),
 	}

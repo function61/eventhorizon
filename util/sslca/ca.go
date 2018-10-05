@@ -51,7 +51,7 @@ func GenerateCaCert() ([]byte, []byte) {
 
 		// means: "look at IsCA field also"
 		BasicConstraintsValid: true,
-		IsCA: true,
+		IsCA:                  true,
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &certTemplate, &certTemplate, publicKey(caPrivateKey), caPrivateKey)

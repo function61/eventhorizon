@@ -38,7 +38,7 @@ func NewPushOutputIncorrectBaseOffset(correctBaseOffset string) *PushOutput {
 
 func NewPushOutputIncorrectSubscriptionId(correctSubscriptionId string) *PushOutput {
 	return &PushOutput{
-		Code: CodeIncorrectSubscriptionId,
+		Code:                  CodeIncorrectSubscriptionId,
 		CorrectSubscriptionId: correctSubscriptionId,
 	}
 }
