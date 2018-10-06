@@ -4,6 +4,6 @@ source /build-common.sh
 
 COMPILE_IN_DIRECTORY="cli/horizon"
 BINARY_NAME="horizon"
-BINTRAY_PROJECT="eventhorizon"
+BINTRAY_PROJECT="function61/eventhorizon"
 
 standardBuildProcess
