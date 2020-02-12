@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/function61/eventhorizon/config/configfactory"
-	"github.com/function61/eventhorizon/cursor"
-	"github.com/function61/eventhorizon/reader"
-	rtypes "github.com/function61/eventhorizon/reader/types"
-	"github.com/function61/eventhorizon/writer/writerclient"
+	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
+	"github.com/function61/eventhorizon/pkg/legacy/cursor"
+	"github.com/function61/eventhorizon/pkg/legacy/reader"
+	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
+	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
 	"strconv"
 )
 
