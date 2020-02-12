@@ -5,6 +5,17 @@
 Event Horizon
 =============
 
+**NOTE: major refactoring** underway. Event Horizon started as a promising r&d project that
+wasn't production-ready due to its persistence layer not being a highly available datastore.
+
+The v1 was solid as far as the "using application" UX (from code standpoint) was concerned,
+so I took what was good in v1 and started building v2 with a better persistence layer (AWS DynamoDB).
+
+New code will land in `pkg/`, and old code will soon be moved under `pkg/legacy/`.
+
+WARNING: expect most documentation below to be out-of-date (until this warning is lifted off).
+
+
 Summary
 -------
 
