@@ -12,7 +12,7 @@ var (
 	errorEmptyLine   = errors.New("empty line encountered")
 	errorUnknownType = errors.New("line wasn't neither of regular line or meta event line")
 
-	metaEventParseRe = regexp.MustCompile("^\\/([a-zA-Z]+) (\\{.+)$")
+	metaEventParseRe = regexp.MustCompile(`^\/([a-zA-Z]+) (\{.+)$`)
 )
 
 // encodes a regular line for storing in Event Horizon. caller's responsibility

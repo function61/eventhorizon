@@ -60,10 +60,14 @@ func GenerateCaCert() ([]byte, []byte) {
 	}
 
 	certBuffer := bytes.Buffer{}
-	pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err := pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		panic(err)
+	}
 
 	keyBuffer := bytes.Buffer{}
-	pem.Encode(&keyBuffer, pemBlockForKey(caPrivateKey))
+	if err := pem.Encode(&keyBuffer, pemBlockForKey(caPrivateKey)); err != nil {
+		panic(err)
+	}
 
 	return certBuffer.Bytes(), keyBuffer.Bytes()
 }
@@ -110,10 +114,14 @@ func SignServerCert(ipSerialized string, caSerialized string, caPrivateKeySerial
 	}
 
 	certBuffer := bytes.Buffer{}
-	pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	if err := pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+		panic(err)
+	}
 
 	keyBuffer := bytes.Buffer{}
-	pem.Encode(&keyBuffer, pemBlockForKey(serverPrivateKey))
+	if err := pem.Encode(&keyBuffer, pemBlockForKey(serverPrivateKey)); err != nil {
+		panic(err)
+	}
 
 	return certBuffer.Bytes(), keyBuffer.Bytes()
 }

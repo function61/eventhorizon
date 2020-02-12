@@ -16,7 +16,7 @@ func CheckForS3AccessKeys() error {
 }
 
 func WaitForInterrupt() os.Signal {
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	return <-ch
 }

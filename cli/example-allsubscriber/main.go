@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/metaevents"
 	"github.com/function61/eventhorizon/pusher/pushlib"
@@ -131,7 +132,7 @@ func (a *AllSubscriberApp) PushWrapTransaction(run func(interface{}) error) erro
 func (a *AllSubscriberApp) Close() {
 	log.Printf("AllSubscriberApp: shutting down")
 
-	if err := a.srv.Shutdown(nil); err != nil {
+	if err := a.srv.Shutdown(context.TODO()); err != nil {
 		panic(err)
 	}
 

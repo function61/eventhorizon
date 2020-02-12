@@ -24,7 +24,8 @@ func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
-		io.WriteString(w, "OK\n")
+		// FIXME
+		_, _ = io.WriteString(w, "OK\n")
 	}), ctx))
 }
 
@@ -43,6 +44,7 @@ func UnsubscribeFromStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 			return
 		}
 
-		io.WriteString(w, "OK\n")
+		// FIXME
+		_, _ = io.WriteString(w, "OK\n")
 	}), ctx))
 }

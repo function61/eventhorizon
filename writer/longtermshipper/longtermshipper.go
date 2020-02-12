@@ -56,7 +56,9 @@ func (s *Shipper) MarkFileToBeShipped(fileToShip *wtypes.LongTermShippableFile, 
 		return createBucketErr
 	}
 
-	filesToShipBucket.Put([]byte(fileToShip.Block.Serialize()), []byte(fileToShip.FilePath))
+	if err := filesToShipBucket.Put([]byte(fileToShip.Block.Serialize()), []byte(fileToShip.FilePath)); err != nil {
+		return err
+	}
 
 	tx.ShipFiles = append(tx.ShipFiles, fileToShip)
 

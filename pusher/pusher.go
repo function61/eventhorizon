@@ -88,7 +88,7 @@ func (p *Pusher) Run() {
 
 				request := &WorkRequest{
 					SubscriptionId: subscriptionId,
-					Status:         &*sint,
+					Status:         sint,
 				}
 
 				inFlight++

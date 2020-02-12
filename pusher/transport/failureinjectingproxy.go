@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"errors"
 	"fmt"
 	ptypes "github.com/function61/eventhorizon/pusher/types"
 )
@@ -23,7 +22,7 @@ func NewFailureInjectingProxy(endpoint ptypes.Transport) *FailureInjectingProxy 
 
 func (f *FailureInjectingProxy) Push(input *ptypes.PushInput) (*ptypes.PushOutput, error) {
 	if f.shouldFail() {
-		return nil, errors.New(fmt.Sprintf("synthetic failure %d", f.counter))
+		return nil, fmt.Errorf("synthetic failure %d", f.counter)
 	}
 
 	return f.endpoint.Push(input)
@@ -32,9 +31,6 @@ func (f *FailureInjectingProxy) Push(input *ptypes.PushInput) (*ptypes.PushOutpu
 func (f *FailureInjectingProxy) shouldFail() bool {
 	defer func() { f.counter++ }()
 
-	if f.counter%4 == 0 {
-		return false // make every 4th request succeed
-	}
-
-	return true
+	// every 4th request should succeed
+	return f.counter%4 != 0
 }

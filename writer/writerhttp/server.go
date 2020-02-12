@@ -1,6 +1,7 @@
 package writerhttp
 
 import (
+	"context"
 	"crypto/tls"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/writer"
@@ -56,11 +57,11 @@ func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done ch
 
 		log.Printf("WriterHttp: shutting down")
 
-		if err := writerSrv.Shutdown(nil); err != nil {
+		if err := writerSrv.Shutdown(context.TODO()); err != nil {
 			panic(err) // failed shutting down
 		}
 
-		if err := metricsSrv.Shutdown(nil); err != nil {
+		if err := metricsSrv.Shutdown(context.TODO()); err != nil {
 			panic(err) // failed shutting down
 		}
 

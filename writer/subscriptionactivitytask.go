@@ -96,7 +96,7 @@ func (t *SubscriptionActivityTask) broadcastSubscriptionActivities(tx *transacti
 
 	activityBySubscription := make(map[string]*metaevents.SubscriptionActivity)
 
-	dirtyStreamsBucket.ForEach(func(dirtyStream []byte, latestCursorSerialized []byte) error {
+	if err := dirtyStreamsBucket.ForEach(func(dirtyStream []byte, latestCursorSerialized []byte) error {
 		subscriptions := getSubscriptionsForStream(string(dirtyStream), tx.BoltTx)
 
 		for _, subscription := range subscriptions {
@@ -117,7 +117,9 @@ func (t *SubscriptionActivityTask) broadcastSubscriptionActivities(tx *transacti
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 
 	for subscription, subscriptionActivityEvent := range activityBySubscription {
 		log.Printf("SubscriptionActivityTask: %s: %v", subscription, subscriptionActivityEvent.Activity)

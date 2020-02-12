@@ -101,6 +101,7 @@ func (l *Library) pushInternal(input *ptypes.PushInput, tx interface{}) (*ptypes
 			}
 		}
 
+		line := line // pin
 		if err := l.adapter.PushHandleEvent(fromOffset.Stream, &line, tx); err != nil {
 			return nil, err
 		}
@@ -169,7 +170,8 @@ func (l *Library) AttachPushHandler(path string, authToken string) {
 		}
 
 		enc := json.NewEncoder(w)
-		enc.Encode(output)
+		// FIXME
+		_ = enc.Encode(output)
 	}))
 }
 

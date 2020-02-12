@@ -14,7 +14,6 @@ package writerproxyclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	wtypes "github.com/function61/eventhorizon/writer/types"
 	"io/ioutil"
@@ -99,7 +98,7 @@ func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte
 	}
 
 	if resp.StatusCode != expectedCode {
-		return body, resp.StatusCode, errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
+		return body, resp.StatusCode, fmt.Errorf("HTTP %s: %s", resp.Status, body)
 	}
 
 	return body, resp.StatusCode, nil

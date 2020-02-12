@@ -12,6 +12,7 @@ package writerproxy
 // This is the proxy portion for this described setup.
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/function61/eventhorizon/config"
 	wtypes "github.com/function61/eventhorizon/writer/types"
@@ -54,7 +55,8 @@ func New(confCtx *config.Context, writerClient *writerclient.Client) *Proxy {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(output)
+		// FIXME
+		_ = json.NewEncoder(w).Encode(output)
 	})
 
 	http.HandleFunc("/writer/create_stream", func(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +73,8 @@ func New(confCtx *config.Context, writerClient *writerclient.Client) *Proxy {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(output)
+		// FIXME
+		_ = json.NewEncoder(w).Encode(output)
 	})
 
 	http.HandleFunc("/writer/subscribe", func(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +90,8 @@ func New(confCtx *config.Context, writerClient *writerclient.Client) *Proxy {
 			return
 		}
 
-		w.Write([]byte("OK"))
+		// FIXME
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	http.HandleFunc("/writer/unsubscribe", func(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +107,8 @@ func New(confCtx *config.Context, writerClient *writerclient.Client) *Proxy {
 			return
 		}
 
-		w.Write([]byte("OK"))
+		// FIXME
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	return p
@@ -125,7 +130,7 @@ func (p *Proxy) Run() {
 func (p *Proxy) Close() {
 	// now close the server gracefully ("shutdown")
 	// timeout could be given instead of nil as a https://golang.org/pkg/context/
-	if err := p.server.Shutdown(nil); err != nil {
+	if err := p.server.Shutdown(context.TODO()); err != nil {
 		panic(err) // failure/timeout shutting down the server gracefully
 	}
 

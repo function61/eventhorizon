@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-var parseRe = regexp.MustCompile("^([a-zA-Z]+) (\\{.+)$")
+var parseRe = regexp.MustCompile(`^([a-zA-Z]+) (\{.+)$`)
 
 func Parse(line string) (eventType string, payload string, err error) {
 	parsed := parseRe.FindStringSubmatch(line)

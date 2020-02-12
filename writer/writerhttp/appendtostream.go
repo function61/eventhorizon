@@ -26,6 +26,7 @@ func AppendToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(output)
+		// FIXME
+		_ = json.NewEncoder(w).Encode(output)
 	}), ctx))
 }

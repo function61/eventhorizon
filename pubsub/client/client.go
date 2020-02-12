@@ -242,7 +242,7 @@ func (p *PubSubClient) handleWrites(conn net.Conn, stop chan bool, wg *sync.Wait
 			// not interested about I/O errors here because we want
 			// to disconnect
 			bye := msgformat.Serialize([]string{"BYE"})
-			conn.Write([]byte(bye))
+			_, _ = conn.Write([]byte(bye))
 			conn.Close()
 			return
 		}

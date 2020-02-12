@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/function61/eventhorizon/config"
 	"github.com/function61/eventhorizon/cursor"
@@ -121,7 +120,7 @@ func (c *Client) handleAndReturnBodyAndStatusCode(url string, requestBody []byte
 	}
 
 	if resp.StatusCode != expectedCode {
-		return body, resp.StatusCode, errors.New(fmt.Sprintf("HTTP %s: %s", resp.Status, body))
+		return body, resp.StatusCode, fmt.Errorf("HTTP %s: %s", resp.Status, body)
 	}
 
 	return body, resp.StatusCode, nil

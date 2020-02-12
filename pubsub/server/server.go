@@ -9,7 +9,6 @@ import (
 	"github.com/function61/eventhorizon/util/stringslice"
 	"log"
 	"net"
-	"time"
 )
 
 /*	Short description of the pub/sub server protocol. Legend:
@@ -213,7 +212,8 @@ func (e *PubSubServer) mainLogicLoop() {
 
 				e.handleSubscribe(topic, incomingMessage.client)
 
-				client.conn.Write([]byte(msgformat.Serialize([]string{"OK"})))
+				// FIXME
+				_, _ = client.conn.Write([]byte(msgformat.Serialize([]string{"OK"})))
 			} else if msgType == "AUTH" && len(msg) == 2 {
 				if msg[1] == e.confCtx.AuthToken() {
 					client.authenticated = true
@@ -299,21 +299,5 @@ func (e *PubSubServer) removeClientSubscriptions(cl *ServerClient) {
 		} else {
 			log.Printf("PubSubServer: removeClientSubscriptions: sub not found. SHOULD NOT HAPPEN. topic=%s", topic)
 		}
-	}
-}
-
-func enableTcpKeepalives(conn net.Conn) {
-	tcpConn, isTcp := conn.(*net.TCPConn)
-	if !isTcp {
-		log.Printf("PubSubServer: curiously, not a TCP connection")
-		return
-	}
-
-	// enable keepalive, so broken connections are cleaned up
-	if err := tcpConn.SetKeepAlivePeriod(60 * time.Second); err != nil {
-		log.Printf("PubSubServer: unable to set keepalive period: %s", err.Error())
-	}
-	if err := tcpConn.SetKeepAlive(true); err != nil {
-		log.Printf("PubSubServer: unable to enable keepalive: %s", err.Error())
 	}
 }

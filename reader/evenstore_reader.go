@@ -119,7 +119,7 @@ func (e *EventstoreReader) Read(opts *rtypes.ReadOptions) (*rtypes.ReadResult, e
 	}
 
 	if int64(cur.Offset) > fileInfo.Size() {
-		return nil, errors.New(fmt.Sprintf("Attempt to seek past EOF"))
+		return nil, fmt.Errorf("Attempt to seek past EOF")
 	}
 
 	_, errSeek := fd.Seek(int64(cur.Offset), io.SeekStart)

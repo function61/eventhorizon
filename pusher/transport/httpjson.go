@@ -3,7 +3,6 @@ package transport
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	ptypes "github.com/function61/eventhorizon/pusher/types"
 	"io/ioutil"
@@ -42,10 +41,10 @@ func (h *HttpJsonTransport) Push(input *ptypes.PushInput) (*ptypes.PushOutput, e
 	if resp.StatusCode != http.StatusOK {
 		errorBody, _ := ioutil.ReadAll(resp.Body)
 
-		return nil, errors.New(fmt.Sprintf(
+		return nil, fmt.Errorf(
 			"HTTP %s: %s",
 			resp.Status,
-			string(errorBody)))
+			string(errorBody))
 	}
 
 	var decodedResponse ptypes.PushOutput

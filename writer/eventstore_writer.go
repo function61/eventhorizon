@@ -184,7 +184,7 @@ func (e *EventstoreWriter) SubscribeToStream(streamName string, subscriptionId s
 
 		// TODO: cannot do this check in a clustered context
 		if !e.streamExists(subscriptionId, tx) {
-			return errors.New(fmt.Sprintf("SubscribeToStream: subscription %s does not exist", subscriptionId))
+			return fmt.Errorf("SubscribeToStream: subscription %s does not exist", subscriptionId)
 		}
 
 		existingSubscriptions := getSubscriptionsForStream(streamName, tx.BoltTx)
@@ -301,7 +301,7 @@ func (e *EventstoreWriter) AppendToStream(streamName string, contentArr []string
 func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr []string, metaEventsRaw string, tx *transaction.EventstoreTransaction) error {
 	chunkSpec, streamExists := e.streamToChunkName[streamName]
 	if !streamExists {
-		return errors.New(fmt.Sprintf("EventstoreWriter.AppendToStream: stream %s does not exist", streamName))
+		return fmt.Errorf("EventstoreWriter.AppendToStream: stream %s does not exist", streamName)
 	}
 
 	if len(contentArr) == 0 && metaEventsRaw == "" {
@@ -354,7 +354,9 @@ func (e *EventstoreWriter) appendToStreamInternal(streamName string, contentArr 
 		}
 	}
 
-	e.subAct.MarkOneDirty(cursorAfter, tx)
+	if err := e.subAct.MarkOneDirty(cursorAfter, tx); err != nil {
+		return err
+	}
 
 	cursorAfterSerialized := cursorAfter.Serialize()
 

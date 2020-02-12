@@ -40,7 +40,7 @@ func (w *WalManager) AppendToFile(fileName string, content string, tx *transacti
 	chunkWalBucket := tx.BoltTx.Bucket([]byte(fileName))
 
 	if chunkWalBucket == nil {
-		return 0, errors.New(fmt.Sprintf("WalManager: AppendToFile: chunk %s does not exist", fileName))
+		return 0, fmt.Errorf("WalManager: AppendToFile: chunk %s does not exist", fileName)
 	}
 
 	fileEntry, exists := w.openFiles[fileName]
@@ -92,7 +92,7 @@ func (w *WalManager) BorrowFileForReading(fileName string) (*os.File, error) {
 func (w *WalManager) OpenNewFile(fileName string, tx *transaction.EventstoreTransaction) error {
 	existsCheck := tx.BoltTx.Bucket([]byte(fileName))
 	if existsCheck != nil {
-		return errors.New(fmt.Sprintf("WalManager: OpenNewFile: chunk %s already exists", fileName))
+		return fmt.Errorf("WalManager: OpenNewFile: chunk %s already exists", fileName)
 	}
 
 	// create WAL bucket for file
@@ -200,7 +200,7 @@ func (w *WalManager) ApplySideEffects(tx *transaction.EventstoreTransaction) err
 func (w *WalManager) CloseActiveFile(fileName string, tx *transaction.EventstoreTransaction) (string, error) {
 	guardedFile, exists := w.openFiles[fileName]
 	if !exists {
-		return "", errors.New(fmt.Sprintf("WalManager: CloseActiveFile: %s not open", fileName))
+		return "", fmt.Errorf("WalManager: CloseActiveFile: %s not open", fileName)
 	}
 
 	log.Printf("WalManager: sealing %s", fileName)
@@ -231,7 +231,7 @@ func (w *WalManager) Close(tx *transaction.EventstoreTransaction) {
 func (w *WalManager) GetCurrentFileLength(fileName string) (int, error) {
 	wgf, exists := w.openFiles[fileName]
 	if !exists {
-		return 0, errors.New(fmt.Sprintf("WalManager: file %s does not exist", fileName))
+		return 0, fmt.Errorf("WalManager: file %s does not exist", fileName)
 	}
 
 	return int(wgf.nextFreePosition), nil
@@ -253,7 +253,7 @@ func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.Eventst
 	walRecordsQueued := 0
 
 	// these are in order from low to high, since the EventStore is append-only
-	chunkWalBucket.ForEach(func(key, value []byte) error {
+	if err := chunkWalBucket.ForEach(func(key, value []byte) error {
 		filePosition := btoi(key) // this is the absolute truth and cannot be questioned
 
 		tx.QueueWrite(walFile.fileNameFictional, value, int64(filePosition))
@@ -261,7 +261,9 @@ func (w *WalManager) RecoverAndOpenFile(fileName string, tx *transaction.Eventst
 		walRecordsQueued++
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
 
 	// compact the WAL entries
 	if walRecordsQueued > 0 {
