@@ -12,6 +12,21 @@
 				"build": ["bin/build.sh"],
 				"dev": ["bash"]
 			}
+		},
+		{
+			"name": "publisher",
+			"uses": "docker://fn61/buildkit-publisher:20190206_1058_d35b3939",
+			"mount_destination": "/workspace",
+			"commands": {
+				"publish": ["publish.sh", "rel/*"],
+				"dev": ["bash"]
+			},
+			"env": {
+				"BINTRAY_PROJECT": "function61/dl/eventhorizon"
+			},
+			"pass_envs": [
+				"BINTRAY_CREDS"
+			]
 		}
 	],
 	"docker_images": [
