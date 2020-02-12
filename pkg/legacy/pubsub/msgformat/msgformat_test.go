@@ -2,22 +2,22 @@ package msgformat
 
 import (
 	"fmt"
-	"github.com/function61/eventhorizon/pkg/legacy/util/ass"
+	"github.com/function61/gokit/assert"
 	"testing"
 )
 
 func TestSerialize(t *testing.T) {
-	ass.EqualString(t, Serialize(nil), "\n")
-	ass.EqualString(t, Serialize([]string{}), "\n")
-	ass.EqualString(t, Serialize([]string{"BYE"}), "BYE\n")
-	ass.EqualString(t, Serialize([]string{"SUB", "foo"}), "SUB foo\n")
+	assert.EqualString(t, Serialize(nil), "\n")
+	assert.EqualString(t, Serialize([]string{}), "\n")
+	assert.EqualString(t, Serialize([]string{"BYE"}), "BYE\n")
+	assert.EqualString(t, Serialize([]string{"SUB", "foo"}), "SUB foo\n")
 }
 
 func TestDeserialize(t *testing.T) {
-	ass.EqualInt(t, len(Deserialize("")), 1)
-	ass.EqualString(t, fmt.Sprintf("%v", Deserialize("\n")), "[]")
+	assert.Assert(t, len(Deserialize("")) == 1)
+	assert.EqualString(t, fmt.Sprintf("%v", Deserialize("\n")), "[]")
 
-	ass.EqualString(t, fmt.Sprintf("%v", Deserialize("FOO\n")), "[FOO]")
-	ass.EqualInt(t, len(Deserialize("SUB BAR\n")), 2)
-	ass.EqualString(t, fmt.Sprintf("%v", Deserialize("SUB BAR\n")), "[SUB BAR]")
+	assert.EqualString(t, fmt.Sprintf("%v", Deserialize("FOO\n")), "[FOO]")
+	assert.Assert(t, len(Deserialize("SUB BAR\n")) == 2)
+	assert.EqualString(t, fmt.Sprintf("%v", Deserialize("SUB BAR\n")), "[SUB BAR]")
 }

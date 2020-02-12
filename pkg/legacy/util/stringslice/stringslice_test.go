@@ -1,17 +1,17 @@
 package stringslice
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/util/ass"
+	"github.com/function61/gokit/assert"
 	"testing"
 )
 
 func TestItemIndex(t *testing.T) {
 	collection := []string{"foo", "bar", "baz"}
 
-	ass.EqualInt(t, ItemIndex("foo", collection), 0)
-	ass.EqualInt(t, ItemIndex("baz", collection), 2)
-	ass.EqualInt(t, ItemIndex("bar", collection), 1)
+	assert.Assert(t, ItemIndex("foo", collection) == 0)
+	assert.Assert(t, ItemIndex("baz", collection) == 2)
+	assert.Assert(t, ItemIndex("bar", collection) == 1)
 
-	ass.EqualInt(t, ItemIndex("", collection), -1)
-	ass.EqualInt(t, ItemIndex("fasdf", collection), -1)
+	assert.Assert(t, ItemIndex("", collection) == -1)
+	assert.Assert(t, ItemIndex("fasdf", collection) == -1)
 }

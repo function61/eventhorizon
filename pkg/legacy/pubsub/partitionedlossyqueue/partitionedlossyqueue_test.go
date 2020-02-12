@@ -1,7 +1,7 @@
 package partitionedlossyqueue
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/util/ass"
+	"github.com/function61/gokit/assert"
 	"strconv"
 	"testing"
 )
@@ -65,9 +65,9 @@ func TestMain(t *testing.T) {
 	// to build a flaky test. Instead we'll just test that we received the latest
 	// messages correctly.
 
-	ass.EqualString(t, stats["topic A"].LastReceivedMessage, "100000")
-	ass.EqualString(t, stats["topic B"].LastReceivedMessage, "100000")
-	ass.EqualString(t, stats["topic C"].LastReceivedMessage, "42356")
+	assert.EqualString(t, stats["topic A"].LastReceivedMessage, "100000")
+	assert.EqualString(t, stats["topic B"].LastReceivedMessage, "100000")
+	assert.EqualString(t, stats["topic C"].LastReceivedMessage, "42356")
 
 	/*
 		statsFormatted := []string{}

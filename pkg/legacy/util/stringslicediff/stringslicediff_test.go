@@ -1,7 +1,7 @@
 package stringslicediff
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/util/ass"
+	"github.com/function61/gokit/assert"
 	"testing"
 )
 
@@ -45,5 +45,5 @@ func runScenario(t *testing.T, base []string, other []string, expected string) {
 		resultSerialized += " -" + val
 	}
 
-	ass.EqualString(t, resultSerialized, expected)
+	assert.EqualString(t, resultSerialized, expected)
 }
