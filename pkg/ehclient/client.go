@@ -23,8 +23,13 @@ type Client struct {
 }
 
 func New(env Environment) *Client {
+	sess, err := session.NewSession()
+	if err != nil {
+		panic(err)
+	}
+
 	dynamo := dynamodb.New(
-		session.New(),
+		sess,
 		aws.NewConfig().WithRegion(env.regionId))
 
 	return &Client{dynamo, aws.String(env.events)}
