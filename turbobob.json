@@ -5,9 +5,13 @@
 	"builders": [
 		{
 			"name": "default",
+			"uses": "docker://fn61/buildkit-golang:20200212_0907_06f93bc3",
 			"mount_destination": "/go/src/github.com/function61/eventhorizon",
-			"dev_command": ["bash"],
-			"pass_envs": ["BINTRAY_CREDS"]
+			"workdir": "/go/src/github.com/function61/eventhorizon",
+			"commands": {
+				"build": ["bin/build.sh"],
+				"dev": ["bash"]
+			}
 		}
 	],
 	"docker_images": [
@@ -16,5 +20,8 @@
 			"dockerfile_path": "Dockerfile",
 			"auth_type": "creds_from_env"
 		}
-	]
+	],
+	"os_arches": {
+		"linux-amd64": true
+	}
 }
