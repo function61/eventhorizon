@@ -7,6 +7,7 @@ import (
 	"github.com/function61/gokit/ossignal"
 	"github.com/spf13/cobra"
 	"os"
+	"path"
 	"strconv"
 )
 
@@ -42,9 +43,16 @@ func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "stream-create [parent] [name]",
 		Short: "Create new stream, as a child of parent",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := eh.CreateStream(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0], args[1]); err != nil {
+			// "/foo" => "/"
+			// "/foo/bar" => "/foo"
+			parent := path.Dir(args[0])
+			// "/foo" => "foo"
+			// "/foo/bar" => "bar"
+			name := path.Base(args[0])
+
+			if err := eh.CreateStream(ossignal.InterruptOrTerminateBackgroundCtx(nil), parent, name); err != nil {
 				panic(err)
 			}
 		},
