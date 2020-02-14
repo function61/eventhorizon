@@ -41,7 +41,7 @@ func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "stream-create [parent] [name]",
+		Use:   "stream-create [path]",
 		Short: "Create new stream, as a child of parent",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
