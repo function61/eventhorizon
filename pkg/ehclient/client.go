@@ -22,6 +22,9 @@ type Client struct {
 	eventsTableName *string
 }
 
+// interface assertion
+var _ ReaderWriter = (*Client)(nil)
+
 func New(env Environment) *Client {
 	sess, err := session.NewSession()
 	if err != nil {

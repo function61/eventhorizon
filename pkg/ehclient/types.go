@@ -9,6 +9,18 @@ type Reader interface {
 	Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error)
 }
 
+// interface for appending log entries to a stream
+type Writer interface {
+	Append(ctx context.Context, stream string, events []string) error
+	// TODO: rename -> AppendAfter()
+	AppendAt(ctx context.Context, after Cursor, events []string) error
+}
+
+type ReaderWriter interface {
+	Reader
+	Writer
+}
+
 type ReadResult struct {
 	Entries   []LogEntry
 	LastEntry Cursor // Entries[last].Version (use only if you handled all entries) or if no entries, the "after" in Read()

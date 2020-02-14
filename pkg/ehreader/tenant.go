@@ -29,11 +29,11 @@ func (t Tenant) Stream(stream string) string {
 }
 
 // creates TenantClient context
-func (t Tenant) Client(env ehclient.Environment) TenantClient {
-	return TenantClient{t, ehclient.New(env)}
+func (t Tenant) Client(client ehclient.ReaderWriter) TenantClient {
+	return TenantClient{t, client}
 }
 
 type TenantClient struct {
 	Tenant
-	Client *ehclient.Client
+	Client ehclient.ReaderWriter
 }

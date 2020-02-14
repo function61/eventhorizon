@@ -35,5 +35,5 @@ func TenantConfigFromEnv() (TenantClient, error) {
 		return TenantClient{}, err
 	}
 
-	return TenantId(parts[1]).Client(environment), nil
+	return TenantId(parts[1]).Client(ehclient.New(environment)), nil
 }

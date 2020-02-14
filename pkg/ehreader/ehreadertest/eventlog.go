@@ -12,6 +12,9 @@ type EventLog struct {
 	memoryStore map[string]*[]ehclient.LogEntry
 }
 
+// interface assertion
+var _ ehclient.ReaderWriter = (*EventLog)(nil)
+
 func NewEventLog() *EventLog {
 	return &EventLog{
 		memoryStore: map[string]*[]ehclient.LogEntry{},
@@ -19,6 +22,21 @@ func NewEventLog() *EventLog {
 }
 
 func (e *EventLog) Append(ctx context.Context, stream string, events []string) error {
+	entries := e.memoryStore[stream]
+
+	if entries == nil {
+		return e.AppendAt(ctx, ehclient.Beginning(stream), events)
+	} else {
+		return e.AppendAt(
+			ctx,
+			ehclient.At(stream, int64(len(*entries)-1)),
+			events)
+	}
+}
+
+func (e *EventLog) AppendAt(ctx context.Context, after ehclient.Cursor, events []string) error {
+	stream := after.Stream()
+
 	entries, found := e.memoryStore[stream]
 	if !found {
 		entries = &[]ehclient.LogEntry{}
@@ -26,9 +44,19 @@ func (e *EventLog) Append(ctx context.Context, stream string, events []string) e
 		e.memoryStore[stream] = entries
 	}
 
+	posRequested := after.Next()
+	posActual := ehclient.At(after.Stream(), int64(len(*entries)))
+
+	if !posRequested.Equal(posActual) {
+		return fmt.Errorf(
+			"Append() conflict: posRequested=%s posActual=%s",
+			posRequested.Serialize(),
+			posActual.Serialize())
+	}
+
 	*entries = append(*entries, ehclient.LogEntry{
 		Stream:  stream,
-		Version: int64(len(*entries)),
+		Version: posActual.Version(),
 		Events:  events,
 	})
 
