@@ -27,9 +27,9 @@ func TestReaderReadIntoProjection(t *testing.T) {
 	eventLog.AppendE(stream, NewChatMessage("2", "Is anybody listening?", ehevent.Meta(t0.Add(2*time.Minute), "joonas")))
 
 	// transactionally pumps events from event log into the projection
-	reader := New(eventLog, testingEventTypes)
+	reader := New(chatRoom, eventLog)
 
-	assert.Ok(t, reader.LoadUntilRealtime(context.Background(), chatRoom))
+	assert.Ok(t, reader.LoadUntilRealtime(context.Background()))
 
 	assert.EqualString(t, chatRoom.PrintChatLog(), `
 13:45:00 joonas: Testing first message
@@ -37,7 +37,7 @@ func TestReaderReadIntoProjection(t *testing.T) {
 
 	eventLog.AppendE(stream, NewChatMessage("3", "So lonely :(", ehevent.Meta(t0.Add(47*time.Minute), "joonas")))
 
-	assert.Ok(t, reader.LoadUntilRealtime(context.Background(), chatRoom))
+	assert.Ok(t, reader.LoadUntilRealtime(context.Background()))
 
 	assert.EqualString(t, chatRoom.PrintChatLog(), `
 13:45:00 joonas: Testing first message
@@ -52,6 +52,10 @@ type chatRoomProjection struct {
 
 func (d *chatRoomProjection) PrintChatLog() string {
 	return "\n" + strings.Join(d.chatLog, "\n")
+}
+
+func (d *chatRoomProjection) GetEventTypes() ehevent.Allocators {
+	return testingEventTypes
 }
 
 func (d *chatRoomProjection) ProcessEvents(ctx context.Context, handle EventProcessorHandler) error {

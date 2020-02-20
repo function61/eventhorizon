@@ -19,6 +19,7 @@ Contents:
 - [Installation](#installation)
 - [How to identify old vs. new?](#how-to-identify-old-vs-new)
 - [Sample application using EventHorizon](#sample-application-using-eventhorizon)
+- [How does it look in my application?](#how-does-it-look-in-my-application)
 
 
 Installation
@@ -53,3 +54,16 @@ Sample application using EventHorizon
 
 See [CertBus](https://github.com/function61/certbus).
 
+
+How does it look in my application?
+-----------------------------------
+
+See [pkg/ehreader/reader_test.go](pkg/ehreader/reader_test.go) for example test case that
+demoes how to use the reader to read data from EventHorizon.
+
+I hope you can see from the test code that we also great testability support for
+implementors of `EventsProcessor` interface where you don't have to do anything special for
+your production code to be testable.
+
+For receiving realtime data you would call
+[Reader.Synchronizer](https://godoc.org/github.com/function61/eventhorizon/pkg/ehreader#Reader.Synchronizer).

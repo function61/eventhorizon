@@ -1,3 +1,4 @@
+// Easy-to-use consumer API on top of EventHorizon client (which is lower-level)
 package ehreader
 
 import (
@@ -5,6 +6,13 @@ import (
 	"fmt"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/gokit/logex"
+	"log"
+	"time"
+)
+
+var (
+	SuggestedPollingInterval = 10 * time.Second
 )
 
 /* encapsulates:
@@ -30,32 +38,57 @@ type EventsProcessor interface {
 		  * etc.
 	*/
 	ProcessEvents(ctx context.Context, handle EventProcessorHandler) error
+	GetEventTypes() ehevent.Allocators
 }
 
+// Serves reads for one processor
 type Reader struct {
-	eventTypes ehevent.Allocators
 	client     ehclient.Reader
+	eventTypes ehevent.Allocators
+	processor  EventsProcessor
 }
 
-func New(
-	client ehclient.Reader,
-	eventTypes ehevent.Allocators,
-) *Reader {
+// "keep processor happy by feeding it from client"
+func New(processor EventsProcessor, client ehclient.Reader) *Reader {
 	return &Reader{
-		eventTypes,
 		client,
+		processor.GetEventTypes(),
+		processor,
 	}
 }
 
-func (s *Reader) LoadUntilRealtime(
+// starts "realtime" sync. until we get pub/sub, we're stuck with polling. but this is the
+// API that will hide better realtime implementation once EventHorizon matures
+func (s *Reader) Synchronizer(
 	ctx context.Context,
-	processor EventsProcessor,
+	pollInterval time.Duration,
+	logger *log.Logger,
 ) error {
+	logl := logex.Levels(logger)
+
+	pollIntervalTicker := time.NewTicker(pollInterval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-pollIntervalTicker.C:
+			// eventually we'll migrate to realtime notifications from eventhorizon,
+			// but until then polling will do
+
+			if err := s.LoadUntilRealtime(ctx); err != nil {
+				logl.Error.Printf("LoadUntilRealtime: %v", err)
+			}
+		}
+	}
+}
+
+func (s *Reader) LoadUntilRealtime(ctx context.Context) error {
 	var nextRead ehclient.Cursor
 
 	// start with creating a dummy commit without handling any events, so we can only
 	// query the initial version of the aggregate
-	if err := processor.ProcessEvents(ctx, func(
+	if err := s.processor.ProcessEvents(ctx, func(
 		versionInDb ehclient.Cursor,
 		handleEvent func(ehevent.Event) error,
 		commit func(ehclient.Cursor) error,
@@ -94,7 +127,7 @@ func (s *Reader) LoadUntilRealtime(
 
 			versionAfter := ehclient.At(nextRead.Stream(), record.Version)
 
-			if err := processor.ProcessEvents(ctx, func(
+			if err := s.processor.ProcessEvents(ctx, func(
 				versionInDb ehclient.Cursor,
 				handleEvent func(ehevent.Event) error,
 				commit func(ehclient.Cursor) error,
