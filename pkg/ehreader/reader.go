@@ -58,7 +58,8 @@ func New(processor EventsProcessor, client ehclient.Reader) *Reader {
 }
 
 // starts "realtime" sync. until we get pub/sub, we're stuck with polling. but this is the
-// API that will hide better realtime implementation once EventHorizon matures
+// API that will hide better realtime implementation once EventHorizon matures.
+// runs forever (or until ctx is cancelled).
 func (s *Reader) Synchronizer(
 	ctx context.Context,
 	pollInterval time.Duration,

@@ -26,9 +26,9 @@ func TestReaderReadIntoProjection(t *testing.T) {
 	eventLog.AppendE(stream, NewChatMessage("1", "Testing first message", ehevent.Meta(t0, "joonas")))
 	eventLog.AppendE(stream, NewChatMessage("2", "Is anybody listening?", ehevent.Meta(t0.Add(2*time.Minute), "joonas")))
 
-	// transactionally pumps events from event log into the projection
 	reader := New(chatRoom, eventLog)
 
+	// transactionally pumps events from event log into the projection
 	assert.Ok(t, reader.LoadUntilRealtime(context.Background()))
 
 	assert.EqualString(t, chatRoom.PrintChatLog(), `
