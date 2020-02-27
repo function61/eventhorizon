@@ -11,6 +11,10 @@ type DynamoDbOptions struct {
 	TableName       string
 }
 
+type AppendResult struct {
+	Cursor Cursor
+}
+
 // interface for reading log entries from a stream
 type Reader interface {
 	Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error)
@@ -18,10 +22,10 @@ type Reader interface {
 
 // interface for appending log entries to a stream
 type Writer interface {
-	Append(ctx context.Context, stream string, events []string) error
-	// TODO: rename -> AppendAfter()
+	Append(ctx context.Context, stream string, events []string) (*AppendResult, error)
+	// used for transactional writes
 	// returns *ErrOptimisticLockingFailed if stream had writes after you read it
-	AppendAt(ctx context.Context, after Cursor, events []string) error
+	AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error)
 }
 
 type ReaderWriter interface {

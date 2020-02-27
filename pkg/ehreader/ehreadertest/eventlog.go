@@ -22,20 +22,20 @@ func NewEventLog() *EventLog {
 	}
 }
 
-func (e *EventLog) Append(ctx context.Context, stream string, events []string) error {
+func (e *EventLog) Append(ctx context.Context, stream string, events []string) (*ehclient.AppendResult, error) {
 	entries := e.memoryStore[stream]
 
 	if entries == nil {
-		return e.AppendAt(ctx, ehclient.Beginning(stream), events)
+		return e.AppendAfter(ctx, ehclient.Beginning(stream), events)
 	} else {
-		return e.AppendAt(
+		return e.AppendAfter(
 			ctx,
 			ehclient.At(stream, int64(len(*entries)-1)),
 			events)
 	}
 }
 
-func (e *EventLog) AppendAt(ctx context.Context, after ehclient.Cursor, events []string) error {
+func (e *EventLog) AppendAfter(ctx context.Context, after ehclient.Cursor, events []string) (*ehclient.AppendResult, error) {
 	stream := after.Stream()
 
 	entries, found := e.memoryStore[stream]
@@ -46,22 +46,24 @@ func (e *EventLog) AppendAt(ctx context.Context, after ehclient.Cursor, events [
 	}
 
 	afterRequested := after.Next()
-	afterExpected := ehclient.At(after.Stream(), int64(len(*entries)))
+	afterActual := ehclient.At(after.Stream(), int64(len(*entries)))
 
-	if !afterRequested.Equal(afterExpected) {
-		return ehclient.NewErrOptimisticLockingFailed(fmt.Errorf(
-			"conflict: afterRequested=%s afterExpected=%s",
+	if !afterRequested.Equal(afterActual) {
+		return nil, ehclient.NewErrOptimisticLockingFailed(fmt.Errorf(
+			"conflict: afterRequested=%s afterActual=%s",
 			afterRequested.Serialize(),
-			afterExpected.Serialize()))
+			afterActual.Serialize()))
 	}
 
 	*entries = append(*entries, ehclient.LogEntry{
 		Stream:  stream,
-		Version: afterExpected.Version(),
+		Version: afterActual.Version(),
 		Events:  events,
 	})
 
-	return nil
+	return &ehclient.AppendResult{
+		Cursor: afterActual,
+	}, nil
 }
 
 // testing helper
@@ -72,7 +74,7 @@ func (e *EventLog) AppendE(stream string, events ...ehevent.Event) {
 		eventsSerialized = append(eventsSerialized, ehevent.Serialize(event))
 	}
 
-	if err := e.Append(context.TODO(), stream, eventsSerialized); err != nil {
+	if _, err := e.Append(context.TODO(), stream, eventsSerialized); err != nil {
 		panic(err)
 	}
 }

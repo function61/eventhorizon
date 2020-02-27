@@ -109,10 +109,8 @@ func streamAppend(ctx context.Context, streamPath string, event string) error {
 		return err
 	}
 
-	return horizon.Append(
-		ctx,
-		streamPath,
-		[]string{event})
+	_, err = horizon.Append(ctx, streamPath, []string{event})
+	return err
 }
 
 func buildClient() (*ehclient.Client, error) {

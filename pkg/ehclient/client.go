@@ -85,39 +85,46 @@ func (e *Client) Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error
 	return &ReadResult{entries, lastEntryCursor, moreData}, nil
 }
 
-func (e *Client) Append(ctx context.Context, stream string, events []string) error {
+func (e *Client) Append(ctx context.Context, stream string, events []string) (*AppendResult, error) {
 	// this can fail, so retry a few times
 	for i := 0; i < 3; i++ {
 		at, err := e.resolveStreamPosition(ctx, stream)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := e.AppendAt(ctx, *at, events); err != nil {
+		result, err := e.AppendAfter(ctx, *at, events)
+		if err != nil {
 			if _, isAboutConcurrency := err.(*ErrOptimisticLockingFailed); isAboutConcurrency {
 				continue
 			} else {
-				return err // some other error - don't even retry
+				return nil, err // some other error - don't even retry
 			}
 		}
 
-		return nil
+		return result, nil
 	}
 
-	return fmt.Errorf("Append: retry times exceeded, stream=%s", stream)
+	return nil, fmt.Errorf("Append: retry times exceeded, stream=%s", stream)
 }
 
 // NOTE: be very sure that stream exists, since it is not validated
 // NOTE: be sure that you don't set version into the future, since that will leave a gap
 // NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
-func (e *Client) AppendAt(ctx context.Context, after Cursor, events []string) error {
+func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error) {
+	if len(events) == 0 {
+		return nil, errors.New("empty appends are not supported")
+	}
+
+	resultingCursor := after.Next()
+
 	dynamoEntry, err := dynamoutils.Marshal(LogEntry{
-		Stream:  after.stream,
-		Version: after.Next().version,
+		Stream:  resultingCursor.Stream(),
+		Version: resultingCursor.Version(),
 		Events:  events,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	_, err = e.dynamo.PutItemWithContext(ctx, &dynamodb.PutItemInput{
@@ -128,13 +135,15 @@ func (e *Client) AppendAt(ctx context.Context, after Cursor, events []string) er
 	})
 	if err != nil {
 		if err, ok := err.(awserr.Error); ok && err.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-			return NewErrOptimisticLockingFailed(err)
+			return nil, NewErrOptimisticLockingFailed(err)
 		} else {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &AppendResult{
+		Cursor: resultingCursor,
+	}, nil
 }
 
 func (e *Client) CreateStream(ctx context.Context, parent string, name string) error {
