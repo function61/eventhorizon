@@ -6,8 +6,14 @@ import (
 
 func Meta(timestamp time.Time, userId string) EventMeta {
 	return EventMeta{
-		Timestamp: timestamp,
+		Timestamp: timestamp.UTC(),
 		UserId:    userId,
+	}
+}
+
+func MetaSystemUser(timestamp time.Time) EventMeta {
+	return EventMeta{
+		Timestamp: timestamp.UTC(),
 	}
 }
 
@@ -18,15 +24,9 @@ func MetaWithImpersonator(timestamp time.Time, userId string, impersonatingUserI
 	}
 
 	return EventMeta{
-		Timestamp:           timestamp,
+		Timestamp:           timestamp.UTC(),
 		UserId:              userId,
 		ImpersonatingUserId: impersonatingUserId,
-	}
-}
-
-func MetaSystemUser(timestamp time.Time) EventMeta {
-	return EventMeta{
-		Timestamp: timestamp,
 	}
 }
 
