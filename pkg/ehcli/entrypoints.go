@@ -1,9 +1,12 @@
-// Command line interface for administering EventHorizon
+// CLI for administering EventHorizon
 package ehcli
 
 import (
+	"context"
+	"fmt"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
+	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/ossignal"
 	"github.com/spf13/cobra"
 	"os"
@@ -11,32 +14,18 @@ import (
 	"strconv"
 )
 
-func Entrypoints() []*cobra.Command {
-	prod := &cobra.Command{
-		Use:   "eh-prod",
-		Short: "EventHorizon subcommands (production)",
+func Entrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "eh",
+		Short: "EventHorizon subcommands",
 	}
 
-	dev := &cobra.Command{
-		Use:   "eh-dev",
-		Short: "EventHorizon subcommands (development)",
-	}
-
-	attachSubcommands(prod, ehclient.New(ehclient.Production()))
-	attachSubcommands(dev, ehclient.New(ehclient.Development()))
-
-	return []*cobra.Command{prod, dev}
-}
-
-func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "bootstrap",
 		Short: "Bootstrap the database",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := ehclient.Bootstrap(ossignal.InterruptOrTerminateBackgroundCtx(nil), eh); err != nil {
-				panic(err)
-			}
+			exitIfError(bootstrap(ossignal.InterruptOrTerminateBackgroundCtx(nil)))
 		},
 	})
 
@@ -45,16 +34,7 @@ func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 		Short: "Create new stream, as a child of parent",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			// "/foo" => "/"
-			// "/foo/bar" => "/foo"
-			parent := path.Dir(args[0])
-			// "/foo" => "foo"
-			// "/foo/bar" => "bar"
-			name := path.Base(args[0])
-
-			if err := eh.CreateStream(ossignal.InterruptOrTerminateBackgroundCtx(nil), parent, name); err != nil {
-				panic(err)
-			}
+			exitIfError(streamCreate(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0]))
 		},
 	})
 
@@ -64,20 +44,9 @@ func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			version, err := strconv.Atoi(args[1])
-			if err != nil {
-				panic(err)
-			}
+			exitIfError(err)
 
-			resp, err := eh.Read(
-				ossignal.InterruptOrTerminateBackgroundCtx(nil),
-				ehclient.At(args[0], int64(version)))
-			if err != nil {
-				panic(err)
-			}
-
-			if err := ehdebug.Debug(resp, os.Stdout); err != nil {
-				panic(err)
-			}
+			exitIfError(streamRead(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0], int64(version)))
 		},
 	})
 
@@ -86,13 +55,78 @@ func attachSubcommands(parentCmd *cobra.Command, eh *ehclient.Client) {
 		Short: "Append event to the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := eh.Append(
-				ossignal.InterruptOrTerminateBackgroundCtx(nil),
-				args[0],
-				[]string{args[1]},
-			); err != nil {
-				panic(err)
-			}
+			exitIfError(streamAppend(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0], args[1]))
 		},
 	})
+
+	return parentCmd
+}
+
+func bootstrap(ctx context.Context) error {
+	horizon, err := buildClient()
+	if err != nil {
+		return err
+	}
+
+	return ehclient.Bootstrap(ctx, horizon)
+}
+
+func streamCreate(ctx context.Context, streamPath string) error {
+	// "/foo" => "/"
+	// "/foo/bar" => "/foo"
+	parent := path.Dir(streamPath)
+	// "/foo" => "foo"
+	// "/foo/bar" => "bar"
+	name := path.Base(streamPath)
+
+	horizon, err := buildClient()
+	if err != nil {
+		return err
+	}
+
+	return horizon.CreateStream(ctx, parent, name)
+}
+
+func streamRead(ctx context.Context, streamPath string, version int64) error {
+	horizon, err := buildClient()
+	if err != nil {
+		return err
+	}
+
+	resp, err := horizon.Read(
+		ctx,
+		ehclient.At(streamPath, version))
+	if err != nil {
+		return err
+	}
+
+	return ehdebug.Debug(resp, os.Stdout)
+}
+
+func streamAppend(ctx context.Context, streamPath string, event string) error {
+	horizon, err := buildClient()
+	if err != nil {
+		return err
+	}
+
+	return horizon.Append(
+		ctx,
+		streamPath,
+		[]string{event})
+}
+
+func buildClient() (*ehclient.Client, error) {
+	conf, err := ehreader.GetConfig(ehreader.ConfigFromEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return ehreader.ClientFromConfig(conf), nil
+}
+
+func exitIfError(err error) {
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/function61/eventhorizon/pkg/dynamoutils"
@@ -25,17 +26,22 @@ type Client struct {
 // interface assertion
 var _ ReaderWriter = (*Client)(nil)
 
-func New(env Environment) *Client {
+func New(opts DynamoDbOptions) *Client {
 	sess, err := session.NewSession()
 	if err != nil {
 		panic(err)
 	}
 
+	staticCreds := credentials.NewStaticCredentials(
+		opts.AccessKeyId,
+		opts.AccessKeySecret,
+		"")
+
 	dynamo := dynamodb.New(
 		sess,
-		aws.NewConfig().WithRegion(env.regionId))
+		aws.NewConfig().WithCredentials(staticCreds).WithRegion(opts.RegionId))
 
-	return &Client{dynamo, aws.String(env.events)}
+	return &Client{dynamo, &opts.TableName}
 }
 
 // "lastKnown" is exclusive (i.e. the record pointed by it will not be returned)
@@ -88,7 +94,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) err
 		}
 
 		if err := e.AppendAt(ctx, *at, events); err != nil {
-			if _, isAboutConcurrency := err.(*concurrencyError); isAboutConcurrency {
+			if _, isAboutConcurrency := err.(*ErrOptimisticLockingFailed); isAboutConcurrency {
 				continue
 			} else {
 				return err // some other error - don't even retry
@@ -103,6 +109,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) err
 
 // NOTE: be very sure that stream exists, since it is not validated
 // NOTE: be sure that you don't set version into the future, since that will leave a gap
+// NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
 func (e *Client) AppendAt(ctx context.Context, after Cursor, events []string) error {
 	dynamoEntry, err := dynamoutils.Marshal(LogEntry{
 		Stream:  after.stream,
@@ -121,7 +128,7 @@ func (e *Client) AppendAt(ctx context.Context, after Cursor, events []string) er
 	})
 	if err != nil {
 		if err, ok := err.(awserr.Error); ok && err.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-			return &concurrencyError{err}
+			return NewErrOptimisticLockingFailed(err)
 		} else {
 			return err
 		}

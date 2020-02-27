@@ -17,6 +17,18 @@ func (c *Cursor) Version() int64 {
 	return c.version
 }
 
+func (c *Cursor) AtBeginning() bool {
+	return c.version == -1
+}
+
+func (c *Cursor) Less(other Cursor) bool {
+	if c.stream != other.stream {
+		panic("cannot compare unrelated streams")
+	}
+
+	return c.version < other.version
+}
+
 func (c *Cursor) Equal(other Cursor) bool {
 	return c.stream == other.stream && c.version == other.version
 }

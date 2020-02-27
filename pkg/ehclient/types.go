@@ -4,6 +4,13 @@ import (
 	"context"
 )
 
+type DynamoDbOptions struct {
+	AccessKeyId     string
+	AccessKeySecret string
+	RegionId        string
+	TableName       string
+}
+
 // interface for reading log entries from a stream
 type Reader interface {
 	Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error)
@@ -13,6 +20,7 @@ type Reader interface {
 type Writer interface {
 	Append(ctx context.Context, stream string, events []string) error
 	// TODO: rename -> AppendAfter()
+	// returns *ErrOptimisticLockingFailed if stream had writes after you read it
 	AppendAt(ctx context.Context, after Cursor, events []string) error
 }
 
@@ -39,6 +47,11 @@ type LogEntry struct {
 	Events    []string `json:"e"`
 }
 
-type concurrencyError struct {
+type ErrOptimisticLockingFailed struct {
 	error
+}
+
+// needed for testing from outside of this package
+func NewErrOptimisticLockingFailed(err error) *ErrOptimisticLockingFailed {
+	return &ErrOptimisticLockingFailed{err}
 }

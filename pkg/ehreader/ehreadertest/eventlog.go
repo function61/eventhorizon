@@ -45,19 +45,19 @@ func (e *EventLog) AppendAt(ctx context.Context, after ehclient.Cursor, events [
 		e.memoryStore[stream] = entries
 	}
 
-	posRequested := after.Next()
-	posActual := ehclient.At(after.Stream(), int64(len(*entries)))
+	afterRequested := after.Next()
+	afterExpected := ehclient.At(after.Stream(), int64(len(*entries)))
 
-	if !posRequested.Equal(posActual) {
-		return fmt.Errorf(
-			"Append() conflict: posRequested=%s posActual=%s",
-			posRequested.Serialize(),
-			posActual.Serialize())
+	if !afterRequested.Equal(afterExpected) {
+		return ehclient.NewErrOptimisticLockingFailed(fmt.Errorf(
+			"conflict: afterRequested=%s afterExpected=%s",
+			afterRequested.Serialize(),
+			afterExpected.Serialize()))
 	}
 
 	*entries = append(*entries, ehclient.LogEntry{
 		Stream:  stream,
-		Version: posActual.Version(),
+		Version: afterExpected.Version(),
 		Events:  events,
 	})
 
