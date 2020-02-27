@@ -16,8 +16,8 @@ import (
 
 func Entrypoint() *cobra.Command {
 	parentCmd := &cobra.Command{
-		Use:   "eh",
-		Short: "EventHorizon subcommands",
+		Use:   "eventhorizon",
+		Short: "Manage EventHorizon",
 	}
 
 	parentCmd.AddCommand(&cobra.Command{
