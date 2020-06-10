@@ -86,7 +86,8 @@ func TestTransactWriteSucceedsOnThirdTry(t *testing.T) {
 	assert.Ok(t, reader.TransactWrite(ctx, func() error {
 		tryNumber++
 
-		// inject new chat message so our Append() won't succeed on this try
+		// inject a new chat message (that our read model - chatRoom - doesn't yet know
+		// about) so our AppendAfter() won't succeed on this try
 		if tryNumber == 1 || tryNumber == 2 {
 			eventLog.AppendE(stream, NewChatMessage(len(chatRoom.chatLog)+1, "Conflict causing message", ehevent.Meta(t0, "memelord")))
 		}

@@ -13,15 +13,31 @@ Contents:
 Create DynamoDB table for EventHorizon
 --------------------------------------
 
-Create DynamoDB table in `eu-central-1` (currently the region is hardcoded..)
+Create DynamoDB tables in `eu-central-1` (currently the region is hardcoded..)
+
+### Events table
 
 - Name = `prod_eh_events`
 - Primary key = `s` (type: string)
 - Add sort key, name = `v` (type: number)
 
+
+### Snapshots table
+
+- Name = `prod_eh_snapshots`
+- Primary key = `s` (type: string)
+- Add sort key, name = `c` (type: string)
+
+
+### More info
+
 We recommend starting with on-demand pricing so you don't have to think about scaling issues.
 You can always change it later to start saving money if it gets pricy (it won't if your usage
 is not massive) if you know your scaling patterns.
+
+If you're wondering, why the key names are single-char names, you have to pay for each item's
+attributes' key names per row also, so I decided to keep the most common needed attributes
+short because I anticipate storing billions of events.
 
 
 Configure AWS permissions
@@ -48,7 +64,8 @@ For read usergroup, define inline policy (recommended policy name `events-read`)
                 "dynamodb:Query"
             ],
             "Resource": [
-                "arn:aws:dynamodb:*:*:table/prod_eh_events"
+                "arn:aws:dynamodb:*:*:table/prod_eh_events",
+                "arn:aws:dynamodb:*:*:table/prod_eh_snapshots"
             ]
         }
     ]
@@ -71,7 +88,8 @@ For readwrite usergroup, define inline policy (recommended policy name `events-r
                 "dynamodb:Query"
             ],
             "Resource": [
-                "arn:aws:dynamodb:*:*:table/prod_eh_events"
+                "arn:aws:dynamodb:*:*:table/prod_eh_events",
+                "arn:aws:dynamodb:*:*:table/prod_eh_snapshots"
             ]
         }
     ]

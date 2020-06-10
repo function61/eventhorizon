@@ -1,3 +1,4 @@
+// Optional, standardized event structure + serialization format
 package ehevent
 
 import (
