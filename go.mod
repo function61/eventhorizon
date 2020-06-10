@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-lambda-go v1.14.0
 	github.com/aws/aws-sdk-go v1.29.0
 	github.com/boltdb/bolt v1.3.1
-	github.com/function61/gokit v0.0.0-20200226141201-fe205250686d
+	github.com/function61/gokit v0.0.0-20200608105953-12235c68c38b
 	github.com/jpillora/backoff v1.0.0
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/prometheus/client_golang v1.4.1

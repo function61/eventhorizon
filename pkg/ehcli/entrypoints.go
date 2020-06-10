@@ -3,11 +3,10 @@ package ehcli
 
 import (
 	"context"
-	"fmt"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/gokit/ossignal"
+	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
 	"os"
 	"path"
@@ -25,7 +24,7 @@ func Entrypoint() *cobra.Command {
 		Short: "Bootstrap the database",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			exitIfError(bootstrap(ossignal.InterruptOrTerminateBackgroundCtx(nil)))
+			osutil.ExitIfError(bootstrap(osutil.CancelOnInterruptOrTerminate(nil)))
 		},
 	})
 
@@ -34,7 +33,7 @@ func Entrypoint() *cobra.Command {
 		Short: "Create new stream, as a child of parent",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			exitIfError(streamCreate(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0]))
+			osutil.ExitIfError(streamCreate(osutil.CancelOnInterruptOrTerminate(nil), args[0]))
 		},
 	})
 
@@ -44,9 +43,9 @@ func Entrypoint() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			version, err := strconv.Atoi(args[1])
-			exitIfError(err)
+			osutil.ExitIfError(err)
 
-			exitIfError(streamRead(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0], int64(version)))
+			osutil.ExitIfError(streamRead(osutil.CancelOnInterruptOrTerminate(nil), args[0], int64(version)))
 		},
 	})
 
@@ -55,7 +54,7 @@ func Entrypoint() *cobra.Command {
 		Short: "Append event to the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			exitIfError(streamAppend(ossignal.InterruptOrTerminateBackgroundCtx(nil), args[0], args[1]))
+			osutil.ExitIfError(streamAppend(osutil.CancelOnInterruptOrTerminate(nil), args[0], args[1]))
 		},
 	})
 
@@ -120,11 +119,4 @@ func buildClient() (*ehclient.Client, error) {
 	}
 
 	return ehreader.ClientFromConfig(conf), nil
-}
-
-func exitIfError(err error) {
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
 }
