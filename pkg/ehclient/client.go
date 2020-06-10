@@ -95,6 +95,9 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) (*A
 
 		result, err := e.AppendAfter(ctx, *at, events)
 		if err != nil {
+			// I think this is a false positive lint message:
+			//     "when isAboutConcurrency is true, err can't be nil"
+			//nolint:gosimple
 			if _, isAboutConcurrency := err.(*ErrOptimisticLockingFailed); isAboutConcurrency {
 				continue
 			} else {
