@@ -4,6 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"strings"
+	"sync"
+
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
@@ -14,10 +19,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/writer/transaction"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/types"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/wal"
-	"log"
-	"os"
-	"strings"
-	"sync"
 )
 
 type EventstoreWriter struct {

@@ -3,12 +3,13 @@ package writerhttp
 import (
 	"context"
 	"crypto/tls"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	"github.com/function61/eventhorizon/pkg/legacy/writer"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	"github.com/function61/eventhorizon/pkg/legacy/writer"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func HttpServe(eventWriter *writer.EventstoreWriter, shutdown chan bool, done chan bool, confCtx *config.Context) {

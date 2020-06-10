@@ -3,14 +3,15 @@ package ehcli
 
 import (
 	"context"
+	"os"
+	"path"
+	"strconv"
+
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
-	"os"
-	"path"
-	"strconv"
 )
 
 func Entrypoint() *cobra.Command {

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+
 	ptypes "github.com/function61/eventhorizon/pkg/legacy/pusher/types"
 )
 

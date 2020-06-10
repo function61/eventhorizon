@@ -1,6 +1,13 @@
 package main
 
 import (
+	"io"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/client"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/server"
@@ -12,12 +19,6 @@ import (
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/writerhttp"
-	"io"
-	"log"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func banner() {

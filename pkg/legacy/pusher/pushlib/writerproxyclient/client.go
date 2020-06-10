@@ -15,9 +15,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
 	"io/ioutil"
 	"net/http"
+
+	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
 )
 
 type Client struct {

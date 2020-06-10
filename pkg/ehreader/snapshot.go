@@ -2,8 +2,9 @@ package ehreader
 
 import (
 	"context"
-	"github.com/function61/eventhorizon/pkg/ehclient"
 	"os"
+
+	"github.com/function61/eventhorizon/pkg/ehclient"
 )
 
 type Snapshot struct {

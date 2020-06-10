@@ -3,12 +3,13 @@ package server
 import (
 	"bufio"
 	"crypto/tls"
+	"log"
+	"net"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/msgformat"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/partitionedlossyqueue"
 	"github.com/function61/eventhorizon/pkg/legacy/util/stringslice"
-	"log"
-	"net"
 )
 
 /*	Short description of the pub/sub server protocol. Legend:

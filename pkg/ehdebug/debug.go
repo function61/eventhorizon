@@ -2,9 +2,10 @@ package ehdebug
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"io"
 )
 
 func Debug(result *ehclient.ReadResult, output io.Writer) error {

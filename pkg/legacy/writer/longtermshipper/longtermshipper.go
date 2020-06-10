@@ -2,6 +2,11 @@ package longtermshipper
 
 import (
 	"errors"
+	"log"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
@@ -9,10 +14,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/transaction"
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
-	"log"
-	"os"
-	"sync"
-	"time"
 )
 
 /* longtermshipper is responsible for orchestrating compression, encryption and

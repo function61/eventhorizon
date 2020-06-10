@@ -2,13 +2,14 @@ package writerhttp
 
 import (
 	"encoding/json"
+	"net/http"
+	"os"
+
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
 	"github.com/function61/eventhorizon/pkg/legacy/writer"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/authmiddleware"
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
-	"net/http"
-	"os"
 )
 
 func ReadHandlerInit(eventWriter *writer.EventstoreWriter) {

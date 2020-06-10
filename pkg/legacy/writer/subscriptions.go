@@ -1,8 +1,9 @@
 package writer
 
 import (
-	"github.com/boltdb/bolt"
 	"strings"
+
+	"github.com/boltdb/bolt"
 )
 
 func subscriptionStreamPath(subscriptionId string) string {

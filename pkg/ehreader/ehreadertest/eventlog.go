@@ -4,6 +4,7 @@ package ehreadertest
 import (
 	"context"
 	"fmt"
+
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 )

@@ -7,13 +7,14 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	"github.com/function61/eventhorizon/pkg/legacy/cursor"
-	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 	"io"
 	"log"
 	"os"
 	"time"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	"github.com/function61/eventhorizon/pkg/legacy/cursor"
+	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 )
 
 /*	Compression & encryption pipeline:

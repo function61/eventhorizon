@@ -1,8 +1,9 @@
 package cursor
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestNew(t *testing.T) {

@@ -1,9 +1,10 @@
 package authmiddleware
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"net/http"
 	"strings"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
 )
 
 // Implements bearer token authentication, looks like:

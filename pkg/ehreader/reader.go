@@ -4,12 +4,13 @@ package ehreader
 import (
 	"context"
 	"fmt"
-	"github.com/function61/eventhorizon/pkg/ehclient"
-	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/gokit/logex"
 	"log"
 	"os"
 	"time"
+
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/gokit/logex"
 )
 
 var (

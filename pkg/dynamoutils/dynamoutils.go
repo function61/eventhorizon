@@ -4,11 +4,12 @@ package dynamoutils
 // TODO: put these in gokit?
 
 import (
+	"strconv"
+
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"strconv"
 )
 
 // this shorthand type does not exist in AWS' library, even though this is rather common

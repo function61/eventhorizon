@@ -6,11 +6,12 @@ package pushlib
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
 	ptypes "github.com/function61/eventhorizon/pkg/legacy/pusher/types"
-	"log"
-	"net/http"
 )
 
 type Library struct {

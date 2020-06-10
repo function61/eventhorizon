@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
@@ -13,8 +16,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
-	"io"
-	"log"
 )
 
 type EventstoreReader struct {

@@ -14,12 +14,13 @@ package writerproxy
 import (
 	"context"
 	"encoding/json"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
-	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
 	"log"
 	"net/http"
 	"sync"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
+	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
 )
 
 type Proxy struct {

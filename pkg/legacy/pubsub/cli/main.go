@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
+	"log"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/server"
 	"github.com/function61/eventhorizon/pkg/legacy/util/clicommon"
-	"log"
 )
 
 /*	Pub/sub, requirements:

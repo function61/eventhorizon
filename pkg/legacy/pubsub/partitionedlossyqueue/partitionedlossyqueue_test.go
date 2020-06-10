@@ -1,9 +1,10 @@
 package partitionedlossyqueue
 
 import (
-	"github.com/function61/gokit/assert"
 	"strconv"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestMain(t *testing.T) {

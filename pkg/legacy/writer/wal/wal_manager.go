@@ -4,13 +4,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/boltdb/bolt"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	"github.com/function61/eventhorizon/pkg/legacy/writer/transaction"
 	"io"
 	"log"
 	"os"
 	"time"
+
+	"github.com/boltdb/bolt"
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	"github.com/function61/eventhorizon/pkg/legacy/writer/transaction"
 )
 
 // Uses BoltDB as a backing store for the write-ahead-log.

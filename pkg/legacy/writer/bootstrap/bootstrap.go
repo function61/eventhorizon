@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
 	ctypes "github.com/function61/eventhorizon/pkg/legacy/config/types"
@@ -12,8 +15,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/util/resolvepublicip"
 	"github.com/function61/eventhorizon/pkg/legacy/util/sslca"
 	"github.com/function61/eventhorizon/pkg/legacy/writer"
-	"log"
-	"os"
 )
 
 func Run() error {

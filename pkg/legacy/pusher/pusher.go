@@ -1,6 +1,10 @@
 package pusher
 
 import (
+	"log"
+	"sync"
+	"time"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/client"
@@ -8,9 +12,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/pusher/writerproxy"
 	"github.com/function61/eventhorizon/pkg/legacy/reader"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
-	"log"
-	"sync"
-	"time"
 )
 
 const (

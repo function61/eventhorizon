@@ -1,8 +1,9 @@
 package lineformatsimple
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestParse(t *testing.T) {

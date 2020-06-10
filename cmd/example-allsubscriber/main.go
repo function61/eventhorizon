@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
+
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
 	"github.com/function61/eventhorizon/pkg/legacy/pusher/pushlib"
@@ -10,8 +13,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/legacy/util/clicommon"
 	"github.com/function61/eventhorizon/pkg/legacy/util/cryptorandombytes"
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
-	"log"
-	"net/http"
 )
 
 /*	Preparations:

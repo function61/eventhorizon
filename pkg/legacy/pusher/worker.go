@@ -2,11 +2,12 @@ package pusher
 
 import (
 	"errors"
+	"log"
+	"time"
+
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	ptypes "github.com/function61/eventhorizon/pkg/legacy/pusher/types"
 	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
-	"log"
-	"time"
 )
 
 // this is thread safe as long as it doesn't mutate anything from input structs

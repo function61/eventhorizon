@@ -2,9 +2,10 @@ package writer
 
 import (
 	"errors"
-	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
 	"path"
 	"strings"
+
+	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
 )
 
 func parentStreamName(streamName string) string {

@@ -3,16 +3,17 @@ package client
 import (
 	"bufio"
 	"crypto/tls"
+	"log"
+	"net"
+	"sync"
+	"time"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/msgformat"
 	"github.com/function61/eventhorizon/pkg/legacy/pubsub/partitionedlossyqueue"
 	"github.com/function61/eventhorizon/pkg/legacy/util/stringslice"
 	"github.com/function61/eventhorizon/pkg/legacy/util/stringslicediff"
 	"github.com/jpillora/backoff"
-	"log"
-	"net"
-	"sync"
-	"time"
 )
 
 type PubSubClient struct {

@@ -1,8 +1,9 @@
 package pusher
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"time"
+
+	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 )
 
 type StreamStatus struct {

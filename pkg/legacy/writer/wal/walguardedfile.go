@@ -1,10 +1,11 @@
 package wal
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/config"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
 )
 
 type WalGuardedFile struct {

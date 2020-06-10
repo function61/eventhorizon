@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
-	"github.com/function61/eventhorizon/pkg/legacy/pubsub/client"
 	"log"
 	"time"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
+	"github.com/function61/eventhorizon/pkg/legacy/pubsub/client"
 )
 
 type Stats struct {

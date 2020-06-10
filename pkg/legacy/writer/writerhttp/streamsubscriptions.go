@@ -2,11 +2,12 @@ package writerhttp
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+
 	"github.com/function61/eventhorizon/pkg/legacy/writer"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/authmiddleware"
 	wtypes "github.com/function61/eventhorizon/pkg/legacy/writer/types"
-	"io"
-	"net/http"
 )
 
 func SubscribeToStreamHandlerInit(eventWriter *writer.EventstoreWriter) {

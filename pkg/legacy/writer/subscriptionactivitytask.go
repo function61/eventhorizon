@@ -1,12 +1,13 @@
 package writer
 
 import (
+	"log"
+	"time"
+
 	"github.com/boltdb/bolt"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"github.com/function61/eventhorizon/pkg/legacy/metaevents"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/transaction"
-	"log"
-	"time"
 )
 
 // - Every 5 seconds

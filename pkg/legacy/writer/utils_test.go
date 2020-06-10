@@ -1,8 +1,9 @@
 package writer
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestParentStreamName(t *testing.T) {

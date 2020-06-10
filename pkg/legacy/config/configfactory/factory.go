@@ -4,14 +4,15 @@ package configfactory
 
 import (
 	"encoding/json"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	ctypes "github.com/function61/eventhorizon/pkg/legacy/config/types"
-	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	ctypes "github.com/function61/eventhorizon/pkg/legacy/config/types"
+	"github.com/function61/eventhorizon/pkg/legacy/scalablestore"
 )
 
 const (

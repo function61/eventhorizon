@@ -2,9 +2,10 @@ package ehclient
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"time"
 )
 
 // creates the root ("/") stream and "/_sub" sub-stream

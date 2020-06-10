@@ -1,8 +1,9 @@
 package ehclient
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 var (

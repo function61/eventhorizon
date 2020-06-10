@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
+	"net/url"
+
 	ctypes "github.com/function61/eventhorizon/pkg/legacy/config/types"
 	"github.com/function61/eventhorizon/pkg/legacy/util/sslca"
-	"net/url"
 )
 
 const (

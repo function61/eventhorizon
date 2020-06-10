@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/function61/eventhorizon/pkg/legacy/config/configfactory"
 	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"github.com/function61/eventhorizon/pkg/legacy/reader"
 	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
 	"github.com/function61/eventhorizon/pkg/legacy/writer/writerclient"
-	"strconv"
 )
 
 func readerRead(args []string) error {

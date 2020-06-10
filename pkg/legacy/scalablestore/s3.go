@@ -2,14 +2,15 @@ package scalablestore
 
 import (
 	"context"
+	"io"
+	"strings"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/function61/eventhorizon/pkg/legacy/config"
-	"io"
-	"strings"
-	"time"
 )
 
 type ScalableStoreGetResponse struct {

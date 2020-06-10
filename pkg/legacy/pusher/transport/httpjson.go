@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	ptypes "github.com/function61/eventhorizon/pkg/legacy/pusher/types"
 	"io/ioutil"
 	"net/http"
+
+	ptypes "github.com/function61/eventhorizon/pkg/legacy/pusher/types"
 )
 
 // transports Pushes via HTTP+JSON

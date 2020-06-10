@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/function61/eventhorizon/pkg/ehclient"
-	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
-	"github.com/function61/gokit/assert"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
+	"github.com/function61/gokit/assert"
 )
 
 var (

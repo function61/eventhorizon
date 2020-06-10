@@ -3,9 +3,10 @@ package ehreader
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/gokit/envvar"
-	"strings"
 )
 
 type Tenant struct {

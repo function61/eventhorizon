@@ -1,9 +1,10 @@
 package metaevents
 
 import (
-	"github.com/function61/gokit/assert"
 	"strings"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestSubscriptionActivity(t *testing.T) {

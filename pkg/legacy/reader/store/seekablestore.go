@@ -2,10 +2,11 @@ package store
 
 import (
 	"fmt"
-	"github.com/function61/eventhorizon/pkg/legacy/config"
-	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 	"log"
 	"os"
+
+	"github.com/function61/eventhorizon/pkg/legacy/config"
+	"github.com/function61/eventhorizon/pkg/legacy/cursor"
 )
 
 type SeekableStore struct {

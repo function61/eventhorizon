@@ -3,9 +3,10 @@ package writer
 import (
 	"bufio"
 	"errors"
-	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
 	"io"
 	"os"
+
+	rtypes "github.com/function61/eventhorizon/pkg/legacy/reader/types"
 )
 
 // When a Pusher (or anybody else for that matter) wants to read from a stream,

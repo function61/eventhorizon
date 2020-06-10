@@ -1,8 +1,9 @@
 package metaevents
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestCreated(t *testing.T) {

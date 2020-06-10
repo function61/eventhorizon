@@ -1,9 +1,10 @@
 package ehevent
 
 import (
-	"github.com/function61/gokit/assert"
 	"testing"
 	"time"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestSerializeAndDeserialize(t *testing.T) {

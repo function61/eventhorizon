@@ -2,8 +2,9 @@ package msgformat
 
 import (
 	"fmt"
-	"github.com/function61/gokit/assert"
 	"testing"
+
+	"github.com/function61/gokit/assert"
 )
 
 func TestSerialize(t *testing.T) {
