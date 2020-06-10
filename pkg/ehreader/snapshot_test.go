@@ -29,7 +29,7 @@ func TestSnapshot(t *testing.T) {
 		"12:00:02 joonas: Second msg from snapshot"
 	]`))
 
-	css.StoreSnapshot(ctx, *initialSnap)
+	assert.Ok(t, css.StoreSnapshot(ctx, *initialSnap))
 
 	assert.Assert(t, css.storeCalls == 1)
 
