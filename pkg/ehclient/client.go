@@ -112,7 +112,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) (*A
 	return nil, fmt.Errorf("Append: retry times exceeded, stream=%s", stream)
 }
 
-// NOTE: be very sure that stream exists, since it is not validated
+// NOTE: be very sure that stream exists, since it is not validated (only happens if malicious Cursor provided)
 // NOTE: be sure that you don't set version into the future, since that will leave a gap
 // NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
 func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error) {
@@ -121,6 +121,13 @@ func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string)
 	}
 
 	resultingCursor := after.Next()
+
+	if resultingCursor.Version() == 0 {
+		// usually an indication of trying to append to a stream that either doesn't exist,
+		// or its state has not been examined - which is conflicting since AppendAfter() by
+		// definition is state-aware.
+		return nil, errors.New("cannot append as first entry, since stream should start with StreamStarted")
+	}
 
 	dynamoEntry, err := dynamoutils.Marshal(LogEntry{
 		Stream:  resultingCursor.Stream(),
