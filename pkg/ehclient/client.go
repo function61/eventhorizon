@@ -60,6 +60,12 @@ func (e *Client) Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error
 		return nil, err
 	}
 
+	// each stream always has at least StreamStarted event, so if we start from beginning
+	// and don't get any entries at all, it means that stream doesn't exist
+	if lastKnown.version < 0 && len(resp.Items) == 0 {
+		return nil, fmt.Errorf("Read: non-existent stream: %s", lastKnown.stream)
+	}
+
 	lastVersion := lastKnown.version
 
 	entries := []LogEntry{}
@@ -117,7 +123,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) (*A
 // NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
 func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error) {
 	if len(events) == 0 {
-		return nil, errors.New("empty appends are not supported")
+		return nil, errors.New("AppendAfter: empty appends are not supported")
 	}
 
 	resultingCursor := after.Next()
@@ -126,7 +132,7 @@ func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string)
 		// usually an indication of trying to append to a stream that either doesn't exist,
 		// or its state has not been examined - which is conflicting since AppendAfter() by
 		// definition is state-aware.
-		return nil, errors.New("cannot append as first entry, since stream should start with StreamStarted")
+		return nil, errors.New("AppendAfter: refusing @0, since stream should start with StreamStarted")
 	}
 
 	dynamoEntry, err := dynamoutils.Marshal(LogEntry{
