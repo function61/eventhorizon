@@ -165,29 +165,29 @@ func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string)
 
 func (e *Client) CreateStream(ctx context.Context, parent string, name string) error {
 	if parent == "" {
-		return errors.New("parent stream name cannot be empty")
+		return errors.New("CreateStream: parent stream name cannot be empty")
 	}
 	if name == "" {
-		return errors.New("stream name cannot be empty")
+		return errors.New("CreateStream: stream name cannot be empty")
 	}
 
 	streamPath := path.Join(parent, name)
 
 	parentAt, err := e.resolveStreamPosition(ctx, parent)
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateStream: %s: %w", streamPath, err)
 	}
 
 	now := time.Now()
 
 	itemInParent, err := e.entryAsTxPut(metaEntry(NewChildStreamCreated(streamPath, ehevent.MetaSystemUser(now)), parentAt.Next()))
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateStream: %w", err)
 	}
 
 	itemInChild, err := e.entryAsTxPut(streamCreationEntry(streamPath, parent, now))
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateStream: %w", err)
 	}
 
 	_, err = e.dynamo.TransactWriteItemsWithContext(ctx, &dynamodb.TransactWriteItemsInput{
@@ -198,7 +198,7 @@ func (e *Client) CreateStream(ctx context.Context, parent string, name string) e
 	})
 	if err != nil {
 		// TODO: retry if TransactionCanceledException
-		return err
+		return fmt.Errorf("CreateStream: %w", err)
 	}
 
 	return nil
