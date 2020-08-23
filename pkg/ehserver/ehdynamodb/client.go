@@ -1,11 +1,11 @@
-// Event Horizon client
-package ehclient
+// Event log storage in AWS DynamoDB
+package ehdynamodb
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -13,11 +13,31 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/function61/eventhorizon/pkg/dynamoutils"
+	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/gokit/aws/dynamoutils"
 )
 
 // somewhat the same design as: https://stackoverflow.com/questions/55763006/dynamodb-event-store-on-aws
+
+// Raw entry from DynamoDB
+// - can contain 0-n events. commit all events in a single transaction.
+// - might contain a single meta event
+// - why most common attribute names shortened? DynamoDB charges for each byte in item attribute names..
+// - we have JSON marshalling defined but please consider it DynamoDB internal implementation
+type LogEntryRaw struct {
+	Stream    string   `json:"s"` // stream + version form the composite key
+	Version   int64    `json:"v"`
+	MetaEvent *string  `json:"meta_event,omitempty"` // StreamStarted | ChildStreamCreated created | ...
+	Events    []string `json:"e"`
+}
+
+type DynamoDbOptions struct {
+	AccessKeyId     string
+	AccessKeySecret string
+	RegionId        string
+	TableName       string
+}
 
 type Client struct {
 	dynamo          *dynamodb.DynamoDB
@@ -25,7 +45,7 @@ type Client struct {
 }
 
 // interface assertion
-var _ ReaderWriter = (*Client)(nil)
+var _ eh.ReaderWriter = (*Client)(nil)
 
 func New(opts DynamoDbOptions) *Client {
 	sess, err := session.NewSession()
@@ -46,14 +66,14 @@ func New(opts DynamoDbOptions) *Client {
 }
 
 // "lastKnown" is exclusive (i.e. the record pointed by it will not be returned)
-func (e *Client) Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error) {
+func (e *Client) Read(ctx context.Context, lastKnown eh.Cursor) (*eh.ReadResult, error) {
 	resp, err := e.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
 		TableName:              e.eventsTableName,
 		Limit:                  aws.Int64(100), // I don't see other max in docs except 1 MB result set size
 		KeyConditionExpression: aws.String("s = :s AND v > :v"),
 		ExpressionAttributeValues: dynamoutils.Record{
-			":s": dynamoutils.String(lastKnown.stream),
-			":v": dynamoutils.Number(int(lastKnown.version)),
+			":s": dynamoutils.String(lastKnown.Stream().String()),
+			":v": dynamoutils.Number(int(lastKnown.Version())),
 		},
 	})
 	if err != nil {
@@ -62,24 +82,33 @@ func (e *Client) Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error
 
 	// each stream always has at least StreamStarted event, so if we start from beginning
 	// and don't get any entries at all, it means that stream doesn't exist
-	if lastKnown.version < 0 && len(resp.Items) == 0 {
-		return nil, fmt.Errorf("Read: non-existent stream: %s", lastKnown.stream)
+	if lastKnown.Version() < 0 && len(resp.Items) == 0 {
+		return nil, fmt.Errorf("Read: non-existent stream: %s", lastKnown.Stream().String())
 	}
 
-	lastVersion := lastKnown.version
+	lastVersion := lastKnown.Version()
 
-	entries := []LogEntry{}
+	entries := []eh.LogEntry{}
 
 	// these are in chronological order
 	for _, item := range resp.Items {
-		entry := &LogEntry{}
+		entry := &LogEntryRaw{}
 		if err := dynamoutils.Unmarshal(item, entry); err != nil {
 			return nil, err
 		}
 
 		lastVersion = entry.Version
 
-		entries = append(entries, *entry)
+		events := entry.Events
+		if events == nil { // TODO: make non-nil at write side?
+			events = []string{}
+		}
+
+		entries = append(entries, eh.LogEntry{
+			Version:   lastKnown.Stream().At(entry.Version),
+			MetaEvent: entry.MetaEvent,
+			Events:    events,
+		})
 	}
 
 	// "If LastEvaluatedKey is not empty, it does not necessarily mean that there
@@ -87,12 +116,12 @@ func (e *Client) Read(ctx context.Context, lastKnown Cursor) (*ReadResult, error
 	// the end of the result set is when LastEvaluatedKey is empty."
 	moreData := len(resp.LastEvaluatedKey) != 0
 
-	lastEntryCursor := At(lastKnown.stream, lastVersion)
+	lastEntryCursor := lastKnown.Stream().At(lastVersion)
 
-	return &ReadResult{entries, lastEntryCursor, moreData}, nil
+	return &eh.ReadResult{entries, lastEntryCursor, moreData}, nil
 }
 
-func (e *Client) Append(ctx context.Context, stream string, events []string) (*AppendResult, error) {
+func (e *Client) Append(ctx context.Context, stream eh.StreamName, events []string) (*eh.AppendResult, error) {
 	// this can fail, so retry a few times
 	for i := 0; i < 3; i++ {
 		at, err := e.resolveStreamPosition(ctx, stream)
@@ -105,7 +134,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) (*A
 			// I think this is a false positive lint message:
 			//     "when isAboutConcurrency is true, err can't be nil"
 			//nolint:gosimple
-			if _, isAboutConcurrency := err.(*ErrOptimisticLockingFailed); isAboutConcurrency {
+			if _, isAboutConcurrency := err.(*eh.ErrOptimisticLockingFailed); isAboutConcurrency {
 				continue
 			} else {
 				return nil, err // some other error - don't even retry
@@ -121,7 +150,7 @@ func (e *Client) Append(ctx context.Context, stream string, events []string) (*A
 // NOTE: be very sure that stream exists, since it is not validated (only happens if malicious Cursor provided)
 // NOTE: be sure that you don't set version into the future, since that will leave a gap
 // NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
-func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error) {
+func (e *Client) AppendAfter(ctx context.Context, after eh.Cursor, events []string) (*eh.AppendResult, error) {
 	if len(events) == 0 {
 		return nil, errors.New("AppendAfter: empty appends are not supported")
 	}
@@ -135,11 +164,24 @@ func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string)
 		return nil, errors.New("AppendAfter: refusing @0, since stream should start with StreamStarted")
 	}
 
-	dynamoEntry, err := dynamoutils.Marshal(LogEntry{
-		Stream:  resultingCursor.Stream(),
-		Version: resultingCursor.Version(),
-		Events:  events,
-	})
+	logEntry := func() LogEntryRaw {
+		// FIXME: a hack
+		if len(events) == 1 && strings.Contains(events[0], " $subscription.") {
+			return LogEntryRaw{
+				Stream:    resultingCursor.Stream().String(),
+				Version:   resultingCursor.Version(),
+				MetaEvent: aws.String(events[0]),
+			}
+		} else {
+			return LogEntryRaw{
+				Stream:  resultingCursor.Stream().String(),
+				Version: resultingCursor.Version(),
+				Events:  events,
+			}
+		}
+	}()
+
+	dynamoEntry, err := dynamoutils.Marshal(logEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -152,68 +194,93 @@ func (e *Client) AppendAfter(ctx context.Context, after Cursor, events []string)
 	})
 	if err != nil {
 		if err, ok := err.(awserr.Error); ok && err.Code() == dynamodb.ErrCodeConditionalCheckFailedException {
-			return nil, NewErrOptimisticLockingFailed(err)
+			return nil, eh.NewErrOptimisticLockingFailed(err)
 		} else {
 			return nil, err
 		}
 	}
 
-	return &AppendResult{
+	return &eh.AppendResult{
 		Cursor: resultingCursor,
 	}, nil
 }
 
-func (e *Client) CreateStream(ctx context.Context, parent string, name string) error {
-	if parent == "" {
-		return errors.New("CreateStream: parent stream name cannot be empty")
-	}
-	if name == "" {
-		return errors.New("CreateStream: stream name cannot be empty")
+func (e *Client) CreateStream(
+	ctx context.Context,
+	stream eh.StreamName,
+	initialEvents []string,
+) (*eh.AppendResult, error) {
+	parent := stream.Parent()
+	if parent == nil {
+		return nil, errors.New("cannot create root stream")
 	}
 
-	streamPath := path.Join(parent, name)
-
-	parentAt, err := e.resolveStreamPosition(ctx, parent)
+	parentAt, err := e.resolveStreamPosition(ctx, *parent)
 	if err != nil {
-		return fmt.Errorf("CreateStream: %s: %w", streamPath, err)
+		return nil, err
 	}
 
 	now := time.Now()
 
-	itemInParent, err := e.entryAsTxPut(metaEntry(NewChildStreamCreated(streamPath, ehevent.MetaSystemUser(now)), parentAt.Next()))
+	itemInParent, err := e.entryAsTxPut(metaEntry(eh.NewStreamChildStreamCreated(stream.String(), ehevent.MetaSystemUser(now)), parentAt.Next()))
 	if err != nil {
-		return fmt.Errorf("CreateStream: %w", err)
+		return nil, err
 	}
 
-	itemInChild, err := e.entryAsTxPut(streamCreationEntry(streamPath, parent, now))
+	itemInChild, err := e.entryAsTxPut(streamCreationEntry(stream, now))
 	if err != nil {
-		return fmt.Errorf("CreateStream: %w", err)
+		return nil, err
 	}
+
+	items := []*dynamodb.TransactWriteItem{
+		itemInParent,
+		itemInChild,
+	}
+
+	if len(initialEvents) > 0 {
+		itemInitialEvents, err := e.entryAsTxPut(LogEntryRaw{
+			Stream:  stream.String(),
+			Version: 1,
+			Events:  initialEvents,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, itemInitialEvents)
+	}
+
+	resultingCursor := func() eh.Cursor {
+		if len(initialEvents) > 0 {
+			return stream.At(1)
+		} else {
+			return stream.At(0)
+		}
+	}()
 
 	_, err = e.dynamo.TransactWriteItemsWithContext(ctx, &dynamodb.TransactWriteItemsInput{
-		TransactItems: []*dynamodb.TransactWriteItem{
-			itemInParent,
-			itemInChild,
-		},
+		TransactItems: items,
 	})
 	if err != nil {
 		// TODO: retry if TransactionCanceledException
-		return fmt.Errorf("CreateStream: %w", err)
+		return nil, err
 	}
 
-	return nil
+	return &eh.AppendResult{
+		Cursor: resultingCursor,
+	}, nil
 }
 
 func (e *Client) resolveStreamPosition(
 	ctx context.Context,
-	stream string,
-) (*Cursor, error) {
+	stream eh.StreamName,
+) (*eh.Cursor, error) {
 	// grab the most recent entry
 	mostRecent, err := e.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
 		TableName:              e.eventsTableName,
 		KeyConditionExpression: aws.String("s = :s"),
 		ExpressionAttributeValues: dynamoutils.Record{
-			":s": dynamoutils.String(stream),
+			":s": dynamoutils.String(stream.String()),
 		},
 		Limit:            aws.Int64(1),
 		ScanIndexForward: aws.Bool(false),
@@ -224,18 +291,19 @@ func (e *Client) resolveStreamPosition(
 
 	// existing stream should never be empty (b/c it always has the first "created" entry)
 	if len(mostRecent.Items) == 0 {
-		return nil, fmt.Errorf("resolveStreamPosition: '%s' does not seem to exist", stream)
+		return nil, fmt.Errorf("resolveStreamPosition: '%s' does not seem to exist", stream.String())
 	}
 
-	en := &LogEntry{}
+	en := &LogEntryRaw{}
 	if err := dynamoutils.Unmarshal(mostRecent.Items[0], en); err != nil {
 		return nil, err
 	}
 
-	return &Cursor{stream, en.Version}, nil
+	cur := stream.At(en.Version)
+	return &cur, nil
 }
 
-func (e *Client) entryAsTxPut(item LogEntry) (*dynamodb.TransactWriteItem, error) {
+func (e *Client) entryAsTxPut(item LogEntryRaw) (*dynamodb.TransactWriteItem, error) {
 	itemDynamo, err := dynamoutils.Marshal(item)
 	if err != nil {
 		return nil, err
@@ -250,16 +318,16 @@ func (e *Client) entryAsTxPut(item LogEntry) (*dynamodb.TransactWriteItem, error
 	}, nil
 }
 
-func streamCreationEntry(stream string, parent string, now time.Time) LogEntry {
+func streamCreationEntry(stream eh.StreamName, now time.Time) LogEntryRaw {
 	return metaEntry(
-		NewStreamStarted(parent, ehevent.MetaSystemUser(now)),
-		At(stream, 0))
+		eh.NewStreamStarted(ehevent.MetaSystemUser(now)),
+		stream.At(0))
 }
 
-func metaEntry(metaEvent ehevent.Event, pos Cursor) LogEntry {
-	return LogEntry{
-		Stream:    pos.stream,
-		Version:   pos.version,
-		MetaEvent: aws.String(ehevent.Serialize(metaEvent)),
+func metaEntry(metaEvent ehevent.Event, pos eh.Cursor) LogEntryRaw {
+	return LogEntryRaw{
+		Stream:    pos.Stream().String(),
+		Version:   pos.Version(),
+		MetaEvent: aws.String(ehevent.SerializeOne(metaEvent)),
 	}
 }

@@ -7,38 +7,45 @@ import (
 	"github.com/function61/gokit/assert"
 )
 
-func TestSerializeAndDeserialize(t *testing.T) {
-	serialized := Serialize(NewTestEvent(
-		"/_sub",
-		MetaSystemUser(time.Date(2020, 1, 30, 12, 2, 0, 0, time.UTC))))
+var (
+	testEvent = NewCredentialCreated("123", Meta(time.Date(2020, 8, 20, 8, 55, 0, 123456789, time.UTC), "u987"))
+)
 
-	assert.EqualString(t, serialized, `2020-01-30T12:02:00.000Z TestEvent    {"Name":"/_sub"}`)
+func TestSerializationFormat(t *testing.T) {
+	assert.EqualString(t, SerializeOne(testEvent), `{"_":"credential.Created","t":"2020-08-20T08:55:00.123Z","u":"u987"} {"Id":"123"}`)
+}
 
-	e, err := Deserialize(serialized, testEventAllocators)
+func TestDeserialize(t *testing.T) {
+	o, err := Deserialize(SerializeOne(testEvent), testEventTypes)
 	assert.Ok(t, err)
 
-	eCreated := e.(*TestEvent)
-	meta := e.Meta()
-
-	assert.EqualString(t, eCreated.Name, "/_sub")
-	assert.EqualString(t, meta.UserId, "")
-	assert.EqualString(t, meta.ImpersonatingUserId, "")
-	assert.EqualString(t, meta.Timestamp.Format(rfc3339Milli), "2020-01-30T12:02:00.000Z")
-	assert.Assert(t, meta.TimestampOfRecording.IsZero())
+	assert.EqualString(t, o.(*CredentialCreated).Id, "123")
+	assert.EqualString(t, o.MetaType(), "credential.Created")
+	assert.EqualString(t, o.Meta().UserIdOrEmptyIfSystem(), "u987")
 }
 
-var testEventAllocators = Allocators{
-	"TestEvent": func() Event { return &TestEvent{} },
+// structure for test event
+
+var testEventTypes = Types{
+	"credential.Created": func() Event { return &CredentialCreated{} },
 }
 
-type TestEvent struct {
+// ------
+
+type CredentialCreated struct {
 	meta EventMeta
-	Name string
+	Id   string
 }
 
-func (e *TestEvent) MetaType() string { return "TestEvent" }
-func (e *TestEvent) Meta() *EventMeta { return &e.meta }
+func (e *CredentialCreated) MetaType() string { return "credential.Created" }
+func (e *CredentialCreated) Meta() *EventMeta { return &e.meta }
 
-func NewTestEvent(name string, meta EventMeta) *TestEvent {
-	return &TestEvent{meta, name}
+func NewCredentialCreated(
+	id string,
+	meta EventMeta,
+) *CredentialCreated {
+	return &CredentialCreated{
+		meta: meta,
+		Id:   id,
+	}
 }

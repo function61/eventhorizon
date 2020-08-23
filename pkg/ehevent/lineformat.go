@@ -3,85 +3,72 @@ package ehevent
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
-	"time"
 )
 
-const (
-	rfc3339Milli = "2006-01-02T15:04:05.000Z07:00"
-)
+func Serialize(events ...Event) []string {
+	serialized := []string{}
+	for _, event := range events {
+		serialized = append(serialized, SerializeOne(event))
+	}
 
-func Serialize(e Event) string {
+	return serialized
+}
+
+func SerializeOne(e Event) string {
 	return e.Meta().Serialize(e)
 }
 
-// <time> <event> <targetUser> [<actingUser>] [<backdate>] <payload>
-//
-// looks like:
-// 2017-12-17T10:28:28.528Z account.Created 2   {"Id":"bab11eda","FolderId":"root","Title":"Test SSH key"}
 func (e *EventMeta) Serialize(payload Event) string {
-	backdated := ""
-	if !e.TimestampOfRecording.IsZero() {
-		backdated = e.TimestampOfRecording.UTC().Format(rfc3339Milli)
+	// before serializing, annotate EventMeta with event type information
+	metaJson, err := json.Marshal(eventMetaWithEventType{payload.MetaType(), *e})
+	if err != nil {
+		panic(err) // JSON marshaling shouldn't ever fail
 	}
 
 	payloadJson, err := json.Marshal(payload)
 	if err != nil {
-		panic(err)
+		panic(err) // JSON marshaling shouldn't ever fail
 	}
 
-	return strings.Join([]string{
-		e.Timestamp.UTC().Format(rfc3339Milli),
-		payload.MetaType(),
-		e.UserId,
-		e.ImpersonatingUserId,
-		backdated,
-		string(payloadJson),
-	}, " ")
+	return fmt.Sprintf("%s %s", metaJson, payloadJson)
 }
 
-var deserializeRe = regexp.MustCompile("^([^ ]+) ([^ ]+) ([^ ]*) ([^ ]*) ([^ ]*) (.+)$")
+// deserialized one event from the line format
+func Deserialize(input string, allocators Types) (Event, error) {
+	dec := json.NewDecoder(strings.NewReader(input))
 
-func Deserialize(input string, allocators Allocators) (Event, error) {
-	components := deserializeRe.FindStringSubmatch(input)
-	if components == nil {
-		// NOTE: this might be unsafe to show to the user
-		return nil, fmt.Errorf("deserialize: invalid format: %s", input)
+	// we would like to DisallowUnknownFields() for metadata, but since our input stream
+	// contains two different types and we can't reset "DisallowUnknownFields" without
+	// making new decoder with io.MultiReader(io.Buffered(), input) hack.
+
+	metaWithType := &eventMetaWithEventType{}
+	if err := dec.Decode(metaWithType); err != nil {
+		return nil, fmt.Errorf("deserialize: meta: %v", err)
 	}
 
-	eventType := components[2]
+	// intentionally not setting DisallowUnknownFields() for payload to be forward-compatible
 
-	allocator, allocatorFound := allocators[eventType]
-	if !allocatorFound {
-		return nil, fmt.Errorf("deserialize: unknown event: %s", eventType)
+	eventAllocator, found := allocators[metaWithType.Type]
+	if !found {
+		return nil, fmt.Errorf("deserialize: unknown type: %s", metaWithType.Type)
 	}
 
-	e := allocator()
+	// create empty struct for this event type that we can unmarshal JSON into
+	event := eventAllocator()
 
-	// intentionally not having DisallowUnknownFields for forward compatibility
-	if err := json.Unmarshal([]byte(components[6]), e); err != nil {
-		return nil, fmt.Errorf("deserialize: JSON unmarshal: %v", err)
+	if err := dec.Decode(event); err != nil {
+		return nil, fmt.Errorf("deserialize: event: %v", err)
 	}
 
-	// using reference for mutations (dirty)
-	meta := e.Meta()
+	// assign metadata (mutating via reference is a bit of a hack..)
+	*event.Meta() = metaWithType.EventMeta
 
-	var err error
-	meta.Timestamp, err = time.Parse(rfc3339Milli, components[1])
-	if err != nil {
-		return nil, fmt.Errorf("deserialize: Timestamp: %v", err)
-	}
+	return event, nil
+}
 
-	if components[5] != "" {
-		meta.TimestampOfRecording, err = time.Parse(rfc3339Milli, components[5])
-		if err != nil {
-			return nil, fmt.Errorf("deserialize: TimestampOfRecording: %v", err)
-		}
-	}
-
-	meta.UserId = components[3]
-	meta.ImpersonatingUserId = components[4]
-
-	return e, nil
+// type for JSON-serializing EventMeta with added type information
+type eventMetaWithEventType struct {
+	Type string `json:"_"`
+	EventMeta
 }

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/logex"
 )
@@ -24,9 +24,9 @@ var (
 3) commit (via callback), while updating version
 */
 type EventProcessorHandler func(
-	cur ehclient.Cursor,
+	cur eh.Cursor,
 	handleEvent func(ehevent.Event) error,
-	commit func(ehclient.Cursor) error,
+	commit func(eh.Cursor) error,
 ) error
 
 type EventsProcessor interface {
@@ -40,7 +40,14 @@ type EventsProcessor interface {
 		  * etc.
 	*/
 	ProcessEvents(ctx context.Context, handle EventProcessorHandler) error
-	GetEventTypes() ehevent.Allocators
+	// 1st: types for app-specific events, 2nd: EventHorizon meta events (most times nil !)
+	GetEventTypes() (ehevent.Types, ehevent.Types)
+}
+
+type EventsProcessorSnapshotCapability interface {
+	InstallSnapshot(*eh.Snapshot) error
+	Snapshot() (*eh.Snapshot, error)
+	SnapshotContextAndVersion() string
 }
 
 type EventsProcessorWithSnapshots interface {
@@ -50,20 +57,24 @@ type EventsProcessorWithSnapshots interface {
 
 // Serves reads for one processor. not safe for concurrent use
 type Reader struct {
-	client          ehclient.Reader
-	eventTypes      ehevent.Allocators
+	client          eh.Reader
+	eventTypesApp   ehevent.Types // nil (very exceptional case) if processor only looks at meta events
+	eventTypesMeta  ehevent.Types // usually nil, unless app is interested in meta events
 	processor       EventsProcessor
 	snapCap         EventsProcessorSnapshotCapability
-	snapStore       SnapshotStore
-	snapshotVersion *ehclient.Cursor
+	snapStore       eh.SnapshotStore
+	snapshotVersion *eh.Cursor
 	logl            *logex.Leveled
 }
 
 // "keep processor happy by feeding it from client"
-func New(processor EventsProcessor, client ehclient.Reader, logger *log.Logger) *Reader {
+func New(processor EventsProcessor, client eh.Reader, logger *log.Logger) *Reader {
+	appTypes, metaTypes := processor.GetEventTypes()
+
 	return &Reader{
 		client:          client,
-		eventTypes:      processor.GetEventTypes(),
+		eventTypesApp:   appTypes,
+		eventTypesMeta:  metaTypes,
 		processor:       processor,
 		snapCap:         nil,
 		snapStore:       nil,
@@ -74,13 +85,16 @@ func New(processor EventsProcessor, client ehclient.Reader, logger *log.Logger) 
 
 func NewWithSnapshots(
 	processor EventsProcessorWithSnapshots,
-	client ehclient.Reader,
-	snapStore SnapshotStore,
+	client eh.Reader,
+	snapStore eh.SnapshotStore,
 	logger *log.Logger,
 ) *Reader {
+	appTypes, metaTypes := processor.GetEventTypes()
+
 	return &Reader{
 		client:          client,
-		eventTypes:      processor.GetEventTypes(),
+		eventTypesApp:   appTypes,
+		eventTypesMeta:  metaTypes,
 		processor:       processor,
 		snapCap:         processor,
 		snapStore:       snapStore,
@@ -95,10 +109,7 @@ func NewWithSnapshots(
 func (r *Reader) Synchronizer(
 	ctx context.Context,
 	pollInterval time.Duration,
-	logger *log.Logger,
 ) error {
-	logl := logex.Levels(logger)
-
 	pollIntervalTicker := time.NewTicker(pollInterval)
 
 	for {
@@ -110,21 +121,21 @@ func (r *Reader) Synchronizer(
 			// but until then polling will do
 
 			if err := r.LoadUntilRealtime(ctx); err != nil {
-				logl.Error.Printf("LoadUntilRealtime: %v", err)
+				r.logl.Error.Printf("LoadUntilRealtime: %v", err)
 			}
 		}
 	}
 }
 
 func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
-	var nextRead ehclient.Cursor
+	var nextRead eh.Cursor
 
 	// start with creating a dummy commit without handling any events, so we can only
 	// query the initial version of the aggregate
 	if err := r.processor.ProcessEvents(ctx, func(
-		versionInDb ehclient.Cursor,
+		versionInDb eh.Cursor,
 		handleEvent func(ehevent.Event) error,
-		commit func(ehclient.Cursor) error,
+		commit func(eh.Cursor) error,
 	) error {
 		nextRead = versionInDb
 
@@ -137,16 +148,19 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 
 	// if we started from beginning, try to load a snapshot
 	if nextRead.AtBeginning() && r.snapCap != nil {
-		snap, err := r.snapStore.LoadSnapshot(ctx, nextRead)
+		snap, err := r.snapStore.ReadSnapshot(
+			ctx,
+			nextRead.Stream(),
+			r.snapCap.SnapshotContextAndVersion())
 		if err != nil {
 			if err == os.ErrNotExist { // the snapshot just does not exist
-				r.logl.Info.Printf("LoadSnapshot: initial snapshot not found for %s", nextRead.Stream())
+				r.logl.Info.Printf("ReadSnapshot: no initial snapshot for %s", nextRead.Stream())
 
 				// using this to signal the logic at the end to take and store a new snapshot
-				snapshotVersion := ehclient.Beginning(nextRead.Stream())
+				snapshotVersion := nextRead.Stream().Beginning()
 				r.snapshotVersion = &snapshotVersion
 			} else { // some other error (these are not fatal though)
-				r.logl.Error.Printf("LoadSnapshot: %v", err)
+				r.logl.Error.Printf("ReadSnapshot: %v", err)
 
 				// this causes us to to not try saving snapshots
 				// TODO: is this a good idea?
@@ -176,7 +190,11 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 			events := []ehevent.Event{}
 
 			for _, eventSerialized := range record.Events {
-				event, err := ehevent.Deserialize(eventSerialized, r.eventTypes)
+				if r.eventTypesApp == nil { // processor only wants meta events
+					continue
+				}
+
+				event, err := ehevent.Deserialize(eventSerialized, r.eventTypesApp)
 				if err != nil {
 					return err
 				}
@@ -184,15 +202,22 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 				events = append(events, event)
 			}
 
-			// NOTE: we cannot skip len(events)==0 because meta events still increment version
-			// and thos version increments need to be committed to database even if we have no other writes
+			// also deliver meta events, if processor opted in to receive those
+			if record.MetaEvent != nil && r.eventTypesMeta != nil {
+				metaEvent, err := ehevent.Deserialize(*record.MetaEvent, r.eventTypesMeta)
+				if err != nil {
+					return err
+				}
 
-			versionAfter := ehclient.At(nextRead.Stream(), record.Version)
+				events = append(events, metaEvent)
+			}
+
+			versionAfter := record.Version
 
 			if err := r.processor.ProcessEvents(ctx, func(
-				versionInDb ehclient.Cursor,
+				versionInDb eh.Cursor,
 				handleEvent func(ehevent.Event) error,
-				commit func(ehclient.Cursor) error,
+				commit func(eh.Cursor) error,
 			) error {
 				if !nextRead.Equal(versionInDb) {
 					return fmt.Errorf(
@@ -229,8 +254,8 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 					r.snapshotVersion = &snap.Cursor
 
 					// TODO: store this async?
-					if err := r.snapStore.StoreSnapshot(ctx, *snap); err != nil {
-						r.logl.Error.Printf("StoreSnapshot: %v", err)
+					if err := r.snapStore.WriteSnapshot(ctx, *snap); err != nil {
+						r.logl.Error.Printf("WriteSnapshot: %v", err)
 					}
 				}
 			}
@@ -252,7 +277,7 @@ func (r *Reader) TransactWrite(ctx context.Context, fn func() error) error {
 			return nil // success
 		}
 
-		if _, wasAboutLocking := err.(*ehclient.ErrOptimisticLockingFailed); !wasAboutLocking {
+		if _, wasAboutLocking := err.(*eh.ErrOptimisticLockingFailed); !wasAboutLocking {
 			return err // some other error
 		}
 
@@ -270,4 +295,9 @@ func (r *Reader) TransactWrite(ctx context.Context, fn func() error) error {
 // helper for your code to generate an error
 func UnsupportedEventTypeErr(e ehevent.Event) error {
 	return fmt.Errorf("unsupported event type: %s", e.MetaType())
+}
+
+// another helper
+func LogIgnoredUnrecognizedEventType(e ehevent.Event, logl *logex.Leveled) {
+	logl.Debug.Printf("ignoring unrecognized event type: %s", e.MetaType())
 }

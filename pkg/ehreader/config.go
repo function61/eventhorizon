@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
+	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
 	"github.com/function61/gokit/envvar"
 )
 
 type Tenant struct {
-	tenantId string
+	stream eh.StreamName
 }
 
 func TenantId(id string) Tenant {
@@ -18,77 +20,72 @@ func TenantId(id string) Tenant {
 		panic("empty tenant")
 	}
 
-	return Tenant{id}
+	return Tenant{eh.RootName.Child("t-" + id)}
 }
 
-// ("/users")
-//   => "/t-314/users"
-func (t Tenant) Stream(stream string) string {
-	return "/t-" + t.tenantId + stream
+// return tenant's stream's (e.g. "/t-314") child-stream
+// ChildStream("foobar") => "/t-314/foobar"
+func (t Tenant) ChildStream(name string) eh.StreamName {
+	return t.stream.Child(name)
 }
 
-type TenantCtx struct {
+// combines together:
+// - event log
+// - snapshot store
+// - tenant
+type Client struct {
 	Tenant
-	Client ehclient.ReaderWriter
+	SystemClient
 }
 
-func NewTenantCtx(tenant Tenant, client ehclient.ReaderWriter) *TenantCtx {
-	return &TenantCtx{tenant, client}
+// same as Client, but *WITHOUT* tenant awareness, usually this is not used directly,
+// as most data access cases are expected to be tenant-aware
+type SystemClient struct {
+	EventLog      eh.ReaderWriter
+	SnapshotStore eh.SnapshotStore
 }
 
-func TenantCtxFrom(getter configGetter) (*TenantCtx, error) {
-	tenantCtx, _, err := makeTenantCtxFromEnv(getter)
+func ClientFrom(getter configGetter) (*Client, error) {
+	systemClient, conf, err := makeSystemClientFrom(getter)
 	if err != nil {
 		return nil, err
 	}
 
-	return tenantCtx, err
+	return &Client{
+		Tenant:       TenantId(conf.tenantId),
+		SystemClient: *systemClient,
+	}, nil
 }
 
-type TenantCtxWithSnapshots struct {
-	Tenant
-	Client        ehclient.ReaderWriter
-	SnapshotStore SnapshotStore
+func SystemClientFrom(getter configGetter) (*SystemClient, error) {
+	systemClient, _, err := makeSystemClientFrom(getter)
+	return systemClient, err
 }
 
-func NewTenantCtxWithSnapshots(
-	tenant Tenant,
-	client ehclient.ReaderWriter,
-	snapshotStore SnapshotStore,
-) *TenantCtxWithSnapshots {
-	return &TenantCtxWithSnapshots{tenant, client, snapshotStore}
-}
-
-func makeTenantCtxFromEnv(getter configGetter) (*TenantCtx, *Config, error) {
+func makeSystemClientFrom(getter configGetter) (*SystemClient, *Config, error) {
 	conf, err := GetConfig(getter)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return NewTenantCtx(TenantId(conf.tenantId), ClientFromConfig(conf)), conf, nil
-}
+	if conf.url != "" {
+		serverClient, err := ehserverclient.New(conf.url)
+		if err != nil {
+			return nil, nil, err
+		}
 
-func TenantCtxWithSnapshotsFrom(
-	getter configGetter,
-	appContextId string,
-) (*TenantCtxWithSnapshots, error) {
-	tenantCtx, conf, err := makeTenantCtxFromEnv(getter)
-	if err != nil {
-		return nil, err
+		return &SystemClient{serverClient, serverClient}, conf, nil
 	}
 
 	snapshots, err := NewDynamoDbSnapshotStore(
-		conf.SnapshotsDynamoDbOptions(),
-		appContextId)
+		conf.SnapshotsDynamoDbOptions())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return NewTenantCtxWithSnapshots(tenantCtx.Tenant, tenantCtx.Client, snapshots), nil
-}
+	eventLog := ehdynamodb.New(conf.ClientDynamoDbOptions())
 
-func ClientFromConfig(conf *Config) *ehclient.Client {
-	return ehclient.New(conf.ClientDynamoDbOptions())
+	return &SystemClient{eventLog, snapshots}, conf, nil
 }
 
 type configGetter func() (string, error)
@@ -103,18 +100,19 @@ type Config struct {
 	accessKeySecret string
 	regionId        string
 	env             environment
+	url             string
 }
 
-func (c *Config) ClientDynamoDbOptions() ehclient.DynamoDbOptions {
+func (c *Config) ClientDynamoDbOptions() ehdynamodb.DynamoDbOptions {
 	return c.dynamoDbOptions(c.env.eventsTableName)
 }
 
-func (c *Config) SnapshotsDynamoDbOptions() ehclient.DynamoDbOptions {
+func (c *Config) SnapshotsDynamoDbOptions() ehdynamodb.DynamoDbOptions {
 	return c.dynamoDbOptions(c.env.snapshotsTableName)
 }
 
-func (c *Config) dynamoDbOptions(tableName string) ehclient.DynamoDbOptions {
-	return ehclient.DynamoDbOptions{
+func (c *Config) dynamoDbOptions(tableName string) ehdynamodb.DynamoDbOptions {
+	return ehdynamodb.DynamoDbOptions{
 		AccessKeyId:     c.accessKeyId,
 		AccessKeySecret: c.accessKeySecret,
 		RegionId:        c.regionId,
@@ -126,6 +124,12 @@ func GetConfig(getter configGetter) (*Config, error) {
 	conf, err := getter()
 	if err != nil {
 		return nil, err
+	}
+
+	if strings.HasPrefix(conf, "http") {
+		return &Config{
+			url: conf,
+		}, nil
 	}
 
 	// format:

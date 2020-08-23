@@ -3,13 +3,20 @@ package ehcli
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
 	"os"
-	"path"
 	"strconv"
 
-	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehserver"
+	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
+	"github.com/function61/eventhorizon/pkg/system/ehdirstate"
+	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +27,40 @@ func Entrypoint() *cobra.Command {
 		Short: "Manage EventHorizon",
 	}
 
+	parentCmd.AddCommand(serverEntrypoint())
+
+	parentCmd.AddCommand(streamEntrypoint())
+
+	parentCmd.AddCommand(snapshotEntrypoint())
+
+	parentCmd.AddCommand(credentialsEntrypoint())
+
+	parentCmd.AddCommand(realtimeEntrypoint())
+
+	parentCmd.AddCommand(subscriptionsEntrypoint())
+
+	return parentCmd
+}
+
+func serverEntrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "server",
+		Short: "Server management",
+	}
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "run",
+		Short: "Run the server",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(ehserver.Server(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				rootLogger))
+		},
+	})
+
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "bootstrap",
 		Short: "Bootstrap the database",
@@ -29,8 +70,17 @@ func Entrypoint() *cobra.Command {
 		},
 	})
 
+	return parentCmd
+}
+
+func streamEntrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "stream",
+		Short: "Stream management",
+	}
+
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "stream-create [path]",
+		Use:   "mk [path]",
 		Short: "Create new stream, as a child of parent",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -39,14 +89,15 @@ func Entrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "read [stream] [pos]",
+		Use:   "cat [stream] [pos]",
 		Short: "Read events from the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			version, err := strconv.Atoi(args[1])
 			osutil.ExitIfError(err)
 
-			osutil.ExitIfError(streamRead(osutil.CancelOnInterruptOrTerminate(nil), args[0], int64(version)))
+			osutil.ExitIfError(streamRead(
+				osutil.CancelOnInterruptOrTerminate(nil), args[0], int64(version)))
 		},
 	})
 
@@ -55,7 +106,68 @@ func Entrypoint() *cobra.Command {
 		Short: "Append event to the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			osutil.ExitIfError(streamAppend(osutil.CancelOnInterruptOrTerminate(nil), args[0], args[1]))
+			osutil.ExitIfError(streamAppend(
+				osutil.CancelOnInterruptOrTerminate(nil), args[0], args[1]))
+		},
+	})
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "ls [streamName]",
+		Short: "List child streams",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(listChildStreams(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
+				rootLogger))
+		},
+	})
+
+	return parentCmd
+}
+
+func snapshotEntrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "snap",
+		Short: "Snapshot management",
+	}
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "cat [streamName] [context]",
+		Short: "Inspect a snapshot",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			osutil.ExitIfError(snapshotCat(
+				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				args[0],
+				args[1]))
+		},
+	})
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "rm [streamName] [context]",
+		Short: "Delete a snapshot",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			osutil.ExitIfError(snapshotRm(
+				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				args[0],
+				args[1]))
+		},
+	})
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "put [cursor] [context]",
+		Short: "Replace a snapshot (dangerous)",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			osutil.ExitIfError(snapshotPut(
+				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				args[0],
+				args[1],
+				os.Stdin))
 		},
 	})
 
@@ -63,39 +175,139 @@ func Entrypoint() *cobra.Command {
 }
 
 func bootstrap(ctx context.Context) error {
-	horizon, err := buildClient()
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
-	return ehclient.Bootstrap(ctx, horizon)
+	return ehdynamodb.Bootstrap(ctx, client.EventLog.(*ehdynamodb.Client))
+}
+
+func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	streamName, err := eh.DeserializeStreamName(streamNameRaw)
+	if err != nil {
+		return err
+	}
+
+	dirState, err := ehdirstate.LoadUntilRealtime(ctx, streamName, client, logger)
+	if err != nil {
+		return err
+	}
+
+	for _, childStream := range dirState.State.ChildStreams() {
+		fmt.Println(childStream)
+	}
+
+	return nil
+}
+
+func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext string) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	streamName, err := eh.DeserializeStreamName(streamNameRaw)
+	if err != nil {
+		return err
+	}
+
+	// the Beginning() is non-important, as the store only uses the stream component of Cursor
+	snap, err := client.SnapshotStore.ReadSnapshot(
+		ctx,
+		streamName,
+		snapshotContext)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(
+		os.Stderr,
+		"Snapshot @ %s\n--------\n",
+		snap.Cursor.Serialize())
+
+	fmt.Fprintf(
+		os.Stdout,
+		"%s",
+		snap.Data)
+
+	return nil
+}
+
+func snapshotPut(
+	ctx context.Context,
+	cursorSerialized string,
+	snapshotContext string,
+	contentReader io.Reader,
+) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	cursor, err := eh.DeserializeCursor(cursorSerialized)
+	if err != nil {
+		return err
+	}
+
+	content, err := ioutil.ReadAll(contentReader)
+	if err != nil {
+		return err
+	}
+
+	snapshot := eh.NewSnapshot(cursor, content, snapshotContext)
+
+	return client.SnapshotStore.WriteSnapshot(ctx, *snapshot)
+}
+
+func snapshotRm(ctx context.Context, streamName string, snapshotContext string) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	stream, err := eh.DeserializeStreamName(streamName)
+	if err != nil {
+		return err
+	}
+
+	return client.SnapshotStore.DeleteSnapshot(ctx, stream, snapshotContext)
 }
 
 func streamCreate(ctx context.Context, streamPath string) error {
-	// "/foo" => "/"
-	// "/foo/bar" => "/foo"
-	parent := path.Dir(streamPath)
-	// "/foo" => "foo"
-	// "/foo/bar" => "bar"
-	name := path.Base(streamPath)
-
-	horizon, err := buildClient()
+	stream, err := eh.DeserializeStreamName(streamPath)
 	if err != nil {
 		return err
 	}
 
-	return horizon.CreateStream(ctx, parent, name)
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.EventLog.CreateStream(ctx, stream, []string{})
+	return err
 }
 
-func streamRead(ctx context.Context, streamPath string, version int64) error {
-	horizon, err := buildClient()
+func streamRead(ctx context.Context, streamNameRaw string, version int64) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
-	resp, err := horizon.Read(
+	streamName, err := eh.DeserializeStreamName(streamNameRaw)
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.EventLog.Read(
 		ctx,
-		ehclient.At(streamPath, version))
+		streamName.At(version))
 	if err != nil {
 		return err
 	}
@@ -103,21 +315,17 @@ func streamRead(ctx context.Context, streamPath string, version int64) error {
 	return ehdebug.Debug(resp, os.Stdout)
 }
 
-func streamAppend(ctx context.Context, streamPath string, event string) error {
-	horizon, err := buildClient()
+func streamAppend(ctx context.Context, streamNameRaw string, event string) error {
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
-	_, err = horizon.Append(ctx, streamPath, []string{event})
-	return err
-}
-
-func buildClient() (*ehclient.Client, error) {
-	conf, err := ehreader.GetConfig(ehreader.ConfigFromEnv)
+	streamName, err := eh.DeserializeStreamName(streamNameRaw)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return ehreader.ClientFromConfig(conf), nil
+	_, err = client.EventLog.Append(ctx, streamName, []string{event})
+	return err
 }
