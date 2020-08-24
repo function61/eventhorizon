@@ -35,7 +35,7 @@ func NewDynamoDbSnapshotStore(opts ehdynamodb.DynamoDbOptions) (eh.SnapshotStore
 	staticCreds := credentials.NewStaticCredentials(
 		opts.AccessKeyId,
 		opts.AccessKeySecret,
-		"")
+		opts.AccessKeyToken)
 
 	dynamo := dynamodb.New(
 		sess,

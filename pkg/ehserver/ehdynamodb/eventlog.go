@@ -33,8 +33,9 @@ type LogEntryRaw struct {
 }
 
 type DynamoDbOptions struct {
-	AccessKeyId     string
-	AccessKeySecret string
+	AccessKeyId     string // AWS_ACCESS_KEY_ID
+	AccessKeySecret string // AWS_SECRET_ACCESS_KEY
+	AccessKeyToken  string // AWS_SESSION_TOKEN (only needed in Lambda)
 	RegionId        string
 	TableName       string
 }
@@ -56,7 +57,7 @@ func New(opts DynamoDbOptions) *Client {
 	staticCreds := credentials.NewStaticCredentials(
 		opts.AccessKeyId,
 		opts.AccessKeySecret,
-		"")
+		opts.AccessKeyToken)
 
 	dynamo := dynamodb.New(
 		sess,

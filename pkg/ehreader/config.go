@@ -3,6 +3,7 @@ package ehreader
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/function61/eventhorizon/pkg/eh"
@@ -96,8 +97,9 @@ func ConfigFromEnv() (string, error) {
 
 type Config struct {
 	tenantId        string
-	accessKeyId     string
-	accessKeySecret string
+	accessKeyId     string // AWS_ACCESS_KEY_ID
+	accessKeySecret string // AWS_SECRET_ACCESS_KEY
+	accessKeyToken  string // AWS_SESSION_TOKEN (only needed in Lambda)
 	regionId        string
 	env             environment
 	url             string
@@ -115,6 +117,7 @@ func (c *Config) dynamoDbOptions(tableName string) ehdynamodb.DynamoDbOptions {
 	return ehdynamodb.DynamoDbOptions{
 		AccessKeyId:     c.accessKeyId,
 		AccessKeySecret: c.accessKeySecret,
+		AccessKeyToken:  c.accessKeyToken,
 		RegionId:        c.regionId,
 		TableName:       tableName,
 	}
@@ -143,8 +146,10 @@ func GetConfig(getter configGetter) (*Config, error) {
 
 	accessKeyId := parts[2]
 	accessKeySecret := parts[3]
+	accessKeyToken := ""
 
-	// if creds empty, fetch from another ENV variable
+	// if creds empty, fetch from another ENV variable.
+	// https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
 	if accessKeyId == "" || accessKeySecret == "" {
 		if accessKeyId != "" || accessKeySecret != "" {
 			return nil, errors.New(
@@ -160,6 +165,8 @@ func GetConfig(getter configGetter) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		accessKeyToken = os.Getenv("AWS_SESSION_TOKEN")
 	}
 
 	environment, err := func() (*environment, error) {
@@ -180,6 +187,7 @@ func GetConfig(getter configGetter) (*Config, error) {
 		tenantId:        parts[1],
 		accessKeyId:     accessKeyId,
 		accessKeySecret: accessKeySecret,
+		accessKeyToken:  accessKeyToken,
 		regionId:        parts[4],
 		env:             *environment,
 	}, nil
