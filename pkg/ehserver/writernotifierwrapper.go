@@ -7,7 +7,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/system/ehsubstate"
+	"github.com/function61/eventhorizon/pkg/system/ehstreamsubscribers"
 	"github.com/function61/gokit/logex"
 )
 
@@ -25,7 +25,7 @@ type writerNotifierWrapper struct {
 
 	// these are used to resolve subscribers for a stream
 
-	streamSubscribers   map[string]*ehsubstate.App
+	streamSubscribers   map[string]*ehstreamsubscribers.App
 	streamSubscribersMu sync.Mutex
 	systemClient        *ehreader.SystemClient
 
@@ -45,7 +45,7 @@ func wrapWriterWithNotifier(
 		innerWriter: innerWriter,
 		notifier:    notifier,
 
-		streamSubscribers: map[string]*ehsubstate.App{},
+		streamSubscribers: map[string]*ehstreamsubscribers.App{},
 		systemClient:      systemClient,
 
 		logger: logger,
@@ -108,11 +108,11 @@ func (w *writerNotifierWrapper) notify2(ctx context.Context, result *eh.AppendRe
 		// TODO: this blocks for a long while
 		// TODO: logger
 		var err error
-		subscriptionsState, err = ehsubstate.LoadUntilRealtime(
+		subscriptionsState, err = ehstreamsubscribers.LoadUntilRealtime(
 			ctx,
 			result.Cursor.Stream(),
 			w.systemClient,
-			logex.Prefix(ehsubstate.LogPrefix, w.logger))
+			logex.Prefix(ehstreamsubscribers.LogPrefix, w.logger))
 		if err != nil {
 			return err
 		}

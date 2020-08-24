@@ -1,5 +1,5 @@
-// EventHorizon system state: subscriptions for a given stream
-package ehsubstate
+// Subscriptions for a given stream
+package ehstreamsubscribers
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	LogPrefix = "ehsubstate"
+	LogPrefix = "ehstreamsubscribers"
 )
 
 type stateFormat struct {
