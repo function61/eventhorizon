@@ -129,6 +129,10 @@ func (s StreamName) String() string {
 	return s.name
 }
 
+func (s StreamName) IsUnder(other StreamName) bool {
+	return strings.HasPrefix(s.name, other.name)
+}
+
 func (s StreamName) ResourceName() policy.ResourceName {
 	return ResourceNameStream.Child(s.String())
 }
@@ -149,7 +153,7 @@ func (s StreamName) At(version int64) Cursor {
 	return Cursor{s.String(), version}
 }
 
-// in context of "give events > -1" (not >=), i.e. the beginning is actually 0
+// in context of "give events > -1" (not >=). the actual beginning is 0
 func (s StreamName) Beginning() Cursor {
 	return s.At(-1)
 }
