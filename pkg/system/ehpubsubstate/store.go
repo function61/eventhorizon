@@ -11,6 +11,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
+	"github.com/function61/gokit/syncutil"
 )
 
 type stateFormat struct {
@@ -138,10 +139,6 @@ func LoadUntilRealtime(
 	return a, nil
 }
 
-func lockAndUnlock(mu *sync.Mutex) func() {
-	mu.Lock()
-
-	return func() {
-		mu.Unlock()
-	}
-}
+var (
+	lockAndUnlock = syncutil.LockAndUnlock // shorthand
+)

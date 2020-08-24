@@ -13,6 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
+	"github.com/function61/gokit/syncutil"
 )
 
 type Credential struct {
@@ -168,10 +169,6 @@ func LoadUntilRealtime(
 	return a, nil
 }
 
-func lockAndUnlock(mu *sync.Mutex) func() {
-	mu.Lock()
-
-	return func() {
-		mu.Unlock()
-	}
-}
+var (
+	lockAndUnlock = syncutil.LockAndUnlock // shorthand
+)
