@@ -2,7 +2,7 @@
 // because projection snapshots are used as a cache.
 // NOTE: you cannot list streams if there are so many child streams that they won't fit
 //       in one projection record. (consider this as a debug tool)
-package ehdirstate
+package ehchildstreams
 
 import (
 	"context"

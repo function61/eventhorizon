@@ -15,7 +15,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
-	"github.com/function61/eventhorizon/pkg/system/ehdirstate"
+	"github.com/function61/eventhorizon/pkg/system/ehchildstreams"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
@@ -194,12 +194,12 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 		return err
 	}
 
-	dirState, err := ehdirstate.LoadUntilRealtime(ctx, streamName, client, logger)
+	childStreams, err := ehchildstreams.LoadUntilRealtime(ctx, streamName, client, logger)
 	if err != nil {
 		return err
 	}
 
-	for _, childStream := range dirState.State.ChildStreams() {
+	for _, childStream := range childStreams.State.ChildStreams() {
 		fmt.Println(childStream)
 	}
 
