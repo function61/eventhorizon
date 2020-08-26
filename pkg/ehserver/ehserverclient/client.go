@@ -92,18 +92,22 @@ func (s *serverClient) AppendAfter(
 	after eh.Cursor,
 	events []string,
 ) (*eh.AppendResult, error) {
-	res := &eh.AppendResult{}
+	result := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
 		s.baseUrl+"/append-after?after="+url.QueryEscape(after.Serialize()),
 		ezhttp.AuthBearer(s.authToken),
 		ezhttp.SendJson(events),
-		ezhttp.RespondsJson(res, false),
+		ezhttp.RespondsJson(result, false),
 	); err != nil {
-		return nil, fmt.Errorf("AppendAfter: %w", err)
+		if ezhttp.ErrorIs(err, http.StatusConflict) {
+			return nil, eh.NewErrOptimisticLockingFailed(err)
+		} else {
+			return nil, fmt.Errorf("AppendAfter: %w", err)
+		}
 	}
 
-	return res, nil
+	return result, nil
 }
 
 func (s *serverClient) CreateStream(
@@ -137,7 +141,7 @@ func (s *serverClient) ReadSnapshot(
 		ezhttp.AuthBearer(s.authToken),
 		ezhttp.RespondsJson(snap, false),
 	); err != nil {
-		if is404(err) {
+		if ezhttp.ErrorIs(err, http.StatusNotFound) {
 			return nil, os.ErrNotExist
 		} else {
 			return nil, fmt.Errorf("ReadSnapshot(%s, %s): %w", stream.String(), snapshotContext, err)
@@ -177,7 +181,7 @@ func (s *serverClient) DeleteSnapshot(
 		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&context="+url.QueryEscape(snapshotContext),
 		ezhttp.AuthBearer(s.authToken),
 	); err != nil {
-		if is404(err) {
+		if ezhttp.ErrorIs(err, http.StatusNotFound) {
 			return os.ErrNotExist
 		} else {
 			return fmt.Errorf("DeleteSnapshot: %w", err)
@@ -185,12 +189,4 @@ func (s *serverClient) DeleteSnapshot(
 	}
 
 	return nil
-}
-
-func is404(err error) bool {
-	if err, isStatusError := err.(*ezhttp.ResponseStatusError); isStatusError && err.StatusCode() == http.StatusNotFound {
-		return true
-	} else {
-		return false
-	}
 }

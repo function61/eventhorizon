@@ -59,7 +59,7 @@ type ErrOptimisticLockingFailed struct {
 	error
 }
 
-// needed for testing from outside of this package
+// needed for testing from outside of this package, also for server client
 func NewErrOptimisticLockingFailed(err error) *ErrOptimisticLockingFailed {
 	return &ErrOptimisticLockingFailed{err}
 }

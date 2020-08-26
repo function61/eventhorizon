@@ -151,7 +151,11 @@ func serverHandler(auth *authenticator) http.Handler {
 
 		appendResult, err := user.Writer.Append(r.Context(), stream, events)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			if _, wasAboutLocking := err.(*eh.ErrOptimisticLockingFailed); wasAboutLocking {
+				http.Error(w, err.Error(), http.StatusConflict)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 
