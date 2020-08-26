@@ -31,3 +31,9 @@ func TestStreamNameIsUnder(t *testing.T) {
 	assert.Assert(t, !uid3.IsUnder(RootName.Child("t-4")))
 	assert.Assert(t, !uid3.IsUnder(RootName.Child("t-4").Child("users")))
 }
+
+func TestStreamNameEqual(t *testing.T) {
+	assert.Assert(t, RootName.Equal(RootName))
+	assert.Assert(t, RootName.Child("t-1").Equal(RootName.Child("t-1")))
+	assert.Assert(t, !RootName.Child("t-1").Equal(RootName.Child("t-2")))
+}
