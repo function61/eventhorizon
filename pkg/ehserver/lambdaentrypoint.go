@@ -16,7 +16,20 @@ import (
 func LambdaEntrypoint() error {
 	logger := logex.StandardLogger()
 
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	systemClient, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	bgCtx := context.Background() // don't have teardown mechanism available
+
+	httpHandler, err := createHttpHandler(bgCtx, systemClient, func(task func(context.Context) error) {
+		go func() {
+			if err := task(bgCtx); err != nil {
+				logex.Levels(logger).Error.Printf("mqtt task: %v", err)
+			}
+		}()
+	}, logger)
 	if err != nil {
 		return err
 	}
@@ -24,7 +37,12 @@ func LambdaEntrypoint() error {
 	lambda.StartHandler(lambdautils.NewMultiEventTypeHandler(func(ctx context.Context, ev interface{}) ([]byte, error) {
 		switch e := ev.(type) {
 		case *events.DynamoDBEvent:
-			return nil, ehdynamodbtrigger.Handle(ctx, e, client, logger)
+			return nil, ehdynamodbtrigger.Handle(ctx, e, systemClient, logger)
+		case *events.APIGatewayProxyRequest:
+			return lambdautils.ServeApiGatewayProxyRequestUsingHttpHandler(
+				ctx,
+				e,
+				httpHandler)
 		default:
 			return nil, errors.New("unsupported event")
 		}

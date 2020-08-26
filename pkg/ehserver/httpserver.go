@@ -24,17 +24,44 @@ func Server(ctx context.Context, logger *log.Logger) error {
 		return err
 	}
 
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, systemClient, logger)
+	tasks := taskrunner.New(ctx, logger)
+
+	httpHandler, err := createHttpHandler(ctx, systemClient, func(task func(context.Context) error) {
+		tasks.Start("mqtt", task)
+	}, logger)
 	if err != nil {
 		return err
+	}
+
+	srv := &http.Server{
+		Addr:    ":80",
+		Handler: httpHandler,
+	}
+
+	tasks.Start("listener "+srv.Addr, func(_ context.Context) error {
+		return httputils.RemoveGracefulServerClosedError(srv.ListenAndServe())
+	})
+
+	tasks.Start("listenershutdowner", httputils.ServerShutdownTask(srv))
+
+	return tasks.Wait()
+}
+
+func createHttpHandler(
+	ctx context.Context,
+	systemClient *ehreader.SystemClient,
+	startMqttTask func(task func(context.Context) error),
+	logger *log.Logger,
+) (http.Handler, error) {
+	credState, err := ehcredstate.LoadUntilRealtime(ctx, systemClient, logger)
+	if err != nil {
+		return nil, err
 	}
 
 	pubSubState, err := ehpubsubstate.LoadUntilRealtime(ctx, systemClient, logger)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	tasks := taskrunner.New(ctx, logger)
 
 	writerMaybeWithNotifier := func() eh.Writer {
 		mqttConfig := pubSubState.State.MqttConfig()
@@ -42,9 +69,7 @@ func Server(ctx context.Context, logger *log.Logger) error {
 		if mqttConfig == nil {
 			return systemClient.EventLog
 		} else {
-			notifier := New(*mqttConfig, func(task func(context.Context) error) {
-				tasks.Start("mqtt", task)
-			})
+			notifier := New(*mqttConfig, startMqttTask)
 
 			return wrapWriterWithNotifier(
 				systemClient.EventLog,
@@ -62,18 +87,7 @@ func Server(ctx context.Context, logger *log.Logger) error {
 		rawSnapshotStore: systemClient.SnapshotStore,
 	}
 
-	srv := &http.Server{
-		Addr:    ":80",
-		Handler: serverHandler(auth),
-	}
-
-	tasks.Start("listener "+srv.Addr, func(_ context.Context) error {
-		return httputils.RemoveGracefulServerClosedError(srv.ListenAndServe())
-	})
-
-	tasks.Start("listenershutdowner", httputils.ServerShutdownTask(srv))
-
-	return tasks.Wait()
+	return serverHandler(auth), nil
 }
 
 func serverHandler(auth *authenticator) http.Handler {
