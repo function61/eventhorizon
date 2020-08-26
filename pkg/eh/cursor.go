@@ -50,7 +50,7 @@ func (c *Cursor) AtBeginning() bool {
 	return c.version == -1
 }
 
-func (c *Cursor) Less(other Cursor) bool {
+func (c *Cursor) Before(other Cursor) bool {
 	if c.stream != other.stream {
 		panic("cannot compare unrelated streams")
 	}

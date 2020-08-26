@@ -246,7 +246,7 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 			// EventsProcessor reached realtime. store newer snapshot if we:
 			// - have a snapshot capability
 			// - we know the latest snapshot is older than what EventsProcessor now knows
-			if r.snapCap != nil && r.snapshotVersion != nil && r.snapshotVersion.Less(nextRead) {
+			if r.snapCap != nil && r.snapshotVersion != nil && r.snapshotVersion.Before(nextRead) {
 				snap, err := r.snapCap.Snapshot()
 				if err != nil {
 					r.logl.Error.Printf("EventsProcessor.Snapshot: %v", err)

@@ -26,20 +26,20 @@ func TestAtBeginning(t *testing.T) {
 	assert.Assert(t, !fooAt.AtBeginning())
 }
 
-func TestLess(t *testing.T) {
+func TestBefore(t *testing.T) {
 	v1 := foo.At(1)
 	v2 := foo.At(2)
 	v2Other := RootName.Child("bar").At(2)
 
-	assert.Assert(t, v1.Less(v2))
-	assert.Assert(t, !v2.Less(v1))
-	assert.Assert(t, !v2.Less(v2))
+	assert.Assert(t, v1.Before(v2))
+	assert.Assert(t, !v2.Before(v1))
+	assert.Assert(t, !v2.Before(v2))
 
 	defer func() {
 		assert.EqualString(t, recover().(string), "cannot compare unrelated streams")
 	}()
 
-	v2.Less(v2Other) // panics
+	v2.Before(v2Other) // panics
 }
 
 func TestEqual(t *testing.T) {
