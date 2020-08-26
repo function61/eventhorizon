@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/syncutil"
 )
 
 var (
@@ -65,6 +67,8 @@ type Reader struct {
 	snapStore       eh.SnapshotStore
 	snapshotVersion *eh.Cursor
 	logl            *logex.Leveled
+	lastLoad        time.Time
+	lastLoadMu      sync.Mutex
 }
 
 // "keep processor happy by feeding it from client"
@@ -262,6 +266,25 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 			return nil
 		}
 	}
+}
+
+// same as LoadUntilRealtime(), but only loads if not done so recently
+func (r *Reader) LoadUntilRealtimeIfStale(
+	ctx context.Context,
+	staleDuration time.Duration,
+) error {
+	// don't start concurrent ops
+	defer syncutil.LockAndUnlock(&r.lastLoadMu)()
+
+	if time.Since(r.lastLoad) < staleDuration {
+		if err := r.LoadUntilRealtime(ctx); err != nil {
+			return err
+		}
+
+		r.lastLoad = time.Now()
+	}
+
+	return nil
 }
 
 // wraps your AppendAfter() result with state-refreshed retries for ErrOptimisticLockingFailed
