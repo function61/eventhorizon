@@ -276,7 +276,7 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 	// don't start concurrent ops
 	defer syncutil.LockAndUnlock(&r.lastLoadMu)()
 
-	if time.Since(r.lastLoad) < staleDuration {
+	if time.Since(r.lastLoad) > staleDuration {
 		if err := r.LoadUntilRealtime(ctx); err != nil {
 			return err
 		}
