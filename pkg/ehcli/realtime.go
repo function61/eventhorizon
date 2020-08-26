@@ -10,6 +10,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/ehserver"
@@ -103,7 +104,7 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 
 	incomingMsg := make(chan string)
 
-	topic := ehserver.MqttTopicForSubscription(subscriptionId)
+	topic := ehserver.MqttTopicForSubscription(eh.NewSubscriptionId(subscriptionId))
 
 	if err := waitToken(mqClient.Subscribe(topic, mqttQos0AtMostOnce, func(_ mqtt.Client, msg mqtt.Message) {
 		incomingMsg <- string(msg.Payload())

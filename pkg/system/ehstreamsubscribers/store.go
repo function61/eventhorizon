@@ -11,7 +11,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/sliceutil"
 	"github.com/function61/gokit/syncutil"
 )
 
@@ -20,11 +19,11 @@ const (
 )
 
 type stateFormat struct {
-	Subscriptions []string `json:"subscriptions"`
+	Subscriptions []eh.SubscriptionId `json:"subscriptions"`
 }
 
 func newStateFormat() stateFormat {
-	return stateFormat{[]string{}}
+	return stateFormat{[]eh.SubscriptionId{}}
 }
 
 type Store struct {
@@ -40,10 +39,22 @@ func New(stream eh.StreamName) *Store {
 	}
 }
 
-func (s *Store) Subscriptions() []string {
+func (s *Store) Subscriptions() []eh.SubscriptionId {
 	defer lockAndUnlock(&s.mu)()
 
 	return s.state.Subscriptions
+}
+
+func (s *Store) Subscribed(id eh.SubscriptionId) bool {
+	defer lockAndUnlock(&s.mu)()
+
+	for _, candidate := range s.state.Subscriptions {
+		if candidate.Equal(id) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *Store) Version() eh.Cursor {
@@ -73,7 +84,7 @@ func (s *Store) Snapshot() (*eh.Snapshot, error) {
 }
 
 func (s *Store) SnapshotContextAndVersion() string {
-	return "eh:sub:v1" // change if persisted stateFormat changes in backwards-incompat way
+	return "eh:streamsubs:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
 func (s *Store) GetEventTypes() (ehevent.Types, ehevent.Types) {
@@ -98,9 +109,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	case *eh.SubscriptionSubscribed:
 		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)
 	case *eh.SubscriptionUnsubscribed:
-		s.state.Subscriptions = sliceutil.FilterString(s.state.Subscriptions, func(id string) bool {
-			return id != e.Id
-		})
+		s.state.Subscriptions = remove(s.state.Subscriptions, e.Id)
 	}
 
 	return nil
@@ -141,3 +150,13 @@ func LoadUntilRealtime(
 var (
 	lockAndUnlock = syncutil.LockAndUnlock // shorthand
 )
+
+func remove(input []eh.SubscriptionId, remove eh.SubscriptionId) []eh.SubscriptionId {
+	removed := []eh.SubscriptionId{}
+	for _, item := range input {
+		if !item.Equal(remove) {
+			removed = append(removed, item)
+		}
+	}
+	return removed
+}

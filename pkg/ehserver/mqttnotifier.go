@@ -13,8 +13,8 @@ import (
 )
 
 type notification struct {
-	subscriptionId string
-	cursor         eh.Cursor
+	subscription eh.SubscriptionId
+	cursor       eh.Cursor
 }
 
 type mqttNotifier struct {
@@ -54,7 +54,7 @@ func (l *mqttNotifier) task(ctx context.Context) error {
 			return nil
 		case not := <-l.notificationCh:
 			// TODO: add prod|staging|dev namespace to topic
-			topic := MqttTopicForSubscription(not.subscriptionId)
+			topic := MqttTopicForSubscription(not.subscription)
 
 			if err := WaitToken(client.Publish(topic, MqttQos0AtMostOnce, false, not.cursor.Serialize())); err != nil {
 				return err
@@ -65,13 +65,13 @@ func (l *mqttNotifier) task(ctx context.Context) error {
 
 func (l *mqttNotifier) NotifySubscriberOfActivity(
 	ctx context.Context,
-	subscriptionId string,
+	subscription eh.SubscriptionId,
 	appendResult eh.AppendResult,
 ) error {
 	select {
 	case l.notificationCh <- notification{
-		subscriptionId: subscriptionId,
-		cursor:         appendResult.Cursor,
+		subscription: subscription,
+		cursor:       appendResult.Cursor,
 	}: // non-blocking send
 		return nil
 	default:
@@ -81,8 +81,8 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 	}
 }
 
-func MqttTopicForSubscription(subscriptionId string) string {
-	return fmt.Sprintf("_sub/%s", subscriptionId)
+func MqttTopicForSubscription(subscription eh.SubscriptionId) string {
+	return fmt.Sprintf("_sub/%s", subscription.String())
 }
 
 func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated) (mqtt.Client, error) {

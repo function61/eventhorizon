@@ -10,9 +10,9 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/system/ehstreamsubscribers"
+	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
-	"github.com/function61/gokit/sliceutil"
 	"github.com/spf13/cobra"
 )
 
@@ -70,7 +70,12 @@ func subscriptionsEntrypoint() *cobra.Command {
 }
 
 func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	_, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, logger)
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	_, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, client, logger)
 	if err != nil {
 		return err
 	}
@@ -82,15 +87,27 @@ func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Lo
 	return nil
 }
 
-func subscriptionSubscribe(ctx context.Context, streamNameRaw string, id string, logger *log.Logger) error {
-	stream, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, logger)
+func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
+	id := eh.NewSubscriptionId(idRaw)
+
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
+	stream, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, client, logger)
+	if err != nil {
+		return err
+	}
+
+	// validate existence
+	if _, err := ehsubscription.LoadUntilRealtime(ctx, id, client, nil, logger); err != nil {
+		return err
+	}
+
 	return subscriptions.Reader.TransactWrite(ctx, func() error {
-		if sliceutil.ContainsString(subscriptions.State.Subscriptions(), id) {
-			return fmt.Errorf("%s is already subscribed to %s", id, stream.String())
+		if subscriptions.State.Subscribed(id) {
+			return fmt.Errorf("%s is already subscribed to %s", id.String(), stream.String())
 		}
 
 		subscribed := eh.NewSubscriptionSubscribed(
@@ -105,14 +122,26 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, id string,
 	})
 }
 
-func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, id string, logger *log.Logger) error {
-	stream, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, logger)
+func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
+	id := eh.NewSubscriptionId(idRaw)
+
+	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
+	stream, subscriptions, err := loadSubscriptions(ctx, streamNameRaw, client, logger)
+	if err != nil {
+		return err
+	}
+
+	// validate existence
+	if _, err := ehsubscription.LoadUntilRealtime(ctx, id, client, nil, logger); err != nil {
+		return err
+	}
+
 	return subscriptions.Reader.TransactWrite(ctx, func() error {
-		if !sliceutil.ContainsString(subscriptions.State.Subscriptions(), id) {
+		if !subscriptions.State.Subscribed(id) {
 			return fmt.Errorf("%s is not subscribed to %s", id, stream.String())
 		}
 
@@ -131,14 +160,10 @@ func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, id strin
 func loadSubscriptions(
 	ctx context.Context,
 	streamNameRaw string,
+	client *ehreader.SystemClient,
 	logger *log.Logger,
 ) (eh.StreamName, *ehstreamsubscribers.App, error) {
 	stream, err := eh.DeserializeStreamName(streamNameRaw)
-	if err != nil {
-		return stream, nil, err
-	}
-
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return stream, nil, err
 	}

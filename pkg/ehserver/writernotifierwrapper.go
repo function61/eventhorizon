@@ -14,7 +14,11 @@ import (
 // notifies subscriber (subscriptionId) that one of hers subscription streams (stream cursor) has new data
 type SubscriptionNotifier interface {
 	// nil return does not indicate success, but only that the handling did not immediately fail
-	NotifySubscriberOfActivity(ctx context.Context, subscriptionId string, appendResult eh.AppendResult) error
+	NotifySubscriberOfActivity(
+		ctx context.Context,
+		subscription eh.SubscriptionId,
+		appendResult eh.AppendResult,
+	) error
 }
 
 type writerNotifierWrapper struct {
