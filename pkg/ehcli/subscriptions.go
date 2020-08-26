@@ -172,6 +172,7 @@ func loadSubscriptions(
 		ctx,
 		stream,
 		client,
+		nil,
 		logex.Prefix(ehstreamsubscribers.LogPrefix, logger))
 	return stream, subscriptions, err
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
@@ -14,8 +15,14 @@ import (
 	"github.com/function61/gokit/syncutil"
 )
 
+//go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreamsubscribers gen CacheItemType=*App
+
 const (
 	LogPrefix = "ehstreamsubscribers"
+)
+
+var (
+	GlobalCache = NewCache()
 )
 
 type stateFormat struct {
@@ -126,25 +133,24 @@ func LoadUntilRealtime(
 	ctx context.Context,
 	stream eh.StreamName,
 	client *ehreader.SystemClient,
+	cache *Cache,
 	logger *log.Logger,
 ) (*App, error) {
-	store := New(stream)
+	app := cache.Get(stream.String(), func() *App {
+		store := New(stream)
 
-	a := &App{
-		store,
-		ehreader.NewWithSnapshots(
+		return &App{
 			store,
+			ehreader.NewWithSnapshots(
+				store,
+				client.EventLog,
+				client.SnapshotStore,
+				logex.Prefix("Reader", logger)),
 			client.EventLog,
-			client.SnapshotStore,
-			logex.Prefix("Reader", logger)),
-		client.EventLog,
-		logger}
+			logger}
+	})
 
-	if err := a.Reader.LoadUntilRealtime(ctx); err != nil {
-		return nil, err
-	}
-
-	return a, nil
+	return app, app.Reader.LoadUntilRealtimeIfStale(ctx, 5*time.Second)
 }
 
 var (
