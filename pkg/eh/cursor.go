@@ -12,12 +12,6 @@ type Cursor struct {
 	version int64
 }
 
-// separate struct because fields have to be exported
-type cursorJson struct {
-	Stream  *string // both are pointers so we can detect missing values
-	Version *int64
-}
-
 func (c Cursor) MarshalJSON() ([]byte, error) {
 	return json.Marshal(cursorJson{
 		Stream:  &c.stream,
@@ -88,4 +82,36 @@ func DeserializeCursor(serialized string) (Cursor, error) {
 	}
 
 	return streamName.At(version), nil
+}
+
+// separate struct because fields have to be exported
+type cursorJson struct {
+	Stream  *string // both are pointers so we can detect missing values
+	Version *int64
+}
+
+// same as Cursor, but serializes into JSON as a string instead of a struct
+type CursorCompact struct {
+	Cursor
+}
+
+func NewCursorCompact(cur Cursor) CursorCompact {
+	return CursorCompact{cur}
+}
+
+func (c CursorCompact) MarshalJSON() ([]byte, error) {
+	return json.Marshal(c.Cursor.Serialize())
+}
+
+func (c *CursorCompact) UnmarshalJSON(data []byte) error {
+	serialized := ""
+	if err := json.Unmarshal(data, &serialized); err != nil {
+		return err
+	}
+	cur, err := DeserializeCursor(serialized)
+	if err != nil {
+		return err
+	}
+	c.Cursor = cur
+	return nil
 }
