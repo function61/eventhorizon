@@ -14,15 +14,15 @@ import (
 	"github.com/function61/gokit/logex"
 )
 
-type notification struct {
-	subscription eh.SubscriptionId
-	cursor       eh.Cursor
+type publish struct {
+	topic        string
+	msg          []byte
 }
 
 type mqttNotifier struct {
-	notificationCh chan notification
-	config         ehpubsubdomain.MqttConfigUpdated
-	logl           *logex.Leveled
+	publishCh chan publish
+	config    ehpubsubdomain.MqttConfigUpdated
+	logl      *logex.Leveled
 }
 
 func newMqttNotifier(
@@ -30,12 +30,12 @@ func newMqttNotifier(
 	start func(task func(context.Context) error),
 	logger *log.Logger,
 ) SubscriptionNotifier {
-	notificationCh := make(chan notification, 100)
+	publishCh := make(chan publish, 100)
 
 	m := &mqttNotifier{
-		notificationCh: notificationCh,
-		config:         config,
-		logl:           logex.Levels(logger),
+		publishCh: publishCh,
+		config:    config,
+		logl:      logex.Levels(logger),
 	}
 
 	start(func(ctx context.Context) error {
@@ -57,18 +57,8 @@ func (l *mqttNotifier) task(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case not := <-l.notificationCh:
-			// TODO: add prod|staging|dev namespace to topic
-			topic := MqttTopicForSubscription(not.subscription)
-
-			msg, err := json.Marshal(eh.MqttActivityNotification{
-				Activity: []eh.CursorCompact{{not.cursor}},
-			})
-			if err != nil {
-				return err
-			}
-
-			if err := WaitToken(client.Publish(topic, MqttQos0AtMostOnce, false, msg)); err != nil {
+		case pub := <-l.publishCh:
+			if err := WaitToken(client.Publish(pub.topic, MqttQos0AtMostOnce, false, pub.msg)); err != nil {
 				return err
 			}
 		}
@@ -80,10 +70,17 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 	subscription eh.SubscriptionId,
 	appendResult eh.AppendResult,
 ) error {
+	msg, err := json.Marshal(eh.MqttActivityNotification{
+		Activity: []eh.CursorCompact{{appendResult.Cursor}},
+	})
+	if err != nil {
+		return err
+	}
+
 	select {
-	case l.notificationCh <- notification{
-		subscription: subscription,
-		cursor:       appendResult.Cursor,
+	case l.publishCh <- publish{
+		topic: MqttTopicForSubscription(subscription),
+		msg:   msg,
 	}: // non-blocking send
 		return nil
 	default:
