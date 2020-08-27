@@ -3,6 +3,7 @@ package ehcli
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -104,12 +105,18 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 	}
 	defer mqClient.Disconnect(250) // doesn't offer error status :O
 
-	incomingMsg := make(chan string)
+	incomingMsg := make(chan eh.MqttActivityNotification)
 
 	topic := ehserver.MqttTopicForSubscription(eh.NewSubscriptionId(subscriptionId))
 
 	if err := waitToken(mqClient.Subscribe(topic, mqttQos0AtMostOnce, func(_ mqtt.Client, msg mqtt.Message) {
-		incomingMsg <- string(msg.Payload())
+		activityNotifaction := eh.MqttActivityNotification{}
+		if err := json.Unmarshal(msg.Payload(), &activityNotifaction); err != nil {
+			logl.Error.Printf("Unmarshal: %v", err)
+			return
+		}
+
+		incomingMsg <- activityNotifaction
 	})); err != nil {
 		return err
 	}
@@ -122,7 +129,9 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 			logl.Info.Println("graceful exit")
 			return nil
 		case msg := <-incomingMsg:
-			logger.Printf("got %s", msg)
+			for _, activity := range msg.Activity {
+				logl.Info.Printf("activity %s", activity.Serialize())
+			}
 		}
 	}
 }

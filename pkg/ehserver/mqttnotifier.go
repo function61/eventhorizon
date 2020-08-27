@@ -3,6 +3,7 @@ package ehserver
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -60,7 +61,14 @@ func (l *mqttNotifier) task(ctx context.Context) error {
 			// TODO: add prod|staging|dev namespace to topic
 			topic := MqttTopicForSubscription(not.subscription)
 
-			if err := WaitToken(client.Publish(topic, MqttQos0AtMostOnce, false, not.cursor.Serialize())); err != nil {
+			msg, err := json.Marshal(eh.MqttActivityNotification{
+				Activity: []eh.CursorCompact{{not.cursor}},
+			})
+			if err != nil {
+				return err
+			}
+
+			if err := WaitToken(client.Publish(topic, MqttQos0AtMostOnce, false, msg)); err != nil {
 				return err
 			}
 		}

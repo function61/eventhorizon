@@ -64,6 +64,10 @@ func NewErrOptimisticLockingFailed(err error) *ErrOptimisticLockingFailed {
 	return &ErrOptimisticLockingFailed{err}
 }
 
+type MqttActivityNotification struct {
+	Activity []CursorCompact `json:"a"` // abbreviated to conserve space
+}
+
 func sysStreamAddToToCreate(name string) StreamName {
 	stream := RootName.Child("_").Child(name)
 	InternalStreamsToCreate = append(InternalStreamsToCreate, stream)
