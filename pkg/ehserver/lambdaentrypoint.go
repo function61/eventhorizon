@@ -43,6 +43,8 @@ func LambdaEntrypoint() error {
 				ctx,
 				e,
 				httpHandler)
+		case *events.CloudWatchEvent:
+			return nil, nil // assume just a warm-up event
 		default:
 			return nil, errors.New("unsupported event")
 		}
