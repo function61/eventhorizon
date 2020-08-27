@@ -81,8 +81,9 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 	}
 }
 
+// dev/_/sub/foo
 func MqttTopicForSubscription(subscription eh.SubscriptionId) string {
-	return fmt.Sprintf("_sub/%s", subscription.String())
+	return fmt.Sprintf("dev%s", subscription.StreamName().String())
 }
 
 func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated) (mqtt.Client, error) {
