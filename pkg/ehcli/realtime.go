@@ -81,6 +81,8 @@ func realtimeEntrypoint() *cobra.Command {
 }
 
 func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logger) error {
+	logl := logex.Levels(logger)
+
 	ehClient, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
@@ -96,7 +98,7 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 		return errors.New("no config set")
 	}
 
-	mqClient, err := mqttClientFrom(mqttConfig)
+	mqClient, err := mqttClientFrom(mqttConfig, logger)
 	if err != nil {
 		return err
 	}
@@ -112,12 +114,12 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 		return err
 	}
 
-	logger.Println("subscription done - waiting msg")
+	logl.Info.Printf("subscribed to %s; waiting for msg", topic)
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Println("graceful exit")
+			logl.Info.Println("graceful exit")
 			return nil
 		case msg := <-incomingMsg:
 			logger.Printf("got %s", msg)
@@ -164,7 +166,7 @@ func mqttConfigUpdate(
 		ehevent.MetaSystemUser(time.Now()))
 
 	if verifyConnectivity {
-		if err := connectivityCheck(configUpdated); err != nil {
+		if err := connectivityCheck(configUpdated, logger); err != nil {
 			return fmt.Errorf("connectivityCheck: %w", err)
 		}
 	}
@@ -201,8 +203,8 @@ func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
 	return nil
 }
 
-func connectivityCheck(configUpdated *ehpubsubdomain.MqttConfigUpdated) error {
-	client, err := mqttClientFrom(configUpdated)
+func connectivityCheck(configUpdated *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) error {
+	client, err := mqttClientFrom(configUpdated, logger)
 	if err != nil {
 		return err
 	}

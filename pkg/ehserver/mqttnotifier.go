@@ -10,6 +10,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
 	"github.com/function61/gokit/cryptorandombytes"
+	"github.com/function61/gokit/logex"
 )
 
 type notification struct {
@@ -20,17 +21,20 @@ type notification struct {
 type mqttNotifier struct {
 	notificationCh chan notification
 	config         ehpubsubdomain.MqttConfigUpdated
+	logl           *logex.Leveled
 }
 
-func New(
+func newMqttNotifier(
 	config ehpubsubdomain.MqttConfigUpdated,
 	start func(task func(context.Context) error),
+	logger *log.Logger,
 ) SubscriptionNotifier {
 	notificationCh := make(chan notification, 100)
 
 	m := &mqttNotifier{
 		notificationCh: notificationCh,
 		config:         config,
+		logl:           logex.Levels(logger),
 	}
 
 	start(func(ctx context.Context) error {
@@ -42,7 +46,7 @@ func New(
 
 func (l *mqttNotifier) task(ctx context.Context) error {
 	// TODO: reconnects?
-	client, err := MqttClientFrom(&l.config)
+	client, err := MqttClientFrom(&l.config, l.logl.Original)
 	if err != nil {
 		return err
 	}
@@ -86,7 +90,8 @@ func MqttTopicForSubscription(subscription eh.SubscriptionId) string {
 	return fmt.Sprintf("dev%s", subscription.StreamName().String())
 }
 
-func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated) (mqtt.Client, error) {
+func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) (mqtt.Client, error) {
+	logl := logex.Levels(logger)
 	clientCert, err := tls.X509KeyPair(
 		[]byte(conf.ClientCertAuthCert),
 		[]byte(conf.ClientCertAuthPrivateKey))
@@ -103,7 +108,7 @@ func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated) (mqtt.Client, error)
 		SetClientID(clientId).
 		SetTLSConfig(clientCertAuth(clientCert))
 	opts.OnConnectionLost = func(_ mqtt.Client, err error) { // FIXME
-		log.Printf("connection lost: %v", err)
+		logl.Error.Printf("connection lost: %v", err)
 	}
 
 	client := mqtt.NewClient(opts)

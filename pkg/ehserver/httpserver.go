@@ -14,6 +14,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
 	"github.com/function61/gokit/httputils"
+	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/taskrunner"
 	"github.com/gorilla/mux"
 )
@@ -69,7 +70,7 @@ func createHttpHandler(
 		if mqttConfig == nil {
 			return systemClient.EventLog
 		} else {
-			notifier := New(*mqttConfig, startMqttTask)
+			notifier := newMqttNotifier(*mqttConfig, startMqttTask, logex.Prefix("mqtt", logger))
 
 			return wrapWriterWithNotifier(
 				systemClient.EventLog,
