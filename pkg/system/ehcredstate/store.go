@@ -4,6 +4,7 @@ package ehcredstate
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sort"
 	"sync"
@@ -20,6 +21,11 @@ type Credential struct {
 	Id     string
 	Name   string
 	Policy policy.Policy
+}
+
+type CredentialWithApiKey struct {
+	Credential
+	ApiKey string
 }
 
 type stateFormat struct {
@@ -62,6 +68,19 @@ func (s *Store) Credentials() []Credential {
 	sort.Slice(credentials, func(i, j int) bool { return credentials[i].Id < credentials[j].Id })
 
 	return credentials
+}
+
+// needed b/c of weird'ish stateFormat
+func (s *Store) CredentialById(id string) (*CredentialWithApiKey, error) {
+	defer lockAndUnlock(&s.mu)()
+
+	for apiKey, cred := range s.state.Credentials {
+		if cred.Id == id {
+			return &CredentialWithApiKey{*cred, apiKey}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("API key for credential '%s' not found", id)
 }
 
 func (s *Store) Version() eh.Cursor {
