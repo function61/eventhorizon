@@ -2,8 +2,6 @@ package ehserver
 
 import (
 	"crypto/tls"
-	"encoding/json"
-	"net/http"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/gokit/syncutil"
@@ -28,13 +26,5 @@ func WaitToken(t mqtt.Token) error {
 func clientCertAuth(clientCert tls.Certificate) *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{clientCert},
-	}
-}
-
-func respondJson(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

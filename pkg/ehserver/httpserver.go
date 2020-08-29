@@ -323,3 +323,5 @@ func serverHandler(auth *authenticator) http.Handler {
 
 	return router
 }
+
+var respondJson = httputils.RespondJson // shorthand
