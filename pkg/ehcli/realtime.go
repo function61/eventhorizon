@@ -17,6 +17,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
+	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
@@ -81,11 +82,24 @@ func realtimeEntrypoint() *cobra.Command {
 	return parentCmd
 }
 
-func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logger) error {
+func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Logger) error {
+	subscriptionId := eh.NewSubscriptionId(subscriptionIdRaw)
+
 	logl := logex.Levels(logger)
 
 	ehClient, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
+		return err
+	}
+
+	// check that the subscription exists
+	if _, err := ehsubscription.LoadUntilRealtime(
+		ctx,
+		subscriptionId,
+		ehClient,
+		ehsubscription.GlobalCache,
+		logger,
+	); err != nil {
 		return err
 	}
 
@@ -107,7 +121,7 @@ func mqttSubscribe(ctx context.Context, subscriptionId string, logger *log.Logge
 
 	incomingMsg := make(chan eh.MqttActivityNotification)
 
-	topic := ehserver.MqttTopicForSubscription(eh.NewSubscriptionId(subscriptionId))
+	topic := ehserver.MqttTopicForSubscription(subscriptionId)
 
 	if err := waitToken(mqClient.Subscribe(topic, mqttQos0AtMostOnce, func(_ mqtt.Client, msg mqtt.Message) {
 		activityNotifaction := eh.MqttActivityNotification{}
