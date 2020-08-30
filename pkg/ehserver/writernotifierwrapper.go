@@ -6,7 +6,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/system/ehstreamsubscribers"
+	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/logex"
 )
 
@@ -87,17 +87,17 @@ func (w *writerNotifierWrapper) AppendAfter(
 }
 
 func (w *writerNotifierWrapper) notifySubscribers(ctx context.Context, result *eh.AppendResult) error {
-	subscriptionsState, err := ehstreamsubscribers.LoadUntilRealtime(
+	streamMeta, err := ehstreammeta.LoadUntilRealtime(
 		ctx,
 		result.Cursor.Stream(),
 		w.systemClient,
-		ehstreamsubscribers.GlobalCache,
-		logex.Prefix(ehstreamsubscribers.LogPrefix, w.logl.Original))
+		ehstreammeta.GlobalCache,
+		logex.Prefix(ehstreammeta.LogPrefix, w.logl.Original))
 	if err != nil {
 		return err
 	}
 
-	for _, subscriptionId := range subscriptionsState.State.Subscriptions() {
+	for _, subscriptionId := range streamMeta.State.Subscriptions() {
 		if err := w.notifier.NotifySubscriberOfActivity(ctx, subscriptionId, *result); err != nil {
 			w.logl.Error.Printf("NotifySubscriberOfActivity: %v", err)
 		}

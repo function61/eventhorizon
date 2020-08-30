@@ -9,7 +9,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/system/ehstreamsubscribers"
+	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
@@ -162,17 +162,17 @@ func loadSubscriptions(
 	streamNameRaw string,
 	client *ehreader.SystemClient,
 	logger *log.Logger,
-) (eh.StreamName, *ehstreamsubscribers.App, error) {
+) (eh.StreamName, *ehstreammeta.App, error) {
 	stream, err := eh.DeserializeStreamName(streamNameRaw)
 	if err != nil {
 		return stream, nil, err
 	}
 
-	subscriptions, err := ehstreamsubscribers.LoadUntilRealtime(
+	subscriptions, err := ehstreammeta.LoadUntilRealtime(
 		ctx,
 		stream,
 		client,
 		nil,
-		logex.Prefix(ehstreamsubscribers.LogPrefix, logger))
+		logex.Prefix(ehstreammeta.LogPrefix, logger))
 	return stream, subscriptions, err
 }

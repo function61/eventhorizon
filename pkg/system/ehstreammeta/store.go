@@ -1,5 +1,5 @@
-// Subscriptions for a given stream
-package ehstreamsubscribers
+// Metadata (subscriptions, encryption keys, ...) for a given stream.
+package ehstreammeta
 
 import (
 	"context"
@@ -15,10 +15,10 @@ import (
 	"github.com/function61/gokit/syncutil"
 )
 
-//go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreamsubscribers gen CacheItemType=*App
+//go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreammeta gen CacheItemType=*App
 
 const (
-	LogPrefix = "ehstreamsubscribers"
+	LogPrefix = "ehstreammeta"
 )
 
 var (
@@ -91,7 +91,7 @@ func (s *Store) Snapshot() (*eh.Snapshot, error) {
 }
 
 func (s *Store) SnapshotContextAndVersion() string {
-	return "eh:streamsubs:v1" // change if persisted stateFormat changes in backwards-incompat way
+	return "eh:streammeta:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
 func (s *Store) GetEventTypes() (ehevent.Types, ehevent.Types) {

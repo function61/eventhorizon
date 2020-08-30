@@ -9,7 +9,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/system/ehstreamsubscribers"
+	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscriptiondomain"
 	"github.com/function61/gokit/logex"
@@ -52,17 +52,17 @@ func groupStreamsChangesBySubscription(
 	return allSubscriptionsActivity, concurrentlyEhCursorSlice(ctx, 3, cursors, func(ctx context.Context, cursor eh.Cursor) error {
 		logl.Debug.Printf("resolving subscribers for %s", cursor.Serialize())
 
-		streamSubscribers, err := ehstreamsubscribers.LoadUntilRealtime(
+		streamMeta, err := ehstreammeta.LoadUntilRealtime(
 			ctx,
 			cursor.Stream(),
 			client,
-			ehstreamsubscribers.GlobalCache,
+			ehstreammeta.GlobalCache,
 			logl.Original)
 		if err != nil {
 			return err
 		}
 
-		for _, subscription := range streamSubscribers.State.Subscriptions() {
+		for _, subscription := range streamMeta.State.Subscriptions() {
 			allSubscriptionsActivity.UpsertSubscription(subscription).Append(cursor)
 		}
 
