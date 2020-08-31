@@ -20,6 +20,8 @@ import (
 	"github.com/function61/gokit/logex"
 )
 
+var mqttLoggerCaptured = false
+
 type publish struct {
 	topic string
 	msg   []byte
@@ -75,6 +77,12 @@ func newMqttNotifier(
 
 // uses actual MQTT
 func (l *mqttNotifier) taskMqtt(ctx context.Context) error {
+	if !mqttLoggerCaptured {
+		mqttLoggerCaptured = true
+
+		redirectMqttLogs(l.logl.Original)
+	}
+
 	// TODO: reconnects?
 	client, err := MqttClientFrom(&l.config, l.logl.Original)
 	if err != nil {
@@ -170,4 +178,14 @@ func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) 
 	}
 
 	return client, nil
+}
+
+func redirectMqttLogs(logger *log.Logger) {
+	logl := logex.Levels(logger)
+
+	// yay for global state
+	mqtt.ERROR = logl.Error
+	mqtt.CRITICAL = logex.Prefix(logex.CustomLevelPrefix("CRITICAL"), logger)
+	mqtt.WARN = logex.Prefix(logex.CustomLevelPrefix("WARN"), logger)
+	mqtt.DEBUG = logl.Debug
 }
