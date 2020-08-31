@@ -6,7 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
+	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iotdataplane"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
@@ -15,14 +21,15 @@ import (
 )
 
 type publish struct {
-	topic        string
-	msg          []byte
+	topic string
+	msg   []byte
 }
 
 type mqttNotifier struct {
 	publishCh chan publish
 	config    ehpubsubdomain.MqttConfigUpdated
 	logl      *logex.Leveled
+	iot       *iotdataplane.IoTDataPlane
 }
 
 func newMqttNotifier(
@@ -32,20 +39,42 @@ func newMqttNotifier(
 ) SubscriptionNotifier {
 	publishCh := make(chan publish, 100)
 
+	iot := func() *iotdataplane.IoTDataPlane {
+		if strings.Contains(config.Endpoint, "-ats.iot.") && strings.Contains(config.Endpoint, ".amazonaws.com") {
+			endpointUrl, err := url.Parse(config.Endpoint)
+			if err != nil {
+				panic(err)
+			}
+
+			return iotdataplane.New(session.Must(session.NewSession()), aws.NewConfig().WithEndpoint(endpointUrl.Hostname()))
+		} else {
+			return nil
+		}
+	}()
+
 	m := &mqttNotifier{
 		publishCh: publishCh,
 		config:    config,
 		logl:      logex.Levels(logger),
+		iot:       iot,
 	}
 
 	start(func(ctx context.Context) error {
-		return m.task(ctx)
+		if m.iot == nil {
+			// why not just use MQTT everywhere? this seems to be more reliable in AWS Lambda.
+			// https://github.com/eclipse/paho.mqtt.golang/issues/317
+			// https://github.com/eclipse/paho.mqtt.golang/issues/72
+			return m.taskMqtt(ctx)
+		} else {
+			return m.taskAwsIotDataplane(ctx)
+		}
 	})
 
 	return m
 }
 
-func (l *mqttNotifier) task(ctx context.Context) error {
+// uses actual MQTT
+func (l *mqttNotifier) taskMqtt(ctx context.Context) error {
 	// TODO: reconnects?
 	client, err := MqttClientFrom(&l.config, l.logl.Original)
 	if err != nil {
@@ -59,7 +88,25 @@ func (l *mqttNotifier) task(ctx context.Context) error {
 			return nil
 		case pub := <-l.publishCh:
 			if err := WaitToken(client.Publish(pub.topic, MqttQos0AtMostOnce, false, pub.msg)); err != nil {
-				return err
+				l.logl.Error.Printf("Publish: %v", err)
+			}
+		}
+	}
+}
+
+// delivers MQTT publishes via IoT dataplane (probably a HTTP front)
+func (l *mqttNotifier) taskAwsIotDataplane(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case pub := <-l.publishCh:
+			if _, err := l.iot.PublishWithContext(ctx, &iotdataplane.PublishInput{
+				Topic:   &pub.topic,
+				Qos:     aws.Int64(0),
+				Payload: pub.msg,
+			}); err != nil {
+				l.logl.Error.Printf("Publish: %v", err)
 			}
 		}
 	}
@@ -78,10 +125,10 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 	}
 
 	select {
-	case l.publishCh <- publish{
+	case l.publishCh <- publish{ // non-blocking send
 		topic: MqttTopicForSubscription(subscription),
 		msg:   msg,
-	}: // non-blocking send
+	}:
 		return nil
 	default:
 		return fmt.Errorf(
