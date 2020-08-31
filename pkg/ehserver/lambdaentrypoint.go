@@ -23,7 +23,7 @@ func LambdaEntrypoint() error {
 
 	bgCtx := context.Background() // don't have teardown mechanism available
 
-	httpHandler, err := createHttpHandler(bgCtx, systemClient, func(task func(context.Context) error) {
+	httpHandler, notifier, err := createHttpHandler(bgCtx, systemClient, func(task func(context.Context) error) {
 		go func() {
 			if err := task(bgCtx); err != nil {
 				logex.Levels(logger).Error.Printf("mqtt task: %v", err)
@@ -39,10 +39,18 @@ func LambdaEntrypoint() error {
 		case *events.DynamoDBEvent:
 			return nil, ehdynamodbtrigger.Handle(ctx, e, systemClient, logger)
 		case *events.APIGatewayProxyRequest:
-			return lambdautils.ServeApiGatewayProxyRequestUsingHttpHandler(
+			resp, err := lambdautils.ServeApiGatewayProxyRequestUsingHttpHandler(
 				ctx,
 				e,
 				httpHandler)
+
+			// Lambda seems to pause the process immediately after we return (TODO: citation),
+			// so wait here that the async publishes to realtime backend were sent
+			if notifier != nil {
+				notifier.WaitInFlight()
+			}
+
+			return resp, err
 		case *events.CloudWatchEvent:
 			return nil, nil // assume just a warm-up event
 		default:

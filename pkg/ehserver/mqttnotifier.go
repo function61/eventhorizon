@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -32,6 +33,9 @@ type mqttNotifier struct {
 	config    ehpubsubdomain.MqttConfigUpdated
 	logl      *logex.Leveled
 	iot       *iotdataplane.IoTDataPlane
+
+	inflightPublishes     int
+	inflightPublishesCond *sync.Cond
 }
 
 func newMqttNotifier(
@@ -59,6 +63,9 @@ func newMqttNotifier(
 		config:    config,
 		logl:      logex.Levels(logger),
 		iot:       iot,
+
+		inflightPublishes:     0,
+		inflightPublishesCond: sync.NewCond(&sync.Mutex{}),
 	}
 
 	start(func(ctx context.Context) error {
@@ -98,6 +105,8 @@ func (l *mqttNotifier) taskMqtt(ctx context.Context) error {
 			if err := WaitToken(client.Publish(pub.topic, MqttQos0AtMostOnce, false, pub.msg)); err != nil {
 				l.logl.Error.Printf("Publish: %v", err)
 			}
+
+			l.addInflight(-1)
 		}
 	}
 }
@@ -116,6 +125,8 @@ func (l *mqttNotifier) taskAwsIotDataplane(ctx context.Context) error {
 			}); err != nil {
 				l.logl.Error.Printf("Publish: %v", err)
 			}
+
+			l.addInflight(-1)
 		}
 	}
 }
@@ -137,12 +148,28 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 		topic: MqttTopicForSubscription(subscription),
 		msg:   msg,
 	}:
+		l.addInflight(1)
+
 		return nil
 	default:
 		return fmt.Errorf(
 			"NotifySubscriberOfActivity: failed to queue notification for %s b/c queue is full",
 			appendResult.Cursor.Serialize())
 	}
+}
+
+func (l *mqttNotifier) WaitInFlight() {
+	waitFor(l.inflightPublishesCond, func() bool {
+		l.logl.Debug.Printf("WaitInFlight: %d", l.inflightPublishes)
+
+		return l.inflightPublishes == 0
+	})
+}
+
+func (l *mqttNotifier) addInflight(by int) {
+	withCond(l.inflightPublishesCond, func() {
+		l.inflightPublishes += by
+	})
 }
 
 // dev/_/sub/foo
@@ -188,4 +215,23 @@ func redirectMqttLogs(logger *log.Logger) {
 	mqtt.CRITICAL = logex.Prefix(logex.CustomLevelPrefix("CRITICAL"), logger)
 	mqtt.WARN = logex.Prefix(logex.CustomLevelPrefix("WARN"), logger)
 	mqtt.DEBUG = logl.Debug
+}
+
+func waitFor(cond *sync.Cond, done func() bool) {
+	cond.L.Lock()
+	for {
+		if done() {
+			cond.L.Unlock()
+			return
+		}
+
+		cond.Wait() // unlocks while waiting, locks when returns back
+	}
+}
+
+func withCond(cond *sync.Cond, fn func()) {
+	cond.L.Lock()
+	defer cond.L.Unlock()
+	fn()
+	cond.Broadcast()
 }

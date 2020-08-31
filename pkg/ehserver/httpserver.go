@@ -27,7 +27,7 @@ func Server(ctx context.Context, logger *log.Logger) error {
 
 	tasks := taskrunner.New(ctx, logger)
 
-	httpHandler, err := createHttpHandler(ctx, systemClient, func(task func(context.Context) error) {
+	httpHandler, _, err := createHttpHandler(ctx, systemClient, func(task func(context.Context) error) {
 		tasks.Start("mqtt", task)
 	}, logger)
 	if err != nil {
@@ -53,22 +53,22 @@ func createHttpHandler(
 	systemClient *ehreader.SystemClient,
 	startMqttTask func(task func(context.Context) error),
 	logger *log.Logger,
-) (http.Handler, error) {
+) (http.Handler, SubscriptionNotifier, error) {
 	credState, err := ehcredstate.LoadUntilRealtime(ctx, systemClient, logger)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pubSubState, err := ehpubsubstate.LoadUntilRealtime(ctx, systemClient, logger)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	writerMaybeWithNotifier := func() eh.Writer {
+	writerMaybeWithNotifier, notifier := func() (eh.Writer, SubscriptionNotifier) {
 		mqttConfig := pubSubState.State.MqttConfig()
 
 		if mqttConfig == nil {
-			return systemClient.EventLog
+			return systemClient.EventLog, nil
 		} else {
 			notifier := newMqttNotifier(*mqttConfig, startMqttTask, logex.Prefix("mqtt", logger))
 
@@ -76,7 +76,7 @@ func createHttpHandler(
 				systemClient.EventLog,
 				notifier,
 				systemClient,
-				logger)
+				logger), notifier
 		}
 	}()
 
@@ -88,7 +88,7 @@ func createHttpHandler(
 		rawSnapshotStore: systemClient.SnapshotStore,
 	}
 
-	return serverHandler(auth), nil
+	return serverHandler(auth), notifier, nil
 }
 
 func serverHandler(auth *authenticator) http.Handler {
