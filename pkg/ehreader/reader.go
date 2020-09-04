@@ -15,10 +15,6 @@ import (
 	"github.com/function61/gokit/syncutil"
 )
 
-var (
-	SuggestedPollingInterval = 10 * time.Second
-)
-
 /* encapsulates:
 
 1) validate that current version is what we think it is
@@ -104,30 +100,6 @@ func NewWithSnapshots(
 		snapStore:       snapStore,
 		snapshotVersion: nil,
 		logl:            logex.Levels(logger),
-	}
-}
-
-// starts "realtime" sync. until we get pub/sub, we're stuck with polling. but this is the
-// API that will hide better realtime implementation once EventHorizon matures.
-// runs forever (or until ctx is cancelled).
-func (r *Reader) Synchronizer(
-	ctx context.Context,
-	pollInterval time.Duration,
-) error {
-	pollIntervalTicker := time.NewTicker(pollInterval)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-pollIntervalTicker.C:
-			// eventually we'll migrate to realtime notifications from eventhorizon,
-			// but until then polling will do
-
-			if err := r.LoadUntilRealtime(ctx); err != nil {
-				r.logl.Error.Printf("LoadUntilRealtime: %v", err)
-			}
-		}
 	}
 }
 
