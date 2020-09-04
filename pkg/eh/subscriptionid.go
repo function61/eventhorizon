@@ -3,6 +3,7 @@ package eh
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // bare subscription ID (without stream path)
@@ -15,7 +16,9 @@ func NewSubscriptionId(id string) SubscriptionId {
 		panic("SubscriptionId cannot be empty")
 	}
 
-	// TODO: further validation
+	if strings.Contains(id, "/") {
+		panic("SubscriptionId cannot contain '/'")
+	}
 
 	return SubscriptionId{id}
 }
