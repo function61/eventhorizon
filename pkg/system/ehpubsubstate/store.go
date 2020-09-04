@@ -124,7 +124,7 @@ func LoadUntilRealtime(
 
 	a := &App{
 		store,
-		ehreader.NewWithSnapshots(
+		ehreader.New(
 			store,
 			client,
 			logger),

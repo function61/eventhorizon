@@ -2,12 +2,28 @@ package ehreader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/logex"
 )
+
+// embed this struct in your implementation if you want to opt-out of snapshotting
+type NoSnapshots struct{}
+
+func (n *NoSnapshots) InstallSnapshot(_ *eh.Snapshot) error {
+	return errors.New("Snapshotting not implemented")
+}
+
+func (n *NoSnapshots) Snapshot() (*eh.Snapshot, error) {
+	return nil, errors.New("Snapshotting not implemented")
+}
+
+func (n *NoSnapshots) SnapshotContextAndVersion() string {
+	return "" // signals to Reader that we opt out of snapshotting
+}
 
 // wraps your AppendAfter() result with state-refreshed retries for ErrOptimisticLockingFailed
 // FIXME: currently this cannot be used along with Synchronizer(), because the Reader

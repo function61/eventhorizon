@@ -7,7 +7,6 @@ package ehdebug
 import (
 	"context"
 	"log"
-	"sync"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
@@ -22,14 +21,10 @@ type entry struct {
 }
 
 type store struct {
-	version          eh.Cursor
-	mu               sync.Mutex
-	entries          []entry
-	uncommittedLines []string
-}
+	version eh.Cursor
+	entries []entry
 
-func (s *store) Entries() []entry {
-	return s.entries
+	ehreader.NoSnapshots
 }
 
 func (s *store) GetEventTypes() []ehreader.LogDataKindDeserializer {
@@ -37,32 +32,22 @@ func (s *store) GetEventTypes() []ehreader.LogDataKindDeserializer {
 }
 
 func (s *store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	uncommittedLines := []string{}
 
 	return processAndCommit(
 		s.version,
-		func(ev ehevent.Event) error { return s.processEvent(ev) },
+		func(ev ehevent.Event) error {
+			uncommittedLines = append(uncommittedLines, ev.(*rawEvent).raw)
+			return nil
+		},
 		func(version eh.Cursor) error {
 			s.version = version
 			s.entries = append(s.entries, entry{
 				cursor: version,
-				lines:  s.uncommittedLines,
+				lines:  uncommittedLines,
 			})
-			s.uncommittedLines = []string{}
 			return nil
 		})
-}
-
-func (s *store) processEvent(ev ehevent.Event) error {
-	switch e := ev.(type) {
-	case *rawEvent:
-		s.uncommittedLines = append(s.uncommittedLines, e.raw)
-	default:
-		return ehreader.UnsupportedEventTypeErr(ev)
-	}
-
-	return nil
 }
 
 func loadUntilRealtime(
@@ -72,8 +57,7 @@ func loadUntilRealtime(
 	logger *log.Logger,
 ) (*store, error) {
 	store := &store{
-		version:          cursor,
-		uncommittedLines: []string{},
+		version: cursor,
 	}
 
 	if err := ehreader.New(

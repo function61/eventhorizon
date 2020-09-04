@@ -151,7 +151,7 @@ func LoadUntilRealtime(
 
 		return &App{
 			store,
-			ehreader.NewWithSnapshots(
+			ehreader.New(
 				store,
 				client,
 				logex.Prefix("Reader", logger)),

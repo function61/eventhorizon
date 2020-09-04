@@ -40,17 +40,13 @@ type EventsProcessor interface {
 	ProcessEvents(ctx context.Context, handle EventProcessorHandler) error
 	// 1st: types for app-specific events, 2nd: EventHorizon meta events (most times nil !)
 	GetEventTypes() []LogDataKindDeserializer
-}
 
-type EventsProcessorSnapshotCapability interface {
+	// Snapshot related APIs
+
 	InstallSnapshot(*eh.Snapshot) error
 	Snapshot() (*eh.Snapshot, error)
+	// return "" if you don't implement snapshots
 	SnapshotContextAndVersion() string
-}
-
-type EventsProcessorWithSnapshots interface {
-	EventsProcessor
-	EventsProcessorSnapshotCapability
 }
 
 // Serves reads for one processor. not safe for concurrent use
@@ -58,8 +54,7 @@ type Reader struct {
 	client          *SystemClient
 	deserializers   map[eh.LogDataKind]LogDataDeserializerFn
 	processor       EventsProcessor
-	snapCap         EventsProcessorSnapshotCapability
-	snapStore       eh.SnapshotStore
+	snapshotCapable bool
 	snapshotVersion *eh.Cursor
 	logl            *logex.Leveled
 	lastLoad        time.Time
@@ -73,33 +68,13 @@ func New(processor EventsProcessor, client *SystemClient, logger *log.Logger) *R
 		deserializers[item.Kind] = item.Deserializer
 	}
 
-	return &Reader{
-		client:          client,
-		deserializers:   deserializers,
-		processor:       processor,
-		snapCap:         nil,
-		snapStore:       nil,
-		snapshotVersion: nil,
-		logl:            logex.Levels(logger),
-	}
-}
-
-func NewWithSnapshots(
-	processor EventsProcessorWithSnapshots,
-	client *SystemClient,
-	logger *log.Logger,
-) *Reader {
-	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
-	for _, item := range processor.GetEventTypes() {
-		deserializers[item.Kind] = item.Deserializer
-	}
+	snapshotCapable := processor.SnapshotContextAndVersion() != ""
 
 	return &Reader{
 		client:          client,
 		deserializers:   deserializers,
 		processor:       processor,
-		snapCap:         processor,
-		snapStore:       client.SnapshotStore,
+		snapshotCapable: snapshotCapable,
 		snapshotVersion: nil,
 		logl:            logex.Levels(logger),
 	}
@@ -126,11 +101,11 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 	}
 
 	// if we started from beginning, try to load a snapshot
-	if nextRead.AtBeginning() && r.snapCap != nil {
-		snap, err := r.snapStore.ReadSnapshot(
+	if nextRead.AtBeginning() && r.snapshotCapable {
+		snap, err := r.client.SnapshotStore.ReadSnapshot(
 			ctx,
 			nextRead.Stream(),
-			r.snapCap.SnapshotContextAndVersion())
+			r.processor.SnapshotContextAndVersion())
 		if err != nil {
 			if err == os.ErrNotExist { // the snapshot just does not exist
 				r.logl.Info.Printf("ReadSnapshot: no initial snapshot for %s", nextRead.Stream())
@@ -147,7 +122,7 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 		} else {
 			r.snapshotVersion = &snap.Cursor
 
-			if err := r.snapCap.InstallSnapshot(snap); err != nil {
+			if err := r.processor.InstallSnapshot(snap); err != nil {
 				return fmt.Errorf("LoadUntilRealtime: InstallSnapshot: %w", err)
 			}
 
@@ -213,15 +188,15 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 			// EventsProcessor reached realtime. store newer snapshot if we:
 			// - have a snapshot capability
 			// - we know the latest snapshot is older than what EventsProcessor now knows
-			if r.snapCap != nil && r.snapshotVersion != nil && r.snapshotVersion.Before(nextRead) {
-				snap, err := r.snapCap.Snapshot()
+			if r.snapshotCapable && r.snapshotVersion != nil && r.snapshotVersion.Before(nextRead) {
+				snap, err := r.processor.Snapshot()
 				if err != nil {
 					r.logl.Error.Printf("EventsProcessor.Snapshot: %v", err)
 				} else {
 					r.snapshotVersion = &snap.Cursor
 
 					// TODO: store this async?
-					if err := r.snapStore.WriteSnapshot(ctx, *snap); err != nil {
+					if err := r.client.SnapshotStore.WriteSnapshot(ctx, *snap); err != nil {
 						r.logl.Error.Printf("WriteSnapshot: %v", err)
 					}
 				}

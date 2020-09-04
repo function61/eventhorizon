@@ -30,11 +30,9 @@ func Debug(
 		_, err = fmt.Fprintf(output, formatStr+"\n", args...)
 	}
 
-	entries := debugStore.Entries()
+	printfln("%s => %d entrie(s)", cursor.Stream(), len(debugStore.entries))
 
-	printfln("%s => %d entrie(s)", cursor.Stream(), len(entries))
-
-	for _, entry := range entries {
+	for _, entry := range debugStore.entries {
 		printfln("<entry v=%d>", entry.cursor.Version())
 
 		for _, line := range entry.lines {
