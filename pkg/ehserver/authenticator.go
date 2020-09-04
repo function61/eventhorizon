@@ -9,6 +9,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 )
 
+// authenticates HTTP requests to a user who can be authorization checked
 type authenticator struct {
 	credentials *ehcredstate.App
 
@@ -32,9 +33,9 @@ func (a *authenticator) AuthenticateRequest(r *http.Request) (*user, error) {
 	policy := credential.Policy // shorthand
 
 	return &user{
-		Reader:    eh.WrapReaderWithAuthorizer(a.rawReader, policy),
-		Writer:    eh.WrapWriterWithAuthorizer(a.rawWriter, policy),
-		Snapshots: eh.WrapSnapshotStoreWithAuthorizer(a.rawSnapshotStore, policy),
+		Reader:    wrapReaderWithAuthorizer(a.rawReader, policy),
+		Writer:    wrapWriterWithAuthorizer(a.rawWriter, policy),
+		Snapshots: wrapSnapshotStoreWithAuthorizer(a.rawSnapshotStore, policy),
 	}, nil
 }
 

@@ -2,8 +2,6 @@ package eh
 
 import (
 	"context"
-
-	"github.com/function61/eventhorizon/pkg/policy"
 )
 
 type Snapshot struct {
@@ -23,63 +21,4 @@ type SnapshotStore interface {
 	WriteSnapshot(ctx context.Context, snapshot Snapshot) error
 	// returns os.ErrNotExist if snapshot-to-delete not found
 	DeleteSnapshot(ctx context.Context, stream StreamName, snapshotContext string) error
-}
-
-func WrapSnapshotStoreWithAuthorizer(
-	inner SnapshotStore,
-	policy policy.Policy,
-) SnapshotStore {
-	return &authorizedSnapshotStore{
-		inner:  inner,
-		policy: policy,
-	}
-}
-
-type authorizedSnapshotStore struct {
-	inner  SnapshotStore
-	policy policy.Policy
-}
-
-func (a *authorizedSnapshotStore) ReadSnapshot(ctx context.Context, stream StreamName, snapshotContext string) (*Snapshot, error) {
-	if err := a.policy.Authorize(ActionSnapshotRead, stream.ResourceName()); err != nil {
-		return nil, err
-	}
-
-	if err := a.policy.Authorize(ActionSnapshotRead, ctxToResourceName(snapshotContext)); err != nil {
-		return nil, err
-	}
-
-	return a.inner.ReadSnapshot(ctx, stream, snapshotContext)
-}
-
-func (a *authorizedSnapshotStore) WriteSnapshot(ctx context.Context, snapshot Snapshot) error {
-	if err := a.policy.Authorize(ActionSnapshotWrite, snapshot.Cursor.Stream().ResourceName()); err != nil {
-		return err
-	}
-
-	if err := a.policy.Authorize(ActionSnapshotWrite, ctxToResourceName(snapshot.Context)); err != nil {
-		return err
-	}
-
-	return a.inner.WriteSnapshot(ctx, snapshot)
-}
-
-func (a *authorizedSnapshotStore) DeleteSnapshot(
-	ctx context.Context,
-	stream StreamName,
-	snapshotContext string,
-) error {
-	if err := a.policy.Authorize(ActionSnapshotDelete, stream.ResourceName()); err != nil {
-		return err
-	}
-
-	if err := a.policy.Authorize(ActionSnapshotDelete, ctxToResourceName(snapshotContext)); err != nil {
-		return err
-	}
-
-	return a.inner.DeleteSnapshot(ctx, stream, snapshotContext)
-}
-
-func ctxToResourceName(snapshotContext string) policy.ResourceName {
-	return ResourceNameSnapshot.Child(snapshotContext)
 }
