@@ -14,6 +14,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
@@ -87,7 +88,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 
 	logl := logex.Levels(logger)
 
-	ehClient, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	ehClient, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,7 @@ func mqttConfigUpdate(
 		return fmt.Errorf("X509KeyPair: %w", err)
 	}
 
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -194,10 +195,10 @@ func mqttConfigUpdate(
 		}
 	}
 
-	if _, err := sysState.Writer.AppendAfter(
+	if err := client.AppendAfter(
 		ctx,
 		sysState.State.Version(),
-		ehevent.Serialize(configUpdated),
+		configUpdated,
 	); err != nil {
 		return fmt.Errorf("mqttConfigUpdate: Writer: %w", err)
 	}
@@ -206,7 +207,7 @@ func mqttConfigUpdate(
 }
 
 func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}

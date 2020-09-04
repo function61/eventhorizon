@@ -1,16 +1,22 @@
 package ehreader
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/function61/eventhorizon/pkg/cryptosvc"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/gokit/envvar"
+	"github.com/function61/gokit/syncutil"
 )
+
+type DekEnvelopeResolver func(context.Context, eh.StreamName) (*envelopeenc.Envelope, error)
 
 type Tenant struct {
 	stream eh.StreamName
@@ -44,10 +50,15 @@ type Client struct {
 type SystemClient struct {
 	EventLog      eh.ReaderWriter
 	SnapshotStore eh.SnapshotStore
+
+	resolveDekEnvelope DekEnvelopeResolver
+	cryptoSvc          *cryptosvc.Service
+	deksCache          map[string][]byte
+	deksCacheMu        *syncutil.MutexMap
 }
 
-func ClientFrom(getter configGetter) (*Client, error) {
-	systemClient, conf, err := makeSystemClientFrom(getter)
+func ClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*Client, error) {
+	systemClient, conf, err := makeSystemClientFrom(getter, resolveDekEnvelope)
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +69,13 @@ func ClientFrom(getter configGetter) (*Client, error) {
 	}, nil
 }
 
-func SystemClientFrom(getter configGetter) (*SystemClient, error) {
-	systemClient, _, err := makeSystemClientFrom(getter)
+func SystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*SystemClient, error) {
+	systemClient, _, err := makeSystemClientFrom(getter, resolveDekEnvelope)
 	return systemClient, err
 }
 
-func makeSystemClientFrom(getter configGetter) (*SystemClient, *Config, error) {
-	conf, err := GetConfig(getter)
+func makeSystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*SystemClient, *Config, error) {
+	conf, err := getConfig(getter)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -75,7 +86,14 @@ func makeSystemClientFrom(getter configGetter) (*SystemClient, *Config, error) {
 			return nil, nil, err
 		}
 
-		return &SystemClient{serverClient, serverClient}, conf, nil
+		return &SystemClient{
+			EventLog:           serverClient,
+			SnapshotStore:      serverClient,
+			resolveDekEnvelope: resolveDekEnvelope,
+			cryptoSvc:          cryptosvc.New(nil),
+			deksCache:          map[string][]byte{},
+			deksCacheMu:        syncutil.NewMutexMap(),
+		}, conf, nil
 	}
 
 	snapshots, err := NewDynamoDbSnapshotStore(
@@ -86,10 +104,17 @@ func makeSystemClientFrom(getter configGetter) (*SystemClient, *Config, error) {
 
 	eventLog := ehdynamodb.New(conf.ClientDynamoDbOptions())
 
-	return &SystemClient{eventLog, snapshots}, conf, nil
+	return &SystemClient{
+		EventLog:           eventLog,
+		SnapshotStore:      snapshots,
+		resolveDekEnvelope: resolveDekEnvelope,
+		cryptoSvc:          cryptosvc.New(nil),
+		deksCache:          map[string][]byte{},
+		deksCacheMu:        syncutil.NewMutexMap(),
+	}, conf, nil
 }
 
-type configGetter func() (string, error)
+type ConfigStringGetter func() (string, error)
 
 func ConfigFromEnv() (string, error) {
 	return envvar.Required("EVENTHORIZON")
@@ -123,24 +148,24 @@ func (c *Config) dynamoDbOptions(tableName string) ehdynamodb.DynamoDbOptions {
 	}
 }
 
-func GetConfig(getter configGetter) (*Config, error) {
-	conf, err := getter()
+func getConfig(getter ConfigStringGetter) (*Config, error) {
+	confString, err := getter()
 	if err != nil {
 		return nil, err
 	}
 
-	if strings.HasPrefix(conf, "http") {
+	if strings.HasPrefix(confString, "http") {
 		return &Config{
-			url: conf,
+			url: confString,
 		}, nil
 	}
 
 	// format:
 	//   <"prod" | "dev">:<tenant>:<accessKeyId>:<accessKeySecret>:<regionId>
-	parts := strings.Split(conf, ":")
+	parts := strings.Split(confString, ":")
 	if len(parts) != 5 {
 		return nil, fmt.Errorf(
-			"conf in incorrect format, should be 'env:tenant:accessKeyId:accessKeySecret:regionId', got %d part(s)",
+			"confString in incorrect format, should be 'env:tenant:accessKeyId:accessKeySecret:regionId', got %d part(s)",
 			len(parts))
 	}
 

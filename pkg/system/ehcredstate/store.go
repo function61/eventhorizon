@@ -113,8 +113,8 @@ func (s *Store) SnapshotContextAndVersion() string {
 	return "eh:credentials:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
-func (s *Store) GetEventTypes() (ehevent.Types, ehevent.Types) {
-	return ehcreddomain.Types, nil
+func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
+	return ehreader.EncryptedDataDeserializer(ehcreddomain.Types)
 }
 
 func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
@@ -175,8 +175,7 @@ func LoadUntilRealtime(
 		store,
 		ehreader.NewWithSnapshots(
 			store,
-			client.EventLog,
-			client.SnapshotStore,
+			client,
 			logger),
 		client.EventLog,
 		logger}

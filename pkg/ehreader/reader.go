@@ -39,7 +39,7 @@ type EventsProcessor interface {
 	*/
 	ProcessEvents(ctx context.Context, handle EventProcessorHandler) error
 	// 1st: types for app-specific events, 2nd: EventHorizon meta events (most times nil !)
-	GetEventTypes() (ehevent.Types, ehevent.Types)
+	GetEventTypes() []LogDataKindDeserializer
 }
 
 type EventsProcessorSnapshotCapability interface {
@@ -55,9 +55,8 @@ type EventsProcessorWithSnapshots interface {
 
 // Serves reads for one processor. not safe for concurrent use
 type Reader struct {
-	client          eh.Reader
-	eventTypesApp   ehevent.Types // nil (very exceptional case) if processor only looks at meta events
-	eventTypesMeta  ehevent.Types // usually nil, unless app is interested in meta events
+	client          *SystemClient
+	deserializers   map[eh.LogDataKind]LogDataDeserializerFn
 	processor       EventsProcessor
 	snapCap         EventsProcessorSnapshotCapability
 	snapStore       eh.SnapshotStore
@@ -68,13 +67,15 @@ type Reader struct {
 }
 
 // "keep processor happy by feeding it from client"
-func New(processor EventsProcessor, client eh.Reader, logger *log.Logger) *Reader {
-	appTypes, metaTypes := processor.GetEventTypes()
+func New(processor EventsProcessor, client *SystemClient, logger *log.Logger) *Reader {
+	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
+	for _, item := range processor.GetEventTypes() {
+		deserializers[item.Kind] = item.Deserializer
+	}
 
 	return &Reader{
 		client:          client,
-		eventTypesApp:   appTypes,
-		eventTypesMeta:  metaTypes,
+		deserializers:   deserializers,
 		processor:       processor,
 		snapCap:         nil,
 		snapStore:       nil,
@@ -85,24 +86,26 @@ func New(processor EventsProcessor, client eh.Reader, logger *log.Logger) *Reade
 
 func NewWithSnapshots(
 	processor EventsProcessorWithSnapshots,
-	client eh.Reader,
-	snapStore eh.SnapshotStore,
+	client *SystemClient,
 	logger *log.Logger,
 ) *Reader {
-	appTypes, metaTypes := processor.GetEventTypes()
+	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
+	for _, item := range processor.GetEventTypes() {
+		deserializers[item.Kind] = item.Deserializer
+	}
 
 	return &Reader{
 		client:          client,
-		eventTypesApp:   appTypes,
-		eventTypesMeta:  metaTypes,
+		deserializers:   deserializers,
 		processor:       processor,
 		snapCap:         processor,
-		snapStore:       snapStore,
+		snapStore:       client.SnapshotStore,
 		snapshotVersion: nil,
 		logl:            logex.Levels(logger),
 	}
 }
 
+// TODO: error-wrapping
 func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 	var nextRead eh.Cursor
 
@@ -155,7 +158,7 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 	}
 
 	for {
-		resp, err := r.client.Read(ctx, nextRead)
+		resp, err := r.client.EventLog.Read(ctx, nextRead)
 		if err != nil {
 			return err
 		}
@@ -163,32 +166,20 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 		// each record is an event batch (could be transaction)
 		// TODO: make it opt-in to increase transaction batch size to all resp.Entries
 		for _, record := range resp.Entries {
-			events := []ehevent.Event{}
-
-			for _, eventSerialized := range record.Events {
-				if r.eventTypesApp == nil { // processor only wants meta events
-					continue
+			events, err := func() ([]ehevent.Event, error) {
+				deserializer, found := r.deserializers[record.Data.Kind]
+				if !found {
+					// not an error, but we've to proceed so we can commit going past this ignored entry
+					return []ehevent.Event{}, nil
 				}
 
-				event, err := ehevent.Deserialize(eventSerialized, r.eventTypesApp)
-				if err != nil {
-					return err
-				}
-
-				events = append(events, event)
+				return deserializer(ctx, &record, r.client)
+			}()
+			if err != nil {
+				return err
 			}
 
-			// also deliver meta events, if processor opted in to receive those
-			if record.MetaEvent != nil && r.eventTypesMeta != nil {
-				metaEvent, err := ehevent.Deserialize(*record.MetaEvent, r.eventTypesMeta)
-				if err != nil {
-					return err
-				}
-
-				events = append(events, metaEvent)
-			}
-
-			versionAfter := record.Version
+			versionAfter := record.Cursor
 
 			if err := r.processor.ProcessEvents(ctx, func(
 				versionInDb eh.Cursor,
@@ -250,7 +241,7 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 
 	if time.Since(r.lastLoad) > staleDuration {
 		if err := r.LoadUntilRealtime(ctx); err != nil {
-			return err
+			return fmt.Errorf("LoadUntilRealtimeIfStale: %w", err)
 		}
 
 		r.lastLoad = time.Now()

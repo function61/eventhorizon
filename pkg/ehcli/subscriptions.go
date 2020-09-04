@@ -9,6 +9,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/logex"
@@ -52,6 +53,20 @@ func subscriptionsEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
+		Use:   "mk-subscription-stream [id]",
+		Short: "Create subscription stream",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(subscriptionCreateStream(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
+				rootLogger))
+		},
+	})
+
+	parentCmd.AddCommand(&cobra.Command{
 		Use:   "rm [stream] [id]",
 		Short: "Unsubscribe from a stream",
 		Args:  cobra.ExactArgs(2),
@@ -69,8 +84,27 @@ func subscriptionsEntrypoint() *cobra.Command {
 	return parentCmd
 }
 
+func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Logger) error {
+	id := eh.NewSubscriptionId(idRaw)
+
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	if err != nil {
+		return err
+	}
+
+	// subscribe to own stream, so that the subscriber gets realtime notifications not only
+	// of its subscribed streams, but its subscription activity as well.
+	subscribed := eh.NewSubscriptionSubscribed(id, ehevent.MetaSystemUser(time.Now()))
+
+	_, err = client.CreateStream(
+		ctx,
+		id.StreamName(),
+		eh.LogDataMeta(subscribed))
+	return err
+}
+
 func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -90,7 +124,7 @@ func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Lo
 func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriptionId(idRaw)
 
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -114,10 +148,10 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 			id,
 			ehevent.MetaSystemUser(time.Now()))
 
-		_, err := subscriptions.Writer.AppendAfter(
+		_, err := client.EventLog.AppendAfter(
 			ctx,
 			subscriptions.State.Version(),
-			ehevent.Serialize(subscribed))
+			*eh.LogDataMeta(subscribed))
 		return err
 	})
 }
@@ -125,7 +159,7 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriptionId(idRaw)
 
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -135,10 +169,7 @@ func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw st
 		return err
 	}
 
-	// validate existence
-	if _, err := ehsubscription.LoadUntilRealtime(ctx, id, client, nil, logger); err != nil {
-		return err
-	}
+	// existence validation not required, since we're validating subscription status before unsubscribing
 
 	return subscriptions.Reader.TransactWrite(ctx, func() error {
 		if !subscriptions.State.Subscribed(id) {
@@ -149,10 +180,10 @@ func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw st
 			id,
 			ehevent.MetaSystemUser(time.Now()))
 
-		_, err := subscriptions.Writer.AppendAfter(
+		_, err := client.EventLog.AppendAfter(
 			ctx,
 			subscriptions.State.Version(),
-			ehevent.Serialize(unsubscribed))
+			*eh.LogDataMeta(unsubscribed))
 		return err
 	})
 }

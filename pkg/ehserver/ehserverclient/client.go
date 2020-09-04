@@ -10,8 +10,14 @@ import (
 	"os"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/gokit/ezhttp"
 )
+
+type CreateStreamInput struct {
+	DEK  *envelopeenc.Envelope
+	Data *eh.LogData
+}
 
 type ReaderWriterSnapshotStore interface {
 	eh.ReaderWriter
@@ -71,14 +77,14 @@ func (s *serverClient) Read(
 func (s *serverClient) Append(
 	ctx context.Context,
 	stream eh.StreamName,
-	events []string,
+	data eh.LogData,
 ) (*eh.AppendResult, error) {
 	res := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
 		s.baseUrl+"/append?stream="+url.QueryEscape(stream.String()),
 		ezhttp.AuthBearer(s.authToken),
-		ezhttp.SendJson(events),
+		ezhttp.SendJson(data),
 		ezhttp.RespondsJson(res, false),
 	); err != nil {
 		return nil, fmt.Errorf("Append: %w", err)
@@ -90,14 +96,14 @@ func (s *serverClient) Append(
 func (s *serverClient) AppendAfter(
 	ctx context.Context,
 	after eh.Cursor,
-	events []string,
+	data eh.LogData,
 ) (*eh.AppendResult, error) {
 	result := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
 		s.baseUrl+"/append-after?after="+url.QueryEscape(after.Serialize()),
 		ezhttp.AuthBearer(s.authToken),
-		ezhttp.SendJson(events),
+		ezhttp.SendJson(data),
 		ezhttp.RespondsJson(result, false),
 	); err != nil {
 		if ezhttp.ErrorIs(err, http.StatusConflict) {
@@ -113,20 +119,24 @@ func (s *serverClient) AppendAfter(
 func (s *serverClient) CreateStream(
 	ctx context.Context,
 	stream eh.StreamName,
-	initialEvents []string,
+	dekEnvelope envelopeenc.Envelope,
+	data *eh.LogData,
 ) (*eh.AppendResult, error) {
-	res := &eh.AppendResult{}
+	result := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
 		s.baseUrl+"/stream-create?stream="+url.QueryEscape(stream.String()),
 		ezhttp.AuthBearer(s.authToken),
-		ezhttp.SendJson(initialEvents),
-		ezhttp.RespondsJson(res, false),
+		ezhttp.SendJson(CreateStreamInput{
+			DEK:  &dekEnvelope,
+			Data: data,
+		}),
+		ezhttp.RespondsJson(result, false),
 	); err != nil {
 		return nil, fmt.Errorf("CreateStream: %w", err)
 	}
 
-	return res, nil
+	return result, nil
 }
 
 func (s *serverClient) ReadSnapshot(

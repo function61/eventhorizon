@@ -11,6 +11,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/syncutil"
 )
@@ -26,11 +27,12 @@ var (
 )
 
 type stateFormat struct {
-	Subscriptions []eh.SubscriptionId `json:"subscriptions"`
+	Subscriptions []eh.SubscriptionId   `json:"Subscriptions"`
+	DekEnvelope   *envelopeenc.Envelope `json:"DekEnvelope"`
 }
 
 func newStateFormat() stateFormat {
-	return stateFormat{[]eh.SubscriptionId{}}
+	return stateFormat{[]eh.SubscriptionId{}, nil}
 }
 
 type Store struct {
@@ -44,6 +46,12 @@ func New(stream eh.StreamName) *Store {
 		version: stream.Beginning(),
 		state:   newStateFormat(),
 	}
+}
+
+func (s *Store) DekEnvelope() *envelopeenc.Envelope {
+	defer lockAndUnlock(&s.mu)()
+
+	return s.state.DekEnvelope
 }
 
 func (s *Store) Subscriptions() []eh.SubscriptionId {
@@ -94,8 +102,8 @@ func (s *Store) SnapshotContextAndVersion() string {
 	return "eh:streammeta:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
-func (s *Store) GetEventTypes() (ehevent.Types, ehevent.Types) {
-	return nil, eh.MetaTypes
+func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
+	return ehreader.MetaDeserializer()
 }
 
 func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
@@ -113,6 +121,8 @@ func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.Event
 
 func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
+	case *eh.StreamStarted:
+		s.state.DekEnvelope = &e.DekEnvelope
 	case *eh.SubscriptionSubscribed:
 		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)
 	case *eh.SubscriptionUnsubscribed:
@@ -143,8 +153,7 @@ func LoadUntilRealtime(
 			store,
 			ehreader.NewWithSnapshots(
 				store,
-				client.EventLog,
-				client.SnapshotStore,
+				client,
 				logex.Prefix("Reader", logger)),
 			client.EventLog,
 			logger}

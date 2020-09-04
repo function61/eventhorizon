@@ -81,9 +81,8 @@ func (s *Store) ChildStreams() []string {
 	return s.state.ChildStreams
 }
 
-func (s *Store) GetEventTypes() (ehevent.Types, ehevent.Types) {
-	// signals reader that we only want to receive meta events
-	return nil, eh.MetaTypes
+func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
+	return ehreader.MetaDeserializer()
 }
 
 func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
@@ -129,8 +128,7 @@ func LoadUntilRealtime(
 		store,
 		ehreader.NewWithSnapshots(
 			store,
-			client.EventLog,
-			client.SnapshotStore,
+			client,
 			logger),
 		client.EventLog,
 		logger}

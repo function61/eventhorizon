@@ -3,6 +3,7 @@ package eh
 import (
 	"context"
 
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/policy"
 )
 
@@ -34,37 +35,38 @@ func WrapWriterWithAuthorizer(
 func (a *authorizedWriter) CreateStream(
 	ctx context.Context,
 	stream StreamName,
-	initialEvents []string,
+	dekEnvelope envelopeenc.Envelope,
+	data *LogData,
 ) (*AppendResult, error) {
 	if err := a.policy.Authorize(ActionStreamCreate, stream.ResourceName()); err != nil {
 		return nil, err
 	}
 
-	return a.inner.CreateStream(ctx, stream, initialEvents)
+	return a.inner.CreateStream(ctx, stream, dekEnvelope, data)
 }
 
 func (a *authorizedWriter) Append(
 	ctx context.Context,
 	stream StreamName,
-	events []string,
+	data LogData,
 ) (*AppendResult, error) {
 	if err := a.policy.Authorize(ActionStreamAppend, stream.ResourceName()); err != nil {
 		return nil, err
 	}
 
-	return a.inner.Append(ctx, stream, events)
+	return a.inner.Append(ctx, stream, data)
 }
 
 func (a *authorizedWriter) AppendAfter(
 	ctx context.Context,
 	after Cursor,
-	events []string,
+	data LogData,
 ) (*AppendResult, error) {
 	if err := a.policy.Authorize(ActionStreamAppend, after.Stream().ResourceName()); err != nil {
 		return nil, err
 	}
 
-	return a.inner.AppendAfter(ctx, after, events)
+	return a.inner.AppendAfter(ctx, after, data)
 }
 
 // wraps a Reader so that read ops are only called if the client is allowed to do so

@@ -1,17 +1,27 @@
 package ehdebug
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/ehreader"
 )
 
-func Debug(result *eh.ReadResult, output io.Writer) error {
-	entries := result.Entries
+func Debug(
+	ctx context.Context,
+	cursor eh.Cursor,
+	output io.Writer,
+	client *ehreader.SystemClient,
+	logger *log.Logger,
+) error {
+	debugStore, err := loadUntilRealtime(ctx, cursor, client, logger)
+	if err != nil {
+		return err
+	}
 
-	var err error
 	printfln := func(formatStr string, args ...interface{}) {
 		if err != nil {
 			return
@@ -20,33 +30,15 @@ func Debug(result *eh.ReadResult, output io.Writer) error {
 		_, err = fmt.Fprintf(output, formatStr+"\n", args...)
 	}
 
-	printfln("%s => %d entrie(s)", result.LastEntry.Stream(), len(entries))
+	entries := debugStore.Entries()
+
+	printfln("%s => %d entrie(s)", cursor.Stream(), len(entries))
 
 	for _, entry := range entries {
-		printfln("<entry v=%d>", entry.Version.Version())
+		printfln("<entry v=%d>", entry.cursor.Version())
 
-		if entry.MetaEvent != nil {
-			ev, err := ehevent.Deserialize(*entry.MetaEvent, eh.MetaTypes)
-			if err != nil {
-				return err
-			}
-
-			switch e := ev.(type) {
-			case *eh.StreamChildStreamCreated:
-				printfln("  /%s: %s", ev.MetaType(), e.Stream)
-			case *eh.StreamStarted:
-				printfln("  /%s", ev.MetaType())
-			case *eh.SubscriptionSubscribed:
-				printfln("  /%s: %s", ev.MetaType(), e.Id)
-			case *eh.SubscriptionUnsubscribed:
-				printfln("  /%s: %s", ev.MetaType(), e.Id)
-			default:
-				printfln("  unknown meta event: %s", ev.MetaType())
-			}
-		}
-
-		for _, event := range entry.Events {
-			printfln("  %s", event)
+		for _, line := range entry.lines {
+			printfln("  %s", line)
 		}
 
 		printfln("</entry>")

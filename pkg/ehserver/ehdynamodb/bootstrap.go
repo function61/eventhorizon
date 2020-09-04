@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/function61/eventhorizon/pkg/cryptosvc"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 )
@@ -17,11 +18,21 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		seqs[stream.String()] = curr + 1
 		return stream.At(curr + 1)
 	}
+
+	cryptoSvc := cryptosvc.New(nil)
+
 	now := time.Now()
 
 	txItems := []*dynamodb.TransactWriteItem{}
 	for _, streamToCreate := range eh.InternalStreamsToCreate {
-		txItem, err := e.entryAsTxPut(streamCreationEntry(streamToCreate, now))
+		dekEnvelope, err := cryptoSvc.NewAes256DekInEnvelope(
+			ctx,
+			streamToCreate.ResourceName())
+		if err != nil {
+			return err
+		}
+
+		txItem, err := e.entryAsTxPut(streamCreationEntry(streamToCreate, *dekEnvelope, now))
 		if err != nil {
 			return err
 		}

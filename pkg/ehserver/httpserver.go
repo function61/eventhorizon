@@ -11,6 +11,8 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
+	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
 	"github.com/function61/gokit/httputils"
@@ -20,7 +22,7 @@ import (
 )
 
 func Server(ctx context.Context, logger *log.Logger) error {
-	systemClient, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	systemClient, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -128,13 +130,17 @@ func serverHandler(auth *authenticator) http.Handler {
 			return
 		}
 
-		events := []string{}
-		if err := json.NewDecoder(r.Body).Decode(&events); err != nil {
+		input := &ehserverclient.CreateStreamInput{}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		appendResult, err := user.Writer.CreateStream(r.Context(), stream, events)
+		appendResult, err := user.Writer.CreateStream(
+			r.Context(),
+			stream,
+			*input.DEK,
+			input.Data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -158,13 +164,13 @@ func serverHandler(auth *authenticator) http.Handler {
 			return
 		}
 
-		events := []string{}
-		if err := json.NewDecoder(r.Body).Decode(&events); err != nil {
+		data := eh.LogData{}
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		appendResult, err := user.Writer.Append(r.Context(), stream, events)
+		appendResult, err := user.Writer.Append(r.Context(), stream, data)
 		if err != nil {
 			if _, wasAboutLocking := err.(*eh.ErrOptimisticLockingFailed); wasAboutLocking {
 				http.Error(w, err.Error(), http.StatusConflict)
@@ -192,13 +198,13 @@ func serverHandler(auth *authenticator) http.Handler {
 			return
 		}
 
-		events := []string{}
-		if err := json.NewDecoder(r.Body).Decode(&events); err != nil {
+		data := eh.LogData{}
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		appendResult, err := user.Writer.AppendAfter(r.Context(), after, events)
+		appendResult, err := user.Writer.AppendAfter(r.Context(), after, data)
 		if err != nil {
 			if _, isOptimisticLocking := err.(*eh.ErrOptimisticLockingFailed); isOptimisticLocking {
 				http.Error(w, err.Error(), http.StatusConflict)

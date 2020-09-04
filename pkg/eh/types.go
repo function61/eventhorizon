@@ -3,8 +3,24 @@ package eh
 import (
 	"context"
 
+	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/policy"
 )
+
+type LogDataKind uint8
+
+const (
+	LogDataKindMeta          LogDataKind = 1 // one single unencrypted meta event in "ehevent" format
+	LogDataKindEncryptedData LogDataKind = 2 // 16 bytes IV || AES256_CTR(plaintext, dek). plaintext is multiple "ehevent" lines split by \n character.
+)
+
+func LogDataMeta(e ehevent.Event) *LogData {
+	return &LogData{
+		Kind: LogDataKindMeta,
+		Raw:  []byte(ehevent.SerializeOne(e)),
+	}
+}
 
 var (
 	ResourceNameStream   = policy.F61rn.Child("eventhorizon").Child("stream")   // f61rn:eventhorizon:stream
@@ -31,11 +47,11 @@ type Reader interface {
 
 // interface for writing to an event log
 type Writer interface {
-	CreateStream(ctx context.Context, stream StreamName, initialEvents []string) (*AppendResult, error)
-	Append(ctx context.Context, stream StreamName, events []string) (*AppendResult, error)
+	CreateStream(ctx context.Context, stream StreamName, dekEnvelope envelopeenc.Envelope, data *LogData) (*AppendResult, error)
+	Append(ctx context.Context, stream StreamName, data LogData) (*AppendResult, error)
 	// used for transactional writes
 	// returns *ErrOptimisticLockingFailed if stream had writes after you read it
-	AppendAfter(ctx context.Context, after Cursor, events []string) (*AppendResult, error)
+	AppendAfter(ctx context.Context, after Cursor, data LogData) (*AppendResult, error)
 }
 
 type ReaderWriter interface {
@@ -49,10 +65,15 @@ type ReadResult struct {
 	More      bool   // whether there is more data to fetch
 }
 
+// Log entry is log data in a specific position in the event stream
 type LogEntry struct {
-	Version   Cursor   `json:"Version"` // TODO: rename?
-	MetaEvent *string  `json:"MetaEvent,omitempty"`
-	Events    []string `json:"Events"`
+	Cursor Cursor  `json:"Cursor"`
+	Data   LogData `json:"Data"`
+}
+
+type LogData struct {
+	Kind LogDataKind `json:"Kind"`
+	Raw  []byte      `json:"Raw"` // usually encrypted data
 }
 
 type ErrOptimisticLockingFailed struct {

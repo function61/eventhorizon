@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/gokit/aws/dynamoutils"
 )
 
@@ -26,10 +26,9 @@ import (
 // - why most common attribute names shortened? DynamoDB charges for each byte in item attribute names..
 // - we have JSON marshalling defined but please consider it DynamoDB internal implementation
 type LogEntryRaw struct {
-	Stream    string   `json:"s"` // stream + version form the composite key
-	Version   int64    `json:"v"`
-	MetaEvent *string  `json:"meta_event,omitempty"` // StreamStarted | ChildStreamCreated created | ...
-	Events    []string `json:"e"`
+	Stream      string `json:"s"` // stream + version form the composite key
+	Version     int64  `json:"v"`
+	KindAndData []byte `json:"d"` // first byte is eh.LogDataKind, the rest is data (combined to save space)
 }
 
 type DynamoDbOptions struct {
@@ -93,23 +92,14 @@ func (e *Client) Read(ctx context.Context, lastKnown eh.Cursor) (*eh.ReadResult,
 
 	// these are in chronological order
 	for _, item := range resp.Items {
-		entry := &LogEntryRaw{}
-		if err := dynamoutils.Unmarshal(item, entry); err != nil {
+		entryRaw := LogEntryRaw{}
+		if err := dynamoutils.Unmarshal(item, &entryRaw); err != nil {
 			return nil, err
 		}
 
-		lastVersion = entry.Version
+		lastVersion = entryRaw.Version
 
-		events := entry.Events
-		if events == nil { // TODO: make non-nil at write side?
-			events = []string{}
-		}
-
-		entries = append(entries, eh.LogEntry{
-			Version:   lastKnown.Stream().At(entry.Version),
-			MetaEvent: entry.MetaEvent,
-			Events:    events,
-		})
+		entries = append(entries, unmarshalLogEntryRaw(entryRaw))
 	}
 
 	// "If LastEvaluatedKey is not empty, it does not necessarily mean that there
@@ -122,7 +112,7 @@ func (e *Client) Read(ctx context.Context, lastKnown eh.Cursor) (*eh.ReadResult,
 	return &eh.ReadResult{entries, lastEntryCursor, moreData}, nil
 }
 
-func (e *Client) Append(ctx context.Context, stream eh.StreamName, events []string) (*eh.AppendResult, error) {
+func (e *Client) Append(ctx context.Context, stream eh.StreamName, data eh.LogData) (*eh.AppendResult, error) {
 	// this can fail, so retry a few times
 	for i := 0; i < 3; i++ {
 		at, err := e.resolveStreamPosition(ctx, stream)
@@ -130,7 +120,7 @@ func (e *Client) Append(ctx context.Context, stream eh.StreamName, events []stri
 			return nil, err
 		}
 
-		result, err := e.AppendAfter(ctx, *at, events)
+		result, err := e.AppendAfter(ctx, *at, data)
 		if err != nil {
 			// I think this is a false positive lint message:
 			//     "when isAboutConcurrency is true, err can't be nil"
@@ -151,11 +141,7 @@ func (e *Client) Append(ctx context.Context, stream eh.StreamName, events []stri
 // NOTE: be very sure that stream exists, since it is not validated (only happens if malicious Cursor provided)
 // NOTE: be sure that you don't set version into the future, since that will leave a gap
 // NOTE: returned error is *ErrOptimisticLockingFailed if stream had writes
-func (e *Client) AppendAfter(ctx context.Context, after eh.Cursor, events []string) (*eh.AppendResult, error) {
-	if len(events) == 0 {
-		return nil, errors.New("AppendAfter: empty appends are not supported")
-	}
-
+func (e *Client) AppendAfter(ctx context.Context, after eh.Cursor, data eh.LogData) (*eh.AppendResult, error) {
 	resultingCursor := after.Next()
 
 	if resultingCursor.Version() == 0 {
@@ -165,31 +151,14 @@ func (e *Client) AppendAfter(ctx context.Context, after eh.Cursor, events []stri
 		return nil, errors.New("AppendAfter: refusing @0, since stream should start with StreamStarted")
 	}
 
-	logEntry := func() LogEntryRaw {
-		// FIXME: a hack
-		if len(events) == 1 && strings.Contains(events[0], " $subscription.") {
-			return LogEntryRaw{
-				Stream:    resultingCursor.Stream().String(),
-				Version:   resultingCursor.Version(),
-				MetaEvent: aws.String(events[0]),
-			}
-		} else {
-			return LogEntryRaw{
-				Stream:  resultingCursor.Stream().String(),
-				Version: resultingCursor.Version(),
-				Events:  events,
-			}
-		}
-	}()
-
-	dynamoEntry, err := dynamoutils.Marshal(logEntry)
+	logEntryInDynamo, err := dynamoutils.Marshal(mkLogEntryRaw(resultingCursor, data))
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = e.dynamo.PutItemWithContext(ctx, &dynamodb.PutItemInput{
 		TableName: e.eventsTableName,
-		Item:      dynamoEntry,
+		Item:      logEntryInDynamo,
 		// http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.SpecifyingConditions.html
 		ConditionExpression: aws.String("attribute_not_exists(s) AND attribute_not_exists(v)"),
 	})
@@ -209,7 +178,8 @@ func (e *Client) AppendAfter(ctx context.Context, after eh.Cursor, events []stri
 func (e *Client) CreateStream(
 	ctx context.Context,
 	stream eh.StreamName,
-	initialEvents []string,
+	dekEnvelope envelopeenc.Envelope,
+	initialData *eh.LogData,
 ) (*eh.AppendResult, error) {
 	parent := stream.Parent()
 	if parent == nil {
@@ -228,7 +198,7 @@ func (e *Client) CreateStream(
 		return nil, err
 	}
 
-	itemInChild, err := e.entryAsTxPut(streamCreationEntry(stream, now))
+	itemInChild, err := e.entryAsTxPut(streamCreationEntry(stream, dekEnvelope, now))
 	if err != nil {
 		return nil, err
 	}
@@ -238,12 +208,8 @@ func (e *Client) CreateStream(
 		itemInChild,
 	}
 
-	if len(initialEvents) > 0 {
-		itemInitialEvents, err := e.entryAsTxPut(LogEntryRaw{
-			Stream:  stream.String(),
-			Version: 1,
-			Events:  initialEvents,
-		})
+	if initialData != nil {
+		itemInitialEvents, err := e.entryAsTxPut(mkLogEntryRaw(stream.At(1), *initialData))
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +218,7 @@ func (e *Client) CreateStream(
 	}
 
 	resultingCursor := func() eh.Cursor {
-		if len(initialEvents) > 0 {
+		if initialData != nil {
 			return stream.At(1)
 		} else {
 			return stream.At(0)
@@ -319,16 +285,35 @@ func (e *Client) entryAsTxPut(item LogEntryRaw) (*dynamodb.TransactWriteItem, er
 	}, nil
 }
 
-func streamCreationEntry(stream eh.StreamName, now time.Time) LogEntryRaw {
+func streamCreationEntry(stream eh.StreamName, dekEnvelope envelopeenc.Envelope, now time.Time) LogEntryRaw {
 	return metaEntry(
-		eh.NewStreamStarted(ehevent.MetaSystemUser(now)),
+		eh.NewStreamStarted(dekEnvelope, ehevent.MetaSystemUser(now)),
 		stream.At(0))
 }
 
 func metaEntry(metaEvent ehevent.Event, pos eh.Cursor) LogEntryRaw {
+	return mkLogEntryRaw(pos, *eh.LogDataMeta(metaEvent))
+}
+
+func mkLogEntryRaw(cursor eh.Cursor, data eh.LogData) LogEntryRaw {
 	return LogEntryRaw{
-		Stream:    pos.Stream().String(),
-		Version:   pos.Version(),
-		MetaEvent: aws.String(ehevent.SerializeOne(metaEvent)),
+		Stream:      cursor.Stream().String(),
+		Version:     cursor.Version(),
+		KindAndData: append([]byte{byte(data.Kind)}, data.Raw...),
+	}
+}
+
+func unmarshalLogEntryRaw(entry LogEntryRaw) eh.LogEntry {
+	stream, err := eh.DeserializeStreamName(entry.Stream)
+	if err != nil {
+		panic(err) // shouldn't happen, because data saved in DB is validated
+	}
+
+	return eh.LogEntry{
+		Cursor: stream.At(entry.Version),
+		Data: eh.LogData{
+			Kind: eh.LogDataKind(entry.KindAndData[0]),
+			Raw:  entry.KindAndData[1:],
+		},
 	}
 }

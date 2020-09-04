@@ -2,6 +2,7 @@ package eh
 
 import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 )
 
 // - these are common events that can appear in *any* application-stream. contrast this with
@@ -32,14 +33,15 @@ func NewStreamChildStreamCreated(stream string, meta ehevent.EventMeta) *StreamC
 // ------
 
 type StreamStarted struct {
-	meta ehevent.EventMeta
+	meta        ehevent.EventMeta
+	DekEnvelope envelopeenc.Envelope `json:"DekEnvelope"` // Data Encryption Key (DEK) envelope (see pkg envelopeenc)
 }
 
 func (e *StreamStarted) MetaType() string         { return "$stream.Started" }
 func (e *StreamStarted) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewStreamStarted(meta ehevent.EventMeta) *StreamStarted {
-	return &StreamStarted{meta}
+func NewStreamStarted(dekEnvelope envelopeenc.Envelope, meta ehevent.EventMeta) *StreamStarted {
+	return &StreamStarted{meta, dekEnvelope}
 }
 
 // ------

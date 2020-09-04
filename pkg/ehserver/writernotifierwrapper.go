@@ -6,6 +6,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/logex"
 )
@@ -47,9 +48,10 @@ func wrapWriterWithNotifier(
 func (w *writerNotifierWrapper) CreateStream(
 	ctx context.Context,
 	stream eh.StreamName,
-	initialEvents []string,
+	dekEnvelope envelopeenc.Envelope,
+	initialData *eh.LogData,
 ) (*eh.AppendResult, error) {
-	result, err := w.innerWriter.CreateStream(ctx, stream, initialEvents)
+	result, err := w.innerWriter.CreateStream(ctx, stream, dekEnvelope, initialData)
 
 	if err == nil {
 		w.logIfNotifyError(w.notifySubscribers(ctx, result))
@@ -61,9 +63,9 @@ func (w *writerNotifierWrapper) CreateStream(
 func (w *writerNotifierWrapper) Append(
 	ctx context.Context,
 	stream eh.StreamName,
-	events []string,
+	data eh.LogData,
 ) (*eh.AppendResult, error) {
-	result, err := w.innerWriter.Append(ctx, stream, events)
+	result, err := w.innerWriter.Append(ctx, stream, data)
 
 	if err == nil {
 		w.logIfNotifyError(w.notifySubscribers(ctx, result))
@@ -75,9 +77,9 @@ func (w *writerNotifierWrapper) Append(
 func (w *writerNotifierWrapper) AppendAfter(
 	ctx context.Context,
 	after eh.Cursor,
-	events []string,
+	data eh.LogData,
 ) (*eh.AppendResult, error) {
-	result, err := w.innerWriter.AppendAfter(ctx, after, events)
+	result, err := w.innerWriter.AppendAfter(ctx, after, data)
 
 	if err == nil {
 		w.logIfNotifyError(w.notifySubscribers(ctx, result))

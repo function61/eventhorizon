@@ -109,17 +109,10 @@ func publishActivityToSubscribers(
 				return nil
 			}
 
-			act := ehsubscriptiondomain.NewSubscriptionActivity(dedupedCursors, ehevent.MetaSystemUser(now))
-
-			if _, err := client.EventLog.AppendAfter(
+			return client.AppendAfter(
 				ctx,
 				subRecent.State.Version(),
-				ehevent.Serialize(act),
-			); err != nil {
-				return err
-			}
-
-			return nil
+				ehsubscriptiondomain.NewSubscriptionActivity(dedupedCursors, ehevent.MetaSystemUser(now)))
 		})
 	})
 }

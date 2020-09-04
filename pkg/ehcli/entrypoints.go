@@ -13,6 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
 	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/system/ehchildstreams"
@@ -93,11 +94,16 @@ func streamEntrypoint() *cobra.Command {
 		Short: "Read events from the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
 			version, err := strconv.Atoi(args[1])
 			osutil.ExitIfError(err)
 
-			osutil.ExitIfError(streamRead(
-				osutil.CancelOnInterruptOrTerminate(nil), args[0], int64(version)))
+			osutil.ExitIfError(streamReadDebug(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
+				int64(version),
+				rootLogger))
 		},
 	})
 
@@ -175,7 +181,7 @@ func snapshotEntrypoint() *cobra.Command {
 }
 
 func bootstrap(ctx context.Context) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -184,7 +190,7 @@ func bootstrap(ctx context.Context) error {
 }
 
 func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -207,7 +213,7 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 }
 
 func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext string) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -245,7 +251,7 @@ func snapshotPut(
 	snapshotContext string,
 	contentReader io.Reader,
 ) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -266,7 +272,7 @@ func snapshotPut(
 }
 
 func snapshotRm(ctx context.Context, streamName string, snapshotContext string) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -285,17 +291,23 @@ func streamCreate(ctx context.Context, streamPath string) error {
 		return err
 	}
 
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	if stream.IsUnder(eh.SysSubscriptions) {
+		// this is because subscription stream creation does extra: it subscribes to itself
+		// (for realtime notifications, not activity events which would be an infinite loop)
+		return fmt.Errorf("please use subscription stream creation to create %s", stream.String())
+	}
+
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.EventLog.CreateStream(ctx, stream, []string{})
+	_, err = client.CreateStream(ctx, stream, nil)
 	return err
 }
 
-func streamRead(ctx context.Context, streamNameRaw string, version int64) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, logger *log.Logger) error {
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -305,18 +317,11 @@ func streamRead(ctx context.Context, streamNameRaw string, version int64) error 
 		return err
 	}
 
-	resp, err := client.EventLog.Read(
-		ctx,
-		streamName.At(version))
-	if err != nil {
-		return err
-	}
-
-	return ehdebug.Debug(resp, os.Stdout)
+	return ehdebug.Debug(ctx, streamName.At(version), os.Stdout, client, logger)
 }
 
 func streamAppend(ctx context.Context, streamNameRaw string, event string) error {
-	client, err := ehreader.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -326,6 +331,5 @@ func streamAppend(ctx context.Context, streamNameRaw string, event string) error
 		return err
 	}
 
-	_, err = client.EventLog.Append(ctx, streamName, []string{event})
-	return err
+	return client.AppendStrings(ctx, streamName, []string{event})
 }
