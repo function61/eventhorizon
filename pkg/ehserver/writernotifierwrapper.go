@@ -19,6 +19,9 @@ type SubscriptionNotifier interface {
 		subscription eh.SubscriptionId,
 		appendResult eh.AppendResult,
 	) error
+	// waits for in-flight notifications to be sent. this is so that before reporting a request
+	// in Lambda as succeeded, our process won't get paused before async notifications are sent.
+	WaitInFlight()
 }
 
 type writerNotifierWrapper struct {

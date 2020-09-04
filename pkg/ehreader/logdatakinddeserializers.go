@@ -1,6 +1,6 @@
 package ehreader
 
-// Deserializers for different kinds of log dasta: Meta, EncryptedData etc.
+// Deserializers for different kinds of log data: Meta, EncryptedData etc.
 import (
 	"context"
 
