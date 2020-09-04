@@ -7,6 +7,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/eheventencryption"
 	"github.com/function61/gokit/syncutil"
 )
 
@@ -20,7 +21,7 @@ func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, 
 		return err
 	}
 
-	logData, err := eh.MakeEncryptedData(eventsSerialized, dek)
+	logData, err := eheventencryption.Encrypt(eventsSerialized, dek)
 	if err != nil {
 		return err
 	}
@@ -36,7 +37,7 @@ func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events 
 	}
 
 	eventsSerialized := ehevent.Serialize(events...)
-	logData, err := eh.MakeEncryptedData(eventsSerialized, dek)
+	logData, err := eheventencryption.Encrypt(eventsSerialized, dek)
 	if err != nil {
 		return err
 	}

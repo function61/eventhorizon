@@ -11,6 +11,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/eheventencryption"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/logex"
 )
@@ -121,7 +122,7 @@ var mapEventsToRawEvent = []ehreader.LogDataKindDeserializer{
 				return nil, err
 			}
 
-			eventsSerialized, err := eh.EncryptedDataDecrypt(entry.Data, dek)
+			eventsSerialized, err := eheventencryption.Decrypt(entry.Data, dek)
 			if err != nil {
 				return nil, err
 			}

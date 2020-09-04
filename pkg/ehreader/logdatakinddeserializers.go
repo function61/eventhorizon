@@ -6,6 +6,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/eheventencryption"
 )
 
 type LogDataKindDeserializer struct {
@@ -27,7 +28,7 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 					return nil, err
 				}
 
-				eventsSerialized, err := eh.EncryptedDataDecrypt(entry.Data, dek)
+				eventsSerialized, err := eheventencryption.Decrypt(entry.Data, dek)
 				if err != nil {
 					return nil, err
 				}

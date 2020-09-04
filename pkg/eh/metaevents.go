@@ -5,6 +5,13 @@ import (
 	"github.com/function61/eventhorizon/pkg/envelopeenc"
 )
 
+func LogDataMeta(e ehevent.Event) *LogData {
+	return &LogData{
+		Kind: LogDataKindMeta,
+		Raw:  []byte(ehevent.SerializeOne(e)),
+	}
+}
+
 // - these are common events that can appear in *any* application-stream. contrast this with
 //   system streams like "/_/credentials" where events are application-specific streams
 //   (b/c they can't appear anywhere else)

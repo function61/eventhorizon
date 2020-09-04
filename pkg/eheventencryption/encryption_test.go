@@ -1,4 +1,4 @@
-package eh
+package eheventencryption
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 func TestEncryptDecrypt(t *testing.T) {
 	dek := dummyDek()
 
-	encryptedEvents, err := makeEncryptedDataWithRand([]string{"foo", "bar"}, dek, nullIv())
+	encryptedEvents, err := encryptWithRand([]string{"foo", "bar"}, dek, nullIv())
 	assert.Ok(t, err)
 
 	// IV is stored as prefix, which is now easy to spot as "AAA.."
@@ -20,7 +20,7 @@ func TestEncryptDecrypt(t *testing.T) {
   "Raw": "AAAAAAAAAAAAAAAAAAAAACI9iaVbddA="
 }`)
 
-	events, err := EncryptedDataDecrypt(*encryptedEvents, dek)
+	events, err := Decrypt(*encryptedEvents, dek)
 	assert.Ok(t, err)
 
 	assert.EqualJson(t, events, `[

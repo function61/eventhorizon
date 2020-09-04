@@ -3,7 +3,6 @@ package eh
 import (
 	"context"
 
-	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/policy"
 )
@@ -14,13 +13,6 @@ const (
 	LogDataKindMeta          LogDataKind = 1 // one single unencrypted meta event in "ehevent" format
 	LogDataKindEncryptedData LogDataKind = 2 // 16 bytes IV || AES256_CTR(plaintext, dek). plaintext is multiple "ehevent" lines split by \n character.
 )
-
-func LogDataMeta(e ehevent.Event) *LogData {
-	return &LogData{
-		Kind: LogDataKindMeta,
-		Raw:  []byte(ehevent.SerializeOne(e)),
-	}
-}
 
 var (
 	ResourceNameStream   = policy.F61rn.Child("eventhorizon").Child("stream")   // f61rn:eventhorizon:stream
