@@ -143,8 +143,8 @@ func (s *serverClient) ReadSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
 	snapshotContext string,
-) (*eh.Snapshot, error) {
-	snap := &eh.Snapshot{}
+) (*eh.PersistedSnapshot, error) {
+	snap := &eh.PersistedSnapshot{}
 	if _, err := ezhttp.Get(
 		ctx,
 		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&context="+url.QueryEscape(snapshotContext),
@@ -163,7 +163,7 @@ func (s *serverClient) ReadSnapshot(
 
 func (s *serverClient) WriteSnapshot(
 	ctx context.Context,
-	snapshot eh.Snapshot,
+	snapshot eh.PersistedSnapshot,
 ) error {
 	if _, err := ezhttp.Put(
 		ctx,

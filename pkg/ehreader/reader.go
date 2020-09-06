@@ -51,89 +51,65 @@ type EventsProcessor interface {
 
 // Serves reads for one processor. not safe for concurrent use
 type Reader struct {
-	client          *SystemClient
-	deserializers   map[eh.LogDataKind]LogDataDeserializerFn
-	processor       EventsProcessor
-	snapshotCapable bool
-	snapshotVersion *eh.Cursor
-	logl            *logex.Leveled
-	lastLoad        time.Time
-	lastLoadMu      sync.Mutex
+	client           *SystemClient
+	deserializers    map[eh.LogDataKind]LogDataDeserializerFn
+	processor        EventsProcessor
+	processorVersion *eh.Cursor // last known used as optimization, if gets out-of-sync it will be detected
+	snapshotCapable  bool
+	snapshotEncrypt  bool // true if processor handles any LogDataKind that are encrypted
+	snapshotVersion  *eh.Cursor
+	logl             *logex.Leveled
+	lastLoad         time.Time
+	lastLoadMu       sync.Mutex
 }
 
 // "keep processor happy by feeding it from client"
 func New(processor EventsProcessor, client *SystemClient, logger *log.Logger) *Reader {
+	snapshotEncrypt := false
+
 	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
 	for _, item := range processor.GetEventTypes() {
 		deserializers[item.Kind] = item.Deserializer
+
+		if item.Kind.IsEncrypted() {
+			snapshotEncrypt = true
+		}
 	}
 
 	snapshotCapable := processor.SnapshotContextAndVersion() != ""
 
 	return &Reader{
-		client:          client,
-		deserializers:   deserializers,
-		processor:       processor,
-		snapshotCapable: snapshotCapable,
-		snapshotVersion: nil,
-		logl:            logex.Levels(logger),
+		client:           client,
+		deserializers:    deserializers,
+		processor:        processor,
+		processorVersion: nil,
+		snapshotCapable:  snapshotCapable,
+		snapshotEncrypt:  snapshotEncrypt,
+		snapshotVersion:  nil,
+		logl:             logex.Levels(logger),
 	}
 }
 
 // TODO: error-wrapping
 func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
-	var nextRead eh.Cursor
-
-	// start with creating a dummy commit without handling any events, so we can only
-	// query the initial version of the aggregate
-	if err := r.processor.ProcessEvents(ctx, func(
-		versionInDb eh.Cursor,
-		handleEvent func(ehevent.Event) error,
-		commit func(eh.Cursor) error,
-	) error {
-		nextRead = versionInDb
-
-		// purposefully missing here: handleEvent(); commit()
-
-		return nil
-	}); err != nil {
-		return fmt.Errorf("LoadUntilRealtime: load cursor: %v", err)
+	// after this r.processorVersion will be non-nil. this will be cached and will only
+	// be done once.
+	if err := r.discoverProcessorVersion(ctx); err != nil {
+		return err
 	}
 
 	// if we started from beginning, try to load a snapshot
-	if nextRead.AtBeginning() && r.snapshotCapable {
-		snap, err := r.client.SnapshotStore.ReadSnapshot(
-			ctx,
-			nextRead.Stream(),
-			r.processor.SnapshotContextAndVersion())
-		if err != nil {
-			if err == os.ErrNotExist { // the snapshot just does not exist
-				r.logl.Info.Printf("ReadSnapshot: no initial snapshot for %s", nextRead.Stream())
+	if r.snapshotCapable && r.processorVersion.AtBeginning() {
+		if err := r.fetchAndInstallSnapshot(ctx); err != nil {
+			r.logl.Error.Printf("fetchAndInstallSnapshot: %v", err)
 
-				// using this to signal the logic at the end to take and store a new snapshot
-				snapshotVersion := nextRead.Stream().Beginning()
-				r.snapshotVersion = &snapshotVersion
-			} else { // some other error (these are not fatal though)
-				r.logl.Error.Printf("ReadSnapshot: %v", err)
-
-				// this causes us to to not try saving snapshots
-				// TODO: is this a good idea?
-			}
-		} else {
-			r.snapshotVersion = &snap.Cursor
-
-			if err := r.processor.InstallSnapshot(snap); err != nil {
-				return fmt.Errorf("LoadUntilRealtime: InstallSnapshot: %w", err)
-			}
-
-			// easiest path is to start all over. yes, this recurses one level, but it
-			// shouldn't recurse infinitely
-			return r.LoadUntilRealtime(ctx)
+			// TODO: disable trying to write snapshots?
+			// r.snapshotCapable = false
 		}
 	}
 
 	for {
-		resp, err := r.client.EventLog.Read(ctx, nextRead)
+		resp, err := r.client.EventLog.Read(ctx, *r.processorVersion)
 		if err != nil {
 			return err
 		}
@@ -154,56 +130,151 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 				return err
 			}
 
-			versionAfter := record.Cursor
+			versionToCommit := record.Cursor
 
 			if err := r.processor.ProcessEvents(ctx, func(
 				versionInDb eh.Cursor,
 				handleEvent func(ehevent.Event) error,
 				commit func(eh.Cursor) error,
 			) error {
-				if !nextRead.Equal(versionInDb) {
+				// sanity check that DB is at version we need it to be at
+				if !r.processorVersion.Equal(versionInDb) {
 					return fmt.Errorf(
-						"LoadUntilRealtime: in-DB version (%s) out-of-sync with nextRead (%s)",
+						"in-DB version (%s) out-of-sync with our perspective processorVersion (%s)",
 						versionInDb.Serialize(),
-						nextRead.Serialize())
+						r.processorVersion.Serialize())
 				}
 
 				for _, event := range events {
 					if errHandle := handleEvent(event); errHandle != nil {
-						return fmt.Errorf("LoadUntilRealtime: handleEvent: %v", errHandle)
+						return fmt.Errorf("handleEvent: %v", errHandle)
 					}
 				}
 
-				return commit(versionAfter)
+				return commit(versionToCommit)
 			}); err != nil {
 				return err
 			}
 
-			nextRead = versionAfter // only needed for out-of-sync check
+			// commit succeeded -> we know processor is at this version
+			r.processorVersion = &versionToCommit
 		}
 
-		nextRead = resp.LastEntry
-
 		if !resp.More {
-			// EventsProcessor reached realtime. store newer snapshot if we:
-			// - have a snapshot capability
-			// - we know the latest snapshot is older than what EventsProcessor now knows
-			if r.snapshotCapable && r.snapshotVersion != nil && r.snapshotVersion.Before(nextRead) {
-				snap, err := r.processor.Snapshot()
-				if err != nil {
-					r.logl.Error.Printf("EventsProcessor.Snapshot: %v", err)
-				} else {
-					r.snapshotVersion = &snap.Cursor
+			r.logl.Debug.Printf("reached realtime: %s", r.processorVersion.Serialize())
 
-					// TODO: store this async?
-					if err := r.client.SnapshotStore.WriteSnapshot(ctx, *snap); err != nil {
-						r.logl.Error.Printf("WriteSnapshot: %v", err)
-					}
+			// store newer snapshot if we:
+			// - didn't have a stored snapshot
+			// - know the latest snapshot is older than what EventsProcessor now knows
+			if r.snapshotCapable && (r.snapshotVersion == nil || r.snapshotVersion.Before(*r.processorVersion)) {
+				snapshotVersion, err := r.uploadNewerSnapshot(ctx)
+				if err != nil {
+					r.logl.Error.Printf("uploadNewerSnapshot: %v", err)
+				} else {
+					r.snapshotVersion = snapshotVersion
 				}
 			}
+
 			return nil
 		}
 	}
+}
+
+func (r *Reader) discoverProcessorVersion(ctx context.Context) error {
+	// only discover it once
+	if r.processorVersion != nil {
+		return nil
+	}
+
+	var processorVersion eh.Cursor
+
+	// start an empty transaction without committing any events, so we can
+	// query the initial version of the processor
+	if err := r.processor.ProcessEvents(ctx, func(
+		versionInDb eh.Cursor,
+		handleEvent func(ehevent.Event) error,
+		commit func(eh.Cursor) error,
+	) error {
+		processorVersion = versionInDb
+
+		// purposefully missing here: handleEvent(); commit()
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("load cursor: %v", err)
+	}
+
+	r.processorVersion = &processorVersion
+
+	return nil
+}
+
+// caller determined that processor needs to start from beginning. try to see if we have
+// a snapshot we could jumpstart from. (if not, just start from beginning.)
+func (r *Reader) fetchAndInstallSnapshot(ctx context.Context) error {
+	stream := r.processorVersion.Stream()
+
+	snapPersisted, err := r.client.SnapshotStore.ReadSnapshot(
+		ctx,
+		stream,
+		r.processor.SnapshotContextAndVersion())
+	if err != nil {
+		if err == os.ErrNotExist { // the snapshot just does not exist
+			r.logl.Info.Printf("no initial snapshot for %s", stream)
+
+			// not an error - we just need to continue fetching data from beginning
+			return nil
+		} else { // some other error (these are not fatal though)
+			return err
+		}
+	}
+
+	// convert to app-level snapshot by decrypting
+	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
+		return r.client.LoadDek(ctx, stream)
+	})
+	if err != nil {
+		return err
+	}
+
+	if err := r.processor.InstallSnapshot(snap); err != nil {
+		return fmt.Errorf("InstallSnapshot: %w", err)
+	}
+
+	r.processorVersion = &snap.Cursor
+	r.snapshotVersion = &snap.Cursor
+
+	return nil
+}
+
+func (r *Reader) uploadNewerSnapshot(ctx context.Context) (*eh.Cursor, error) {
+	snap, err := r.processor.Snapshot()
+	if err != nil {
+		return nil, err
+	}
+
+	persisted, err := func() (*eh.PersistedSnapshot, error) {
+		if r.snapshotEncrypt {
+			dek, err := r.client.LoadDek(ctx, snap.Cursor.Stream())
+			if err != nil {
+				return nil, err
+			}
+
+			return snap.Encrypted(dek)
+		} else {
+			return snap.Unencrypted(), nil
+		}
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: store this async?
+	if err := r.client.SnapshotStore.WriteSnapshot(ctx, *persisted); err != nil {
+		return nil, err
+	}
+
+	return &snap.Cursor, nil
 }
 
 // same as LoadUntilRealtime(), but only loads if not done so recently

@@ -4,46 +4,72 @@ import (
 	"context"
 	"os"
 
-	"github.com/function61/eventhorizon/pkg/ehclient"
-	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/eh"
 )
 
-type inMemSnapshotStore struct {
-	snapshots map[string]*ehreader.Snapshot
+type SnapshotStore struct {
+	snapshots map[string]*eh.PersistedSnapshot
+	stats     SnapshotStoreStats
 }
 
 // interface assertion
-var _ = (ehreader.SnapshotStore)(&inMemSnapshotStore{})
+var _ = (eh.SnapshotStore)(&SnapshotStore{})
 
 // do not use in anything else than testing
-func NewInMemSnapshotStore() *inMemSnapshotStore {
-	return &inMemSnapshotStore{map[string]*ehreader.Snapshot{}}
+func NewSnapshotStore() *SnapshotStore {
+	return &SnapshotStore{
+		snapshots: map[string]*eh.PersistedSnapshot{},
+	}
 }
 
-func (i *inMemSnapshotStore) LoadSnapshot(
+func (i *SnapshotStore) ReadSnapshot(
 	_ context.Context,
-	cur ehclient.Cursor,
+	stream eh.StreamName,
 	snapshotContext string,
-) (*ehreader.Snapshot, error) {
-	if snap, found := i.snapshots[cur.Stream()]; found {
+) (*eh.PersistedSnapshot, error) {
+	i.stats.ReadOps++
+
+	if snap, found := i.snapshots[stream.String()]; found {
 		return snap, nil
 	} else {
 		return nil, os.ErrNotExist
 	}
 }
 
-func (i *inMemSnapshotStore) StoreSnapshot(_ context.Context, snap ehreader.Snapshot) error {
-	i.snapshots[snap.Cursor.Stream()] = &snap
+func (i *SnapshotStore) WriteSnapshot(_ context.Context, snap eh.PersistedSnapshot) error {
+	i.stats.WriteOps++
+
+	i.snapshots[snap.Cursor.Stream().String()] = &snap
 
 	return nil
 }
 
-func (i *inMemSnapshotStore) DeleteSnapshot(
+func (i *SnapshotStore) DeleteSnapshot(
 	ctx context.Context,
-	streamName string,
+	stream eh.StreamName,
 	snapshotContext string,
 ) error {
-	delete(i.snapshots, streamName)
+	i.stats.DeleteOps++
+
+	delete(i.snapshots, stream.String())
 
 	return nil
+}
+
+func (i *SnapshotStore) Stats() SnapshotStoreStats {
+	return i.stats
+}
+
+type SnapshotStoreStats struct {
+	WriteOps  int
+	ReadOps   int
+	DeleteOps int
+}
+
+func (s SnapshotStoreStats) Diff(to SnapshotStoreStats) SnapshotStoreStats {
+	return SnapshotStoreStats{
+		WriteOps:  to.WriteOps - s.WriteOps,
+		ReadOps:   to.ReadOps - s.ReadOps,
+		DeleteOps: to.DeleteOps - s.DeleteOps,
+	}
 }

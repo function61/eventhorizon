@@ -288,7 +288,7 @@ func serverHandler(auth *authenticator) http.Handler {
 			return
 		}
 
-		snapshot := &eh.Snapshot{}
+		snapshot := &eh.PersistedSnapshot{}
 		if err := json.NewDecoder(r.Body).Decode(snapshot); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

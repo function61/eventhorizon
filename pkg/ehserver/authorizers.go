@@ -106,7 +106,11 @@ type authorizedSnapshotStore struct {
 	policy policy.Policy
 }
 
-func (a *authorizedSnapshotStore) ReadSnapshot(ctx context.Context, stream eh.StreamName, snapshotContext string) (*eh.Snapshot, error) {
+func (a *authorizedSnapshotStore) ReadSnapshot(
+	ctx context.Context,
+	stream eh.StreamName,
+	snapshotContext string,
+) (*eh.PersistedSnapshot, error) {
 	if err := a.policy.Authorize(eh.ActionSnapshotRead, stream.ResourceName()); err != nil {
 		return nil, err
 	}
@@ -118,7 +122,10 @@ func (a *authorizedSnapshotStore) ReadSnapshot(ctx context.Context, stream eh.St
 	return a.inner.ReadSnapshot(ctx, stream, snapshotContext)
 }
 
-func (a *authorizedSnapshotStore) WriteSnapshot(ctx context.Context, snapshot eh.Snapshot) error {
+func (a *authorizedSnapshotStore) WriteSnapshot(
+	ctx context.Context,
+	snapshot eh.PersistedSnapshot,
+) error {
 	if err := a.policy.Authorize(eh.ActionSnapshotWrite, snapshot.Cursor.Stream().ResourceName()); err != nil {
 		return err
 	}

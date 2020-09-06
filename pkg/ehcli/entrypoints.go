@@ -164,7 +164,9 @@ func snapshotEntrypoint() *cobra.Command {
 		},
 	})
 
-	parentCmd.AddCommand(&cobra.Command{
+	encrypted := false
+
+	snapshotPutCmd := &cobra.Command{
 		Use:   "put [cursor] [context]",
 		Short: "Replace a snapshot (dangerous)",
 		Args:  cobra.ExactArgs(2),
@@ -173,9 +175,12 @@ func snapshotEntrypoint() *cobra.Command {
 				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
 				args[0],
 				args[1],
-				os.Stdin))
+				os.Stdin,
+				encrypted))
 		},
-	})
+	}
+	snapshotPutCmd.Flags().BoolVarP(&encrypted, "encrypted", "", encrypted, "Whether to encrypt the snapshot")
+	parentCmd.AddCommand(snapshotPutCmd)
 
 	return parentCmd
 }
@@ -224,7 +229,7 @@ func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext stri
 	}
 
 	// the Beginning() is non-important, as the store only uses the stream component of Cursor
-	snap, err := client.SnapshotStore.ReadSnapshot(
+	snapPersisted, err := client.SnapshotStore.ReadSnapshot(
 		ctx,
 		streamName,
 		snapshotContext)
@@ -234,8 +239,16 @@ func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext stri
 
 	fmt.Fprintf(
 		os.Stderr,
-		"Snapshot @ %s\n--------\n",
-		snap.Cursor.Serialize())
+		"Snapshot (kind=%s) @ %s\n--------\n",
+		snapPersisted.Kind().String(),
+		snapPersisted.Cursor.Serialize())
+
+	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
+		return client.LoadDek(ctx, snapPersisted.Cursor.Stream())
+	})
+	if err != nil {
+		return err
+	}
 
 	fmt.Fprintf(
 		os.Stdout,
@@ -250,6 +263,7 @@ func snapshotPut(
 	cursorSerialized string,
 	snapshotContext string,
 	contentReader io.Reader,
+	encrypted bool,
 ) error {
 	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
 	if err != nil {
@@ -268,7 +282,20 @@ func snapshotPut(
 
 	snapshot := eh.NewSnapshot(cursor, content, snapshotContext)
 
-	return client.SnapshotStore.WriteSnapshot(ctx, *snapshot)
+	persisted, err := func() (*eh.PersistedSnapshot, error) {
+		if encrypted {
+			dek, err := client.LoadDek(ctx, cursor.Stream())
+			if err != nil {
+				return nil, err
+			}
+
+			return snapshot.Encrypted(dek)
+		} else {
+			return snapshot.Unencrypted(), nil
+		}
+	}()
+
+	return client.SnapshotStore.WriteSnapshot(ctx, *persisted)
 }
 
 func snapshotRm(ctx context.Context, streamName string, snapshotContext string) error {

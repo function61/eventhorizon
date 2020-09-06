@@ -16,9 +16,9 @@ import (
 
 type DynamoSnapshotItem struct {
 	Stream  string `json:"s"` // stream + context form the composite key
-	Context string `json:"c"` // different software can read the same stream,
+	Context string `json:"c"` // context = different software can have different perspective for the same stream
 	Version int64  `json:"v"` // we conditionally put updates into DynamoDB as not to overwrite advanced state
-	Data    []byte `json:"d"` // actual snapshot data
+	RawData []byte `json:"d"` // actual snapshot data, probably encrypted
 }
 
 type dynamoSnapshotStorage struct {
@@ -51,7 +51,7 @@ func (d *dynamoSnapshotStorage) ReadSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
 	snapshotContext string,
-) (*eh.Snapshot, error) {
+) (*eh.PersistedSnapshot, error) {
 	getResponse, err := d.dynamo.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		Key: dynamoutils.Record{
 			"s": dynamoutils.String(stream.String()),
@@ -79,17 +79,19 @@ func (d *dynamoSnapshotStorage) ReadSnapshot(
 		return nil, err
 	}
 
-	cursorInSnapshot := streamName.At(dynamoSnapshot.Version)
-
-	return eh.NewSnapshot(cursorInSnapshot, dynamoSnapshot.Data, snapshotContext), nil
+	return &eh.PersistedSnapshot{
+		Cursor:  streamName.At(dynamoSnapshot.Version),
+		RawData: dynamoSnapshot.RawData,
+		Context: dynamoSnapshot.Context,
+	}, nil
 }
 
-func (d *dynamoSnapshotStorage) WriteSnapshot(ctx context.Context, snap eh.Snapshot) error {
+func (d *dynamoSnapshotStorage) WriteSnapshot(ctx context.Context, snap eh.PersistedSnapshot) error {
 	dynamoSnapshot, err := dynamoutils.Marshal(DynamoSnapshotItem{
 		Stream:  snap.Cursor.Stream().String(),
 		Context: snap.Context,
 		Version: snap.Cursor.Version(),
-		Data:    snap.Data,
+		RawData: snap.RawData,
 	})
 	if err != nil {
 		return err
