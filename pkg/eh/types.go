@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/function61/eventhorizon/pkg/envelopeenc"
-	"github.com/function61/eventhorizon/pkg/policy"
 )
 
 type LogDataKind uint8
@@ -12,11 +11,6 @@ type LogDataKind uint8
 const (
 	LogDataKindMeta          LogDataKind = 1 // one single unencrypted meta event in "ehevent" format
 	LogDataKindEncryptedData LogDataKind = 2 // 16 bytes IV || AES256_CTR(plaintext, dek). plaintext is multiple "ehevent" lines split by \n character.
-)
-
-var (
-	ResourceNameStream   = policy.F61rn.Child("eventhorizon").Child("stream")   // f61rn:eventhorizon:stream
-	ResourceNameSnapshot = policy.F61rn.Child("eventhorizon").Child("snapshot") // f61rn:eventhorizon:snapshot
 )
 
 // "sub" shortened to save space b/c they're expected to get a lot of writes
