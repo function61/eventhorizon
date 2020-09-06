@@ -42,7 +42,7 @@ func (r *Reader) TransactWrite(ctx context.Context, fn func() error) error {
 			return err // some other error
 		}
 
-		r.logl.Debug.Printf("ErrOptimisticLockingFailed, try %d: %v", i+1, err)
+		r.logl.Info.Printf("ErrOptimisticLockingFailed, try %d: %v", i+1, err)
 
 		// reach realtime again, so we can try again
 		if err := r.LoadUntilRealtime(ctx); err != nil {
