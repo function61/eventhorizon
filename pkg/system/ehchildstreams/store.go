@@ -17,7 +17,7 @@ import (
 )
 
 type stateFormat struct {
-	ChildStreams []string `json:"child_streams"`
+	ChildStreams []string `json:"child_streams"` // child base names to conserve space
 }
 
 func newStateFormat() stateFormat {
@@ -74,11 +74,18 @@ func (s *Store) SnapshotContextAndVersion() string {
 	return "eh:dir:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
-func (s *Store) ChildStreams() []string {
+func (s *Store) ChildStreams() []eh.StreamName {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.state.ChildStreams
+	ourName := s.version.Stream()
+
+	children := []eh.StreamName{}
+	for _, chilName := range s.state.ChildStreams {
+		children = append(children, ourName.Child(chilName))
+	}
+
+	return children
 }
 
 func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
@@ -101,7 +108,7 @@ func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.Event
 func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *eh.StreamChildStreamCreated:
-		s.state.ChildStreams = append(s.state.ChildStreams, e.Stream)
+		s.state.ChildStreams = append(s.state.ChildStreams, e.Stream.Base())
 	default:
 		// we're only interested in child stream creation
 	}

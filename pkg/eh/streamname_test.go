@@ -37,3 +37,33 @@ func TestStreamNameEqual(t *testing.T) {
 	assert.Assert(t, RootName.Child("t-1").Equal(RootName.Child("t-1")))
 	assert.Assert(t, !RootName.Child("t-1").Equal(RootName.Child("t-2")))
 }
+
+func TestStreamNameBase(t *testing.T) {
+	for _, tc := range []struct {
+		input          string
+		expectedOutput string
+	}{
+		{
+			"/foo",
+			"foo",
+		},
+		{
+			"/foo/bar",
+			"bar",
+		},
+		{
+			"/foo/bar/baz",
+			"baz",
+		},
+		{
+			"/",
+			"/",
+		},
+	} {
+		tc = tc // pin
+
+		t.Run(tc.input, func(t *testing.T) {
+			assert.EqualString(t, newStreamNameNoValidation(tc.input).Base(), tc.expectedOutput)
+		})
+	}
+}

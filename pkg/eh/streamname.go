@@ -1,6 +1,7 @@
 package eh
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -68,6 +69,14 @@ func (s StreamName) Parent() *StreamName {
 	return &StreamName{parent}
 }
 
+// "/foo" => "foo"
+// "/foo/bar" => "bar"
+// "/foo/bar/baz" => "baz"
+// "/" => "/"
+func (s StreamName) Base() string {
+	return path.Base(s.name)
+}
+
 func (s StreamName) At(version int64) Cursor {
 	return Cursor{s.String(), version}
 }
@@ -75,4 +84,16 @@ func (s StreamName) At(version int64) Cursor {
 // in context of "give events > -1" (not >=). the actual beginning is 0
 func (s StreamName) Beginning() Cursor {
 	return s.At(-1)
+}
+
+func (s StreamName) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.name)
+}
+
+func (s *StreamName) UnmarshalJSON(data []byte) error {
+	if err := json.Unmarshal(data, &s.name); err != nil {
+		return fmt.Errorf("StreamName.UnmarshalJSON: %w", err)
+	}
+
+	return nil
 }

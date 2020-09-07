@@ -193,7 +193,7 @@ func (e *Client) CreateStream(
 
 	now := time.Now()
 
-	itemInParent, err := e.entryAsTxPut(metaEntry(eh.NewStreamChildStreamCreated(stream.String(), ehevent.MetaSystemUser(now)), parentAt.Next()))
+	itemInParent, err := e.entryAsTxPut(metaEntry(eh.NewStreamChildStreamCreated(stream, ehevent.MetaSystemUser(now)), parentAt.Next()))
 	if err != nil {
 		return nil, err
 	}

@@ -27,13 +27,13 @@ var MetaTypes = ehevent.Types{
 
 type StreamChildStreamCreated struct {
 	meta   ehevent.EventMeta
-	Stream string
+	Stream StreamName
 }
 
 func (e *StreamChildStreamCreated) MetaType() string         { return "$stream.ChildStreamCreated" }
 func (e *StreamChildStreamCreated) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewStreamChildStreamCreated(stream string, meta ehevent.EventMeta) *StreamChildStreamCreated {
+func NewStreamChildStreamCreated(stream StreamName, meta ehevent.EventMeta) *StreamChildStreamCreated {
 	return &StreamChildStreamCreated{meta, stream}
 }
 

@@ -211,7 +211,7 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 	}
 
 	for _, childStream := range childStreams.State.ChildStreams() {
-		fmt.Println(childStream)
+		fmt.Println(childStream.String())
 	}
 
 	return nil

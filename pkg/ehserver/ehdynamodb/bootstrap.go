@@ -42,7 +42,7 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		parent := streamToCreate.Parent()
 		if parent != nil {
 			notifyParent, err := e.entryAsTxPut(metaEntry(
-				eh.NewStreamChildStreamCreated(streamToCreate.String(), ehevent.MetaSystemUser(now)),
+				eh.NewStreamChildStreamCreated(streamToCreate, ehevent.MetaSystemUser(now)),
 				cur(*parent)))
 			if err != nil {
 				return err
