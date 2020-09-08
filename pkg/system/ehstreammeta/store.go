@@ -1,4 +1,4 @@
-// Metadata (subscriptions, encryption keys, ...) for a given stream.
+// Metadata (subscriptions, encryption keys, child streams, ...) for a given stream.
 package ehstreammeta
 
 import (
@@ -19,7 +19,8 @@ import (
 //go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreammeta gen CacheItemType=*App
 
 const (
-	LogPrefix = "ehstreammeta"
+	LogPrefix              = "ehstreammeta"
+	maxKeepTrackOfChildren = 500
 )
 
 var (
@@ -29,10 +30,15 @@ var (
 type stateFormat struct {
 	Subscriptions []eh.SubscriptionId   `json:"Subscriptions"`
 	DekEnvelope   *envelopeenc.Envelope `json:"DekEnvelope"`
+	ChildStreams  []string              `json:"ChildStreams"` // child base names to conserve space
 }
 
 func newStateFormat() stateFormat {
-	return stateFormat{[]eh.SubscriptionId{}, nil}
+	return stateFormat{
+		Subscriptions: []eh.SubscriptionId{},
+		DekEnvelope:   nil,
+		ChildStreams:  []string{},
+	}
 }
 
 type Store struct {
@@ -70,6 +76,23 @@ func (s *Store) Subscribed(id eh.SubscriptionId) bool {
 	}
 
 	return false
+}
+
+// - Snapshot size must be finite, so we can't keep track of infinite child streams. Consider
+// this a tool for debug. If you really need guaranteed *all*, you need to build a service for it.
+// - 2nd return is truncated flag
+func (s *Store) ChildStreams() ([]eh.StreamName, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ourName := s.version.Stream()
+
+	children := []eh.StreamName{}
+	for _, chilName := range s.state.ChildStreams {
+		children = append(children, ourName.Child(chilName))
+	}
+
+	return children, len(children) == maxKeepTrackOfChildren
 }
 
 func (s *Store) Version() eh.Cursor {
@@ -127,6 +150,12 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)
 	case *eh.SubscriptionUnsubscribed:
 		s.state.Subscriptions = remove(s.state.Subscriptions, e.Id)
+	case *eh.StreamChildStreamCreated:
+		s.state.ChildStreams = append(s.state.ChildStreams, e.Stream.Base())
+
+		if len(s.state.ChildStreams) > maxKeepTrackOfChildren {
+			s.state.ChildStreams = s.state.ChildStreams[1 : 1+maxKeepTrackOfChildren]
+		}
 	}
 
 	return nil

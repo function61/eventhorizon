@@ -16,7 +16,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
-	"github.com/function61/eventhorizon/pkg/system/ehchildstreams"
+	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
 	"github.com/spf13/cobra"
@@ -205,12 +205,17 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 		return err
 	}
 
-	childStreams, err := ehchildstreams.LoadUntilRealtime(ctx, streamName, client, logger)
+	streamMeta, err := ehstreammeta.LoadUntilRealtime(ctx, streamName, client, nil, logger)
 	if err != nil {
 		return err
 	}
 
-	for _, childStream := range childStreams.State.ChildStreams() {
+	childStreams, truncated := streamMeta.State.ChildStreams()
+	if truncated {
+		fmt.Fprintln(os.Stderr, "WARNING: Returned child stream list was truncated")
+	}
+
+	for _, childStream := range childStreams {
 		fmt.Println(childStream.String())
 	}
 
