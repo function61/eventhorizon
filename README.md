@@ -1,6 +1,5 @@
-[![Build Status](https://img.shields.io/travis/function61/eventhorizon.svg?style=for-the-badge)](https://travis-ci.org/function61/eventhorizon)
-[![Download](https://img.shields.io/bintray/v/function61/dl/eventhorizon.svg?style=for-the-badge&label=Download)](https://bintray.com/function61/dl/eventhorizon/_latestVersion#files)
-[![MicroBadger Size](https://img.shields.io/microbadger/image-size/fn61/eventhorizon.svg?style=for-the-badge&label=Docker+image)](https://hub.docker.com/r/fn61/eventhorizon/)
+![Build status](https://github.com/function61/eventhorizon/workflows/Build/badge.svg)
+[![Download](https://github.com/function61/eventhorizon/releases)](docs/assets/Download-install-green.svg)
 
 Event Horizon
 =============
