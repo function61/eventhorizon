@@ -1,3 +1,5 @@
+//nolint:unused,deadcode
+// Code is generated based off of this file, so "unused code" is false positive
 package syncutilgen
 
 import (

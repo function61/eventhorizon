@@ -43,7 +43,7 @@ func (t Tenant) ChildStream(name string) eh.StreamName {
 // - tenant
 type Client struct {
 	Tenant
-	SystemClient
+	*SystemClient
 }
 
 // same as Client, but *WITHOUT* tenant awareness, usually this is not used directly,
@@ -67,7 +67,7 @@ func ClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolve
 
 	return &Client{
 		Tenant:       TenantId(conf.tenantId),
-		SystemClient: *systemClient,
+		SystemClient: systemClient,
 	}, nil
 }
 

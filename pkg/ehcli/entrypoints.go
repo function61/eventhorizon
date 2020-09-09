@@ -299,6 +299,9 @@ func snapshotPut(
 			return snapshot.Unencrypted(), nil
 		}
 	}()
+	if err != nil {
+		return err
+	}
 
 	return client.SnapshotStore.WriteSnapshot(ctx, *persisted)
 }

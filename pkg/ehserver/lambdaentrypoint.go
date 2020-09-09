@@ -57,8 +57,6 @@ func LambdaEntrypoint() error {
 		default:
 			return nil, errors.New("unsupported event")
 		}
-
-		return nil, nil
 	}))
 
 	// doesn't reach here

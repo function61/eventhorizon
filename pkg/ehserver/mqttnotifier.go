@@ -136,7 +136,7 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 	appendResult eh.AppendResult,
 ) error {
 	msg, err := json.Marshal(eh.MqttActivityNotification{
-		Activity: []eh.CursorCompact{{appendResult.Cursor}},
+		Activity: []eh.CursorCompact{{Cursor: appendResult.Cursor}},
 	})
 	if err != nil {
 		return err

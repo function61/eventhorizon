@@ -109,7 +109,11 @@ func (e *Client) Read(ctx context.Context, lastKnown eh.Cursor) (*eh.ReadResult,
 
 	lastEntryCursor := lastKnown.Stream().At(lastVersion)
 
-	return &eh.ReadResult{entries, lastEntryCursor, moreData}, nil
+	return &eh.ReadResult{
+		Entries:   entries,
+		LastEntry: lastEntryCursor,
+		More:      moreData,
+	}, nil
 }
 
 func (e *Client) Append(ctx context.Context, stream eh.StreamName, data eh.LogData) (*eh.AppendResult, error) {
