@@ -31,7 +31,7 @@ func TestSerializeDeserialize(t *testing.T) {
 }
 
 func testingPolicy() Policy {
-	return NewPolicy(NewAllowStatement([]string{
-		"eventhorizon:Read",
-	}, "f61rn:eventhorizon:/_system*"))
+	return NewPolicy(NewAllowStatement([]Action{
+		NewAction("eventhorizon:Read"),
+	}, eventHorizonRn.Child("/_system*")))
 }

@@ -3,18 +3,11 @@ package ehreader
 import (
 	"testing"
 
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestGetConfig(t *testing.T) {
-	// makes inline configGetter
-	inline := func(val string) func() (string, error) {
-		return func() (string, error) {
-			return val, nil
-		}
-	}
-
-	conf, err := GetConfig(inline("prod:123:akid:ase:rid"))
+	conf, err := getConfig(inline("prod:123:akid:ase:rid"))
 	assert.Ok(t, err)
 
 	assert.EqualString(t, conf.tenantId, "123")
@@ -24,6 +17,20 @@ func TestGetConfig(t *testing.T) {
 	assert.EqualString(t, conf.env.eventsTableName, "prod_eh_events")
 	assert.EqualString(t, conf.env.snapshotsTableName, "prod_eh_snapshots")
 
-	_, err = GetConfig(inline("wrong:123:akid:ase:rid"))
+	_, err = getConfig(inline("wrong:123:akid:ase:rid"))
 	assert.EqualString(t, err.Error(), "unknown environment: wrong")
+}
+
+func TestGetConfigHttp(t *testing.T) {
+	conf, err := getConfig(inline("https://:bearertoken@example.com/eventhorizon"))
+	assert.Ok(t, err)
+
+	assert.EqualString(t, conf.url, "https://:bearertoken@example.com/eventhorizon")
+}
+
+// makes inline ConfigStringGetter
+func inline(val string) ConfigStringGetter {
+	return func() (string, error) {
+		return val, nil
+	}
 }
