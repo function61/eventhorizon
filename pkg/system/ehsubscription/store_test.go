@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestInsertIntoRecentList(t *testing.T) {

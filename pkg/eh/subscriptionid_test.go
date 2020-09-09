@@ -3,7 +3,7 @@ package eh
 import (
 	"testing"
 
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestSubscriptionIdToStream(t *testing.T) {

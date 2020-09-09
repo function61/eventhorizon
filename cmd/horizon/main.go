@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/function61/eventhorizon/pkg/ehcli"
 	"github.com/function61/eventhorizon/pkg/ehserver"
-	"github.com/function61/gokit/aws/lambdautils"
-	"github.com/function61/gokit/osutil"
+	"github.com/function61/gokit/app/aws/lambdautils"
+	"github.com/function61/gokit/os/osutil"
 )
 
 func main() {

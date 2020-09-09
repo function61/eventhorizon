@@ -15,9 +15,9 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
-	"github.com/function61/gokit/httputils"
-	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/taskrunner"
+	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/net/http/httputils"
+	"github.com/function61/gokit/sync/taskrunner"
 	"github.com/gorilla/mux"
 )
 

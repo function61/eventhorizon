@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 // mind boggling that we've to declare these ourselves

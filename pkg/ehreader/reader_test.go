@@ -14,9 +14,9 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
-	"github.com/function61/gokit/assert"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/sync/syncutil"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestReaderReadIntoProjection(t *testing.T) {
@@ -264,8 +264,8 @@ func newTestingClient() (*SystemClientTesting, context.Context) {
 			},
 			cryptoSvc: cryptosvc.New(nil),
 
-			deksCache:   map[string][]byte{},
-			deksCacheMu: syncutil.NewMutexMap(),
+			deksCache:         map[string][]byte{},
+			deksCacheStreamMu: syncutil.NewMutexMap(),
 		},
 		TestSnapshotStore: snapshotStore,
 	}, context.Background()

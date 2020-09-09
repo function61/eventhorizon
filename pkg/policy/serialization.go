@@ -3,7 +3,7 @@ package policy
 import (
 	"bytes"
 
-	"github.com/function61/gokit/jsonfile"
+	"github.com/function61/gokit/encoding/jsonfile"
 )
 
 func Serialize(policy Policy) []byte {

@@ -8,10 +8,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/policy"
-	"github.com/function61/gokit/cryptoutil"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/crypto/cryptoutil"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/log/logex"
 )
 
 // imagine this being a HTTP client

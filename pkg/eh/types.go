@@ -3,7 +3,7 @@ package eh
 import (
 	"context"
 
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
+	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
 type LogDataKind uint8

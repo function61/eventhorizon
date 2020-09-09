@@ -17,8 +17,8 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
-	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/osutil"
+	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/os/osutil"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 // overall maximum cursors (not yet partitioned by subscription)

@@ -6,9 +6,9 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/log/logex"
 )
 
 // notifies subscriber (subscriptionId) that one of hers subscription streams (stream cursor) has new data

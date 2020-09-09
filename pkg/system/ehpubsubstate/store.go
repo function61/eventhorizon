@@ -11,7 +11,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 type stateFormat struct {

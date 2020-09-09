@@ -6,8 +6,8 @@ import (
 	"context"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/policy"
+	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
 type authorizedWriter struct {

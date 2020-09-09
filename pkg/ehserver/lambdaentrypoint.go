@@ -9,8 +9,8 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb/ehdynamodbtrigger"
-	"github.com/function61/gokit/aws/lambdautils"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/app/aws/lambdautils"
+	"github.com/function61/gokit/log/logex"
 )
 
 // starts Lambda handler for handling EventHorizon HTTP API or DynamoDB triggers

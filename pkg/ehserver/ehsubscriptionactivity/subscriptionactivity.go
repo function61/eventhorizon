@@ -12,7 +12,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscriptiondomain"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/log/logex"
 )
 
 //go:generate genny -in ../../syncutilgen/concurrently.go -out concurrently.gen.go -pkg ehsubscriptionactivity gen ItemType=eh.Cursor,*subscriptionActivity

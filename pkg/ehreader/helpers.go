@@ -7,7 +7,7 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/log/logex"
 )
 
 // embed this struct in your implementation if you want to opt-out of snapshotting

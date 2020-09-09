@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -17,8 +16,8 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
-	"github.com/function61/gokit/cryptorandombytes"
-	"github.com/function61/gokit/logex"
+	"github.com/function61/gokit/crypto/cryptoutil"
+	"github.com/function61/gokit/log/logex"
 )
 
 var mqttLoggerCaptured = false
@@ -188,7 +187,7 @@ func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) 
 
 	// Amazon uses this for access control and to prevent one client from having multiple
 	// simultaneous connections, so we'll need to randomize this b/c we want multiple connections
-	clientId := fmt.Sprintf("eh-%s", cryptorandombytes.Base64Url(8))
+	clientId := fmt.Sprintf("eh-%s", cryptoutil.RandBase64UrlWithoutLeadingDash(8))
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(conf.Endpoint).

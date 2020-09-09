@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
-	"github.com/function61/gokit/ezhttp"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/net/http/ezhttp"
 )
 
 type CreateStreamInput struct {

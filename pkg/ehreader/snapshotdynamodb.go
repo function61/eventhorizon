@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
-	"github.com/function61/gokit/aws/dynamoutils"
+	"github.com/function61/gokit/app/aws/dynamoutils"
 )
 
 type DynamoSnapshotItem struct {

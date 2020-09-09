@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/function61/eventhorizon/pkg/cryptosvc"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
-	"github.com/function61/gokit/envvar"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/os/osutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 type DekEnvelopeResolver func(context.Context, eh.StreamName) (*envelopeenc.Envelope, error)
@@ -54,7 +55,8 @@ type SystemClient struct {
 	resolveDekEnvelope DekEnvelopeResolver
 	cryptoSvc          *cryptosvc.Service
 	deksCache          map[string][]byte
-	deksCacheMu        *syncutil.MutexMap
+	deksCacheMu        sync.Mutex
+	deksCacheStreamMu  *syncutil.MutexMap
 }
 
 func ClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*Client, error) {
@@ -92,7 +94,7 @@ func makeSystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvel
 			resolveDekEnvelope: resolveDekEnvelope,
 			cryptoSvc:          cryptosvc.New(nil),
 			deksCache:          map[string][]byte{},
-			deksCacheMu:        syncutil.NewMutexMap(),
+			deksCacheStreamMu:  syncutil.NewMutexMap(),
 		}, conf, nil
 	}
 
@@ -110,14 +112,14 @@ func makeSystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvel
 		resolveDekEnvelope: resolveDekEnvelope,
 		cryptoSvc:          cryptosvc.New(nil),
 		deksCache:          map[string][]byte{},
-		deksCacheMu:        syncutil.NewMutexMap(),
+		deksCacheStreamMu:  syncutil.NewMutexMap(),
 	}, conf, nil
 }
 
 type ConfigStringGetter func() (string, error)
 
 func ConfigFromEnv() (string, error) {
-	return envvar.Required("EVENTHORIZON")
+	return osutil.GetenvRequired("EVENTHORIZON")
 }
 
 type Config struct {
@@ -181,12 +183,12 @@ func getConfig(getter ConfigStringGetter) (*Config, error) {
 				"both accessKeyId and accessKeySecret must be empty or both must be set")
 		}
 
-		accessKeyId, err = envvar.Required("AWS_ACCESS_KEY_ID")
+		accessKeyId, err = osutil.GetenvRequired("AWS_ACCESS_KEY_ID")
 		if err != nil {
 			return nil, err
 		}
 
-		accessKeySecret, err = envvar.Required("AWS_SECRET_ACCESS_KEY")
+		accessKeySecret, err = osutil.GetenvRequired("AWS_SECRET_ACCESS_KEY")
 		if err != nil {
 			return nil, err
 		}

@@ -11,8 +11,8 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 /* encapsulates:

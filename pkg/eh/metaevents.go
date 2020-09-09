@@ -2,7 +2,7 @@ package eh
 
 import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
+	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
 func LogDataMeta(e ehevent.Event) *LogData {

@@ -8,7 +8,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 func (e *SystemClient) Append(ctx context.Context, stream eh.StreamName, events ...ehevent.Event) error {
@@ -66,12 +66,12 @@ func (e *SystemClient) LoadDek(ctx context.Context, stream eh.StreamName) ([]byt
 	// now that we're holding stream-specific mutex, we can without races read from DEK cache
 	// to determine if we have it cached or not, and fetch it to cache if needed (all inside a lock)
 	key := stream.String()
-	defer e.deksCacheMu.Lock(key)()
+	defer e.deksCacheStreamMu.Lock(key)()
 
 	dek := func() []byte {
 		// we only have stream-wide lock, so we still need cache-wide lock for short whiles
 		// where we do reads and writes
-		defer syncutil.LockAndUnlock(e.deksCacheMu.GetMasterLock())()
+		defer syncutil.LockAndUnlock(&e.deksCacheMu)()
 
 		return e.deksCache[key]
 	}()
@@ -83,7 +83,7 @@ func (e *SystemClient) LoadDek(ctx context.Context, stream eh.StreamName) ([]byt
 			return nil, err
 		}
 
-		defer syncutil.LockAndUnlock(e.deksCacheMu.GetMasterLock())()
+		defer syncutil.LockAndUnlock(&e.deksCacheMu)()
 
 		e.deksCache[key] = dek
 	}

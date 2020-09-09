@@ -11,9 +11,9 @@ import (
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
-	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 //go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreammeta gen CacheItemType=*App

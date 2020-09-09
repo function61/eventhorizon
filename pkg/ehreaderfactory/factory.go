@@ -7,8 +7,8 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/envelopeenc"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
+	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
 // TODO: implement ClientFrom

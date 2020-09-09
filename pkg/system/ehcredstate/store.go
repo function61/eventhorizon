@@ -14,7 +14,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
-	"github.com/function61/gokit/syncutil"
+	"github.com/function61/gokit/sync/syncutil"
 )
 
 type Credential struct {
