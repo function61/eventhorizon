@@ -1,5 +1,5 @@
 ![Build status](https://github.com/function61/eventhorizon/workflows/Build/badge.svg)
-[![Download](https://github.com/function61/eventhorizon/releases)](docs/assets/Download-install-green.svg)
+[![Download](docs/assets/Download-install-green.svg)](https://github.com/function61/eventhorizon/releases)
 
 Event Horizon
 =============
