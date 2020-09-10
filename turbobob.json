@@ -5,13 +5,16 @@
 	"builders": [
 		{
 			"name": "default",
-			"uses": "docker://fn61/buildkit-golang:20200612_1221_eca6dcb6",
+			"uses": "docker://fn61/buildkit-golang:20200910_1302_9f256d7b",
 			"mount_destination": "/workspace",
 			"workdir": "/workspace",
 			"commands": {
 				"build": ["bin/build.sh"],
 				"dev": ["bash"]
-			}
+			},
+			"dev_shell_commands": [
+				{ "command": "rel/horizon_linux-amd64", "important": false }
+			]
 		},
 		{
 			"name": "publisher",
