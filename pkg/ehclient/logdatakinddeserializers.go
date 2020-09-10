@@ -1,4 +1,4 @@
-package ehreader
+package ehclient
 
 // Deserializers for different kinds of log data: Meta, EncryptedData etc.
 

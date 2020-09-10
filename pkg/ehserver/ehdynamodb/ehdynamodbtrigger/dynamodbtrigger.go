@@ -7,14 +7,14 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehsubscriptionactivity"
 )
 
 func Handle(
 	ctx context.Context,
 	event *events.DynamoDBEvent,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) error {
 	discovered, err := changedStreamsFromDynamoDbEvent(event, logger)

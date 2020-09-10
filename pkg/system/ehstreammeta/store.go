@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/sync/syncutil"
@@ -125,11 +125,11 @@ func (s *Store) SnapshotContextAndVersion() string {
 	return "eh:streammeta:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
-func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
-	return ehreader.MetaDeserializer()
+func (s *Store) GetEventTypes() []ehclient.LogDataKindDeserializer {
+	return ehclient.MetaDeserializer()
 }
 
-func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
+func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.EventProcessorHandler) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -163,7 +163,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 
 type App struct {
 	State  *Store
-	Reader *ehreader.Reader
+	Reader *ehclient.Reader
 	Writer eh.Writer
 	Logger *log.Logger
 }
@@ -171,7 +171,7 @@ type App struct {
 func LoadUntilRealtime(
 	ctx context.Context,
 	stream eh.StreamName,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	cache *Cache,
 	logger *log.Logger,
 ) (*App, error) {
@@ -180,7 +180,7 @@ func LoadUntilRealtime(
 
 		return &App{
 			store,
-			ehreader.New(
+			ehclient.NewReader(
 				store,
 				client,
 				logex.Prefix("Reader", logger)),

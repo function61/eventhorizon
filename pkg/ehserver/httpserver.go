@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
@@ -22,7 +22,7 @@ import (
 )
 
 func Server(ctx context.Context, logger *log.Logger) error {
-	systemClient, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func Server(ctx context.Context, logger *log.Logger) error {
 
 func createHttpHandler(
 	ctx context.Context,
-	systemClient *ehreader.SystemClient,
+	systemClient *ehclient.SystemClient,
 	startMqttTask func(task func(context.Context) error),
 	logger *log.Logger,
 ) (http.Handler, SubscriptionNotifier, error) {

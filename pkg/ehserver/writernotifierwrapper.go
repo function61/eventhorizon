@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/log/logex"
@@ -27,7 +27,7 @@ type SubscriptionNotifier interface {
 type writerNotifierWrapper struct {
 	innerWriter  eh.Writer
 	notifier     SubscriptionNotifier
-	systemClient *ehreader.SystemClient
+	systemClient *ehclient.SystemClient
 	logl         *logex.Leveled
 }
 
@@ -37,7 +37,7 @@ type writerNotifierWrapper struct {
 func wrapWriterWithNotifier(
 	innerWriter eh.Writer,
 	notifier SubscriptionNotifier,
-	systemClient *ehreader.SystemClient,
+	systemClient *ehclient.SystemClient,
 	logger *log.Logger,
 ) eh.Writer {
 	return &writerNotifierWrapper{

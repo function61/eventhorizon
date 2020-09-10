@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
 	"github.com/function61/gokit/sync/syncutil"
@@ -113,11 +113,11 @@ func (s *Store) SnapshotContextAndVersion() string {
 	return "eh:credentials:v1" // change if persisted stateFormat changes in backwards-incompat way
 }
 
-func (s *Store) GetEventTypes() []ehreader.LogDataKindDeserializer {
-	return ehreader.EncryptedDataDeserializer(ehcreddomain.Types)
+func (s *Store) GetEventTypes() []ehclient.LogDataKindDeserializer {
+	return ehclient.EncryptedDataDeserializer(ehcreddomain.Types)
 }
 
-func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
+func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.EventProcessorHandler) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -151,7 +151,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 			}
 		}
 	default:
-		return ehreader.UnsupportedEventTypeErr(ev)
+		return ehclient.UnsupportedEventTypeErr(ev)
 	}
 
 	return nil
@@ -159,21 +159,21 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 
 type App struct {
 	State  *Store
-	Reader *ehreader.Reader
+	Reader *ehclient.Reader
 	Writer eh.Writer
 	Logger *log.Logger
 }
 
 func LoadUntilRealtime(
 	ctx context.Context,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) (*App, error) {
 	store := New()
 
 	a := &App{
 		store,
-		ehreader.New(
+		ehclient.NewReader(
 			store,
 			client,
 			logger),

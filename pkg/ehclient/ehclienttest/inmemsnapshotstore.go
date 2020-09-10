@@ -1,4 +1,4 @@
-package ehreadertest
+package ehclienttest
 
 import (
 	"context"

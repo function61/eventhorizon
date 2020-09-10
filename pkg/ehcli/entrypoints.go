@@ -11,9 +11,9 @@ import (
 	"strconv"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehdebug"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
@@ -186,7 +186,7 @@ func snapshotEntrypoint() *cobra.Command {
 }
 
 func bootstrap(ctx context.Context) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func bootstrap(ctx context.Context) error {
 }
 
 func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 }
 
 func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext string) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ func snapshotPut(
 	contentReader io.Reader,
 	encrypted bool,
 ) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func snapshotPut(
 }
 
 func snapshotRm(ctx context.Context, streamName string, snapshotContext string) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -332,7 +332,7 @@ func streamCreate(ctx context.Context, streamPath string) error {
 		return fmt.Errorf("please use subscription stream creation to create %s", stream.String())
 	}
 
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func streamCreate(ctx context.Context, streamPath string) error {
 }
 
 func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -356,7 +356,7 @@ func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, l
 }
 
 func streamAppend(ctx context.Context, streamNameRaw string, event string) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}

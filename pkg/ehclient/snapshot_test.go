@@ -1,12 +1,12 @@
-package ehreader
+package ehclient
 
 import (
 	"testing"
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient/ehclienttest"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
 	"github.com/function61/gokit/testing/assert"
 )
 
@@ -17,7 +17,7 @@ var (
 func TestSnapshot(t *testing.T) {
 	client, ctx := newTestingClient()
 
-	snapshotStats := func() ehreadertest.SnapshotStoreStats {
+	snapshotStats := func() ehclienttest.SnapshotStoreStats {
 		return client.TestSnapshotStore.Stats()
 	}
 
@@ -50,7 +50,7 @@ func TestSnapshot(t *testing.T) {
 	// this message is not contained in the snapshot
 	client.AppendT(t, stream, NewChatMessage(3, "Third msg from log", ehevent.Meta(t0.Add(3*time.Minute), "joonas")))
 
-	reader := New(chatRoom, client.SystemClient, nil)
+	reader := NewReader(chatRoom, client.SystemClient, nil)
 
 	before3rdMsgLoad := snapshotStats()
 
@@ -89,7 +89,7 @@ func TestSnapshot(t *testing.T) {
 func TestDontMindSnapshotNotFoundOrStoreFails(t *testing.T) {
 	stream := "/chatrooms/offtopic"
 
-	eventLog := ehreadertest.NewEventLog()
+	eventLog := ehclienttest.NewEventLog()
 	client.AppendT(t,stream, NewChatMessage(1, "Hello", ehevent.Meta(t0, "joonas")))
 
 	chatRoom := newChatRoomProjection(stream)
@@ -111,7 +111,7 @@ func TestDontMindSnapshotNotFoundOrStoreFails(t *testing.T) {
 func TestLoadingSnapshotFails(t *testing.T) {
 	stream := "/chatrooms/offtopic"
 
-	eventLog := ehreadertest.NewEventLog()
+	eventLog := ehclienttest.NewEventLog()
 	client.AppendT(t,stream, NewChatMessage(1, "Hello", ehevent.Meta(t0, "joonas")))
 
 	chatRoom := newChatRoomProjection(stream)

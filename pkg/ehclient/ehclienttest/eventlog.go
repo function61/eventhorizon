@@ -1,5 +1,5 @@
 // Test helpers for testing EventHorizon consumers. Provides dummy in-memory event log.
-package ehreadertest
+package ehclienttest
 
 import (
 	"context"

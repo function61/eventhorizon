@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
 	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
@@ -86,7 +86,7 @@ func credentialsEntrypoint() *cobra.Command {
 }
 
 func credentialPrint(ctx context.Context, id string, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func credentialPrint(ctx context.Context, id string, logger *log.Logger) error {
 }
 
 func credentialsList(ctx context.Context, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func printOneCredential(cred ehcredstate.Credential, apiKey string) {
 }
 
 func credentialsCreate(ctx context.Context, name string, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func credentialsCreate(ctx context.Context, name string, logger *log.Logger) err
 }
 
 func credentialRemove(ctx context.Context, id string, reason string, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}

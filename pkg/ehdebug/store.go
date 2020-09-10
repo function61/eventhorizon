@@ -9,9 +9,9 @@ import (
 	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
-	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/gokit/log/logex"
 )
 
@@ -24,14 +24,14 @@ type store struct {
 	version eh.Cursor
 	entries []entry
 
-	ehreader.NoSnapshots
+	ehclient.NoSnapshots
 }
 
-func (s *store) GetEventTypes() []ehreader.LogDataKindDeserializer {
+func (s *store) GetEventTypes() []ehclient.LogDataKindDeserializer {
 	return mapEventsToRawEvent
 }
 
-func (s *store) ProcessEvents(_ context.Context, processAndCommit ehreader.EventProcessorHandler) error {
+func (s *store) ProcessEvents(_ context.Context, processAndCommit ehclient.EventProcessorHandler) error {
 	uncommittedLines := []string{}
 
 	return processAndCommit(
@@ -53,14 +53,14 @@ func (s *store) ProcessEvents(_ context.Context, processAndCommit ehreader.Event
 func loadUntilRealtime(
 	ctx context.Context,
 	cursor eh.Cursor,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) (*store, error) {
 	store := &store{
 		version: cursor,
 	}
 
-	if err := ehreader.New(
+	if err := ehclient.NewReader(
 		store,
 		client,
 		logex.Prefix("Reader", logger),
@@ -89,16 +89,16 @@ func (e *rawEvent) Meta() *ehevent.EventMeta {
 	return &ehevent.EventMeta{}
 }
 
-var mapEventsToRawEvent = []ehreader.LogDataKindDeserializer{
+var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 	{
 		Kind: eh.LogDataKindMeta,
-		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehreader.SystemClient) ([]ehevent.Event, error) {
+		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehclient.SystemClient) ([]ehevent.Event, error) {
 			return []ehevent.Event{newRawEvent(string(entry.Data.Raw))}, nil
 		},
 	},
 	{
 		Kind: eh.LogDataKindEncryptedData,
-		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehreader.SystemClient) ([]ehevent.Event, error) {
+		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehclient.SystemClient) ([]ehevent.Event, error) {
 			events := []ehevent.Event{}
 
 			dek, err := client.LoadDek(ctx, entry.Cursor.Stream())

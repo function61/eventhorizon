@@ -1,4 +1,4 @@
-package ehreader
+package ehclient
 
 import (
 	"testing"

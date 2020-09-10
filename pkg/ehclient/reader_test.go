@@ -1,4 +1,4 @@
-package ehreader
+package ehclient
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/cryptosvc"
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient/ehclienttest"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
 	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/sync/syncutil"
 	"github.com/function61/gokit/testing/assert"
@@ -31,7 +31,7 @@ func TestReaderReadIntoProjection(t *testing.T) {
 	client.AppendT(t, stream, NewChatMessage(1, "Testing first message", ehevent.Meta(t0, "joonas")))
 	client.AppendT(t, stream, NewChatMessage(2, "Is anybody listening?", ehevent.Meta(t0.Add(2*time.Minute), "joonas")))
 
-	reader := New(chatRoom, client.SystemClient, nil)
+	reader := NewReader(chatRoom, client.SystemClient, nil)
 
 	// transactionally pumps events from event log into the projection
 	assert.Ok(t, reader.LoadUntilRealtime(ctx))
@@ -57,7 +57,7 @@ func TestTransactWriteFailsEachTry(t *testing.T) {
 
 	client.AppendT(t, stream, NewChatMessage(1, "Testing first message", ehevent.Meta(t0, "joonas")))
 
-	reader := New(newChatRoomProjection(stream), client.SystemClient, nil)
+	reader := NewReader(newChatRoomProjection(stream), client.SystemClient, nil)
 
 	tryNumber := 0
 
@@ -82,7 +82,7 @@ func TestTransactWriteSucceedsOnThirdTry(t *testing.T) {
 
 	logBuf := &bytes.Buffer{}
 
-	reader := New(chatRoom, client.SystemClient, log.New(logBuf, "", 0))
+	reader := NewReader(chatRoom, client.SystemClient, log.New(logBuf, "", 0))
 
 	assert.Ok(t, reader.LoadUntilRealtime(ctx))
 
@@ -221,7 +221,7 @@ func NewChatMessage(
 type SystemClientTesting struct {
 	*SystemClient
 
-	TestSnapshotStore *ehreadertest.SnapshotStore
+	TestSnapshotStore *ehclienttest.SnapshotStore
 }
 
 func (e *SystemClientTesting) AppendT(t *testing.T, stream eh.StreamName, events ...ehevent.Event) {
@@ -247,8 +247,8 @@ func (s *SystemClientTesting) DekForT(t *testing.T, stream eh.StreamName) []byte
 }
 
 func newTestingClient() (*SystemClientTesting, context.Context) {
-	eventLog := ehreadertest.NewEventLog()
-	snapshotStore := ehreadertest.NewSnapshotStore()
+	eventLog := ehclienttest.NewEventLog()
+	snapshotStore := ehclienttest.NewSnapshotStore()
 
 	return &SystemClientTesting{
 		SystemClient: &SystemClient{

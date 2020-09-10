@@ -1,4 +1,4 @@
-package ehreader
+package ehclient
 
 // Convenience API over Writer to transparently encrypt events (eh.LogDataKindEncryptedData)
 

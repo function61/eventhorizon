@@ -1,4 +1,5 @@
-package ehreaderfactory
+// Factory for building client instances
+package ehclientfactory
 
 import (
 	"context"
@@ -6,21 +7,21 @@ import (
 	"fmt"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
 // TODO: implement ClientFrom
 
-func SystemClientFrom(getter ehreader.ConfigStringGetter) (*ehreader.SystemClient, error) {
+func SystemClientFrom(getter ehclient.ConfigStringGetter) (*ehclient.SystemClient, error) {
 	// derive bootstrap systemClient (one that cannot resolve DEK envelopes)
-	bootstrapClient, err := ehreader.SystemClientFrom(getter, nullResolver)
+	bootstrapClient, err := ehclient.SystemClientFrom(getter, nullResolver)
 	if err != nil {
 		return nil, err
 	}
 
-	return ehreader.SystemClientFrom(getter, func(ctx context.Context, stream eh.StreamName) (*envelopeenc.Envelope, error) {
+	return ehclient.SystemClientFrom(getter, func(ctx context.Context, stream eh.StreamName) (*envelopeenc.Envelope, error) {
 		streamMeta, err := ehstreammeta.LoadUntilRealtime(
 			ctx,
 			stream,

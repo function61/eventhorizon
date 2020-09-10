@@ -7,14 +7,14 @@ import (
 	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/ehreader"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 )
 
 func Debug(
 	ctx context.Context,
 	cursor eh.Cursor,
 	output io.Writer,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) error {
 	debugStore, err := loadUntilRealtime(ctx, cursor, client, logger)

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscriptiondomain"
@@ -20,7 +20,7 @@ import (
 func PublishStreamChangesToSubscribers(
 	ctx context.Context,
 	discovered *DiscoveredMaxCursors,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) error {
 	logl := logex.Levels(logger)
@@ -39,7 +39,7 @@ func PublishStreamChangesToSubscribers(
 func groupStreamsChangesBySubscription(
 	ctx context.Context,
 	discovered *DiscoveredMaxCursors,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logl *logex.Leveled,
 ) (*allSubscriptionsActivities, error) {
 	logl.Debug.Printf("got %d changed stream(s)", len(discovered.streams))
@@ -73,7 +73,7 @@ func groupStreamsChangesBySubscription(
 func publishActivityToSubscribers(
 	ctx context.Context,
 	subscriptionsActivity *allSubscriptionsActivities,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logl *logex.Leveled,
 ) error {
 	now := time.Now()

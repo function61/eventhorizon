@@ -12,9 +12,9 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
@@ -88,7 +88,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 
 	logl := logex.Levels(logger)
 
-	ehClient, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	ehClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func mqttConfigUpdate(
 		return fmt.Errorf("X509KeyPair: %w", err)
 	}
 
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func mqttConfigUpdate(
 }
 
 func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}

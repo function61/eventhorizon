@@ -1,5 +1,5 @@
 // Easy-to-use consumer API on top of EventHorizon client (which is lower-level)
-package ehreader
+package ehclient
 
 import (
 	"context"
@@ -64,7 +64,7 @@ type Reader struct {
 }
 
 // "keep processor happy by feeding it from client"
-func New(processor EventsProcessor, client *SystemClient, logger *log.Logger) *Reader {
+func NewReader(processor EventsProcessor, client *SystemClient, logger *log.Logger) *Reader {
 	snapshotEncrypt := false
 
 	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}

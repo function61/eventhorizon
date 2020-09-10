@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/log/logex"
@@ -87,7 +87,7 @@ func subscriptionsEntrypoint() *cobra.Command {
 func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriptionId(idRaw)
 
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Log
 }
 
 func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Lo
 func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriptionId(idRaw)
 
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriptionId(idRaw)
 
-	client, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw st
 func loadSubscriptions(
 	ctx context.Context,
 	streamNameRaw string,
-	client *ehreader.SystemClient,
+	client *ehclient.SystemClient,
 	logger *log.Logger,
 ) (eh.StreamName, *ehstreammeta.App, error) {
 	stream, err := eh.DeserializeStreamName(streamNameRaw)

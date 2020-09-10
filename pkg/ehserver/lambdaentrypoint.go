@@ -6,8 +6,8 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/function61/eventhorizon/pkg/ehreader"
-	"github.com/function61/eventhorizon/pkg/ehreaderfactory"
+	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb/ehdynamodbtrigger"
 	"github.com/function61/gokit/app/aws/lambdautils"
 	"github.com/function61/gokit/log/logex"
@@ -17,7 +17,7 @@ import (
 func LambdaEntrypoint() error {
 	logger := logex.StandardLogger()
 
-	systemClient, err := ehreaderfactory.SystemClientFrom(ehreader.ConfigFromEnv)
+	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
 	if err != nil {
 		return err
 	}
