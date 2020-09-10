@@ -41,7 +41,7 @@ These apps use EventHorizon:
 - [Lambda-alertmanager](https://github.com/function61/lambda-alertmanager)
 - [Deployer](https://github.com/function61/deployer)
 - [Varasto](https://github.com/function61/varasto) (soon)
-- [pi-security-module](https://github.com/function61/pi-security-module) (soon)
+- [Passitron](https://github.com/function61/passitron) (soon)
 
 
 Consistency model
