@@ -1,8 +1,0 @@
-syntax: glob
-
-# binaries
-cli/horizon/horizon
-
-# temp stuff
-simulator3
-test-dump

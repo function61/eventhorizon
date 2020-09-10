@@ -13,10 +13,12 @@ so I took what was good in v1 and started building v2 with a better, easier pers
 
 This document is work-in-progress and describes the progress of the EventHorizon v2.
 
+If you want, you can browse the repository at the
+[**old version**](https://github.com/function61/eventhorizon/tree/de4b8af13c36039a35b5c064527211c412eef0e3).
+
 Contents:
 
 - [Installation](#installation)
-- [How to identify old vs. new?](#how-to-identify-old-vs-new)
 - [Sample application using EventHorizon](#sample-application-using-eventhorizon)
 - [How does it look in my application?](#how-does-it-look-in-my-application)
 
@@ -24,28 +26,9 @@ Contents:
 Installation
 ------------
 
-Currently there is no "server" component - the client library uses AWS DynamoDB directly.
-
-Therefore, installation is: how to start using the client library.
-
 Steps:
 
 1. [Setting up data storage](docs/setting-up-data-storage/README.md)
-
-
-How to identify old vs. new?
-----------------------------
-
-Code:
-
-- New = everything under `pkg/` (but not including `legacy/` sub-package).
-- Old = the `cmd/horizon` binary (and CLI) is using the legacy code (`pkg/legacy/..`)
-  * Also the Docker image is the legacy binary
-
-Documentation:
-
-- New = everything linked from this README (except the below link)
-- Old = [Legacy documentation is readable here](README-legacy.md)
 
 
 Sample applications using EventHorizon
