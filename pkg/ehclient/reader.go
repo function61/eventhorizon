@@ -82,7 +82,7 @@ func NewReader(processor EventsProcessor, client *SystemClient, logger *log.Logg
 		client:           client,
 		deserializers:    deserializers,
 		processor:        processor,
-		processorVersion: nil,
+		processorVersion: nil, // unknown at start
 		snapshotCapable:  snapshotCapable,
 		snapshotEncrypt:  snapshotEncrypt,
 		snapshotVersion:  nil,
