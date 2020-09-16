@@ -85,13 +85,23 @@ func NewReader(processor EventsProcessor, client *SystemClient, logger *log.Logg
 		processorVersion: nil, // unknown at start
 		snapshotCapable:  snapshotCapable,
 		snapshotEncrypt:  snapshotEncrypt,
-		snapshotVersion:  nil,
+		snapshotVersion:  nil, // unknown at start
 		logl:             logex.Levels(logger),
 	}
 }
 
-// TODO: error-wrapping
+// feeds events to processor from the beginning of stream's event log (or as optimization
+// starts from snapshot if there is one) and reads until we have reached realtime
+// (= no more newer events) state
 func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
+	if err := r.loadUntilRealtime(ctx); err != nil {
+		return fmt.Errorf("LoadUntilRealtime: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Reader) loadUntilRealtime(ctx context.Context) error {
 	// after this r.processorVersion will be non-nil. this will be cached and will only
 	// be done once.
 	if err := r.discoverProcessorVersion(ctx); err != nil {
@@ -286,7 +296,7 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 	defer syncutil.LockAndUnlock(&r.lastLoadMu)()
 
 	if time.Since(r.lastLoad) > staleDuration {
-		if err := r.LoadUntilRealtime(ctx); err != nil {
+		if err := r.loadUntilRealtime(ctx); err != nil {
 			return fmt.Errorf("LoadUntilRealtimeIfStale: %w", err)
 		}
 
