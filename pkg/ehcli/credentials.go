@@ -12,8 +12,8 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/policy"
+	"github.com/function61/eventhorizon/pkg/system/ehcred"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
-	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
 	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/os/osutil"
@@ -91,7 +91,7 @@ func credentialPrint(ctx context.Context, id string, logger *log.Logger) error {
 		return err
 	}
 
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, client, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func credentialsList(ctx context.Context, logger *log.Logger) error {
 		return err
 	}
 
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, client, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func credentialsList(ctx context.Context, logger *log.Logger) error {
 	return nil
 }
 
-func printOneCredential(cred ehcredstate.Credential, apiKey string) {
+func printOneCredential(cred ehcred.Credential, apiKey string) {
 	statementsHumanReadable := []string{}
 	for _, statement := range cred.Policy.Statements {
 		statementsHumanReadable = append(statementsHumanReadable, policy.HumanReadableStatement(statement))
@@ -152,7 +152,7 @@ func credentialsCreate(ctx context.Context, name string, logger *log.Logger) err
 		return err
 	}
 
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, client, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func credentialRemove(ctx context.Context, id string, reason string, logger *log
 		return err
 	}
 
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, client, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
 	if err != nil {
 		return err
 	}

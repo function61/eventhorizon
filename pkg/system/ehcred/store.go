@@ -1,5 +1,5 @@
 // EventHorizon credentials state: API keys, authorizations
-package ehcredstate
+package ehcred
 
 import (
 	"context"

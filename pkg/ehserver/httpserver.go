@@ -13,7 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
-	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
+	"github.com/function61/eventhorizon/pkg/system/ehcred"
 	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/net/http/httputils"
@@ -56,7 +56,7 @@ func createHttpHandler(
 	startMqttTask func(task func(context.Context) error),
 	logger *log.Logger,
 ) (http.Handler, SubscriptionNotifier, error) {
-	credState, err := ehcredstate.LoadUntilRealtime(ctx, systemClient, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, systemClient, logger)
 	if err != nil {
 		return nil, nil, err
 	}

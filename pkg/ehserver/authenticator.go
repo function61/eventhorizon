@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/system/ehcredstate"
+	"github.com/function61/eventhorizon/pkg/system/ehcred"
 )
 
 // authenticates HTTP requests to a user who can be authorization checked
 type authenticator struct {
-	credentials *ehcredstate.App
+	credentials *ehcred.App
 
 	// these provide "raw" access which does not make any more authentication/authorization checks
 	rawReader        eh.Reader
