@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/iotdataplane"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/randomid"
 	"github.com/function61/eventhorizon/pkg/system/ehsettingsdomain"
-	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/log/logex"
 )
 
@@ -191,7 +191,7 @@ func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger
 
 	// Amazon uses this for access control and to prevent one client from having multiple
 	// simultaneous connections, so we'll need to randomize this b/c we want multiple connections
-	clientId := fmt.Sprintf("eh-%s", cryptoutil.RandBase64UrlWithoutLeadingDash(8))
+	clientId := fmt.Sprintf("eh-%s", randomid.Long())
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(conf.Endpoint).

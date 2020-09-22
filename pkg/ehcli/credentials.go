@@ -12,9 +12,9 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/policy"
+	"github.com/function61/eventhorizon/pkg/randomid"
 	"github.com/function61/eventhorizon/pkg/system/ehcred"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
-	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/os/osutil"
 	"github.com/spf13/cobra"
@@ -173,9 +173,9 @@ func credentialsCreate(ctx context.Context, name string, logger *log.Logger) err
 	)))
 
 	created := ehcreddomain.NewCredentialCreated(
-		cryptoutil.RandBase64UrlWithoutLeadingDash(4),
+		randomid.Short(),
 		name,
-		cryptoutil.RandBase64UrlWithoutLeadingDash(16),
+		randomid.AlmostCryptoLong(),
 		string(policySerialized),
 		ehevent.MetaSystemUser(time.Now()))
 
