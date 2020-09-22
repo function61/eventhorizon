@@ -19,9 +19,9 @@ func (k LogDataKind) IsEncrypted() bool {
 
 // "sub" shortened to save space b/c they're expected to get a lot of writes
 var (
-	SysCredentials      = sysStreamAddToToCreate("credentials") // /_/credentials
-	SysPublishSubscribe = sysStreamAddToToCreate("pubsub")      // /_/pubsub
-	SysSubscriptions    = sysStreamAddToToCreate("sub")         // /_/sub
+	SysCredentials   = sysStreamAddToToCreate("credentials") // /_/credentials
+	SysSettings      = sysStreamAddToToCreate("settings")    // /_/settings
+	SysSubscriptions = sysStreamAddToToCreate("sub")         // /_/sub
 
 	InternalStreamsToCreate = []StreamName{RootName, RootName.Child("_")} // above streams added here as well
 )
@@ -75,6 +75,7 @@ func NewErrOptimisticLockingFailed(err error) *ErrOptimisticLockingFailed {
 	return &ErrOptimisticLockingFailed{err}
 }
 
+// sent over MQTT
 type MqttActivityNotification struct {
 	Activity []CursorCompact `json:"a"` // abbreviated to conserve space
 }

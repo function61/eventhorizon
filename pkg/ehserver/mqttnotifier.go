@@ -9,13 +9,14 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/iotdataplane"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/function61/eventhorizon/pkg/eh"
-	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
+	"github.com/function61/eventhorizon/pkg/system/ehsettingsdomain"
 	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/log/logex"
 )
@@ -29,7 +30,7 @@ type publish struct {
 
 type mqttNotifier struct {
 	publishCh chan publish
-	config    ehpubsubdomain.MqttConfigUpdated
+	config    ehsettingsdomain.MqttConfigUpdated
 	logl      *logex.Leveled
 	iot       *iotdataplane.IoTDataPlane
 
@@ -38,7 +39,7 @@ type mqttNotifier struct {
 }
 
 func newMqttNotifier(
-	config ehpubsubdomain.MqttConfigUpdated,
+	config ehsettingsdomain.MqttConfigUpdated,
 	start func(task func(context.Context) error),
 	logger *log.Logger,
 ) SubscriptionNotifier {
@@ -144,7 +145,7 @@ func (l *mqttNotifier) NotifySubscriberOfActivity(
 
 	select {
 	case l.publishCh <- publish{ // non-blocking send
-		topic: MqttTopicForSubscription(subscription),
+		topic: MqttTopicForSubscription(subscription, l.config.Namespace),
 		msg:   msg,
 	}:
 		l.addInflight(1)
@@ -171,12 +172,15 @@ func (l *mqttNotifier) addInflight(by int) {
 	})
 }
 
-// dev/_/sub/foo
-func MqttTopicForSubscription(subscription eh.SubscriptionId) string {
-	return fmt.Sprintf("dev%s", subscription.StreamName().String())
+// "dev/_/sub/foo"
+// "prod/_/sub/foo"
+//
+// namespace="prod" | "staging" | "dev" | ...
+func MqttTopicForSubscription(subscription eh.SubscriptionId, namespace string) string {
+	return namespace + subscription.StreamName().String()
 }
 
-func MqttClientFrom(conf *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) (mqtt.Client, error) {
+func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger) (mqtt.Client, error) {
 	logl := logex.Levels(logger)
 	clientCert, err := tls.X509KeyPair(
 		[]byte(conf.ClientCertAuthCert),

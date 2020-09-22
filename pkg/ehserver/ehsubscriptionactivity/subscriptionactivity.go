@@ -56,8 +56,7 @@ func groupStreamsChangesBySubscription(
 			ctx,
 			cursor.Stream(),
 			client,
-			ehstreammeta.GlobalCache,
-			logl.Original)
+			ehstreammeta.GlobalCache)
 		if err != nil {
 			return err
 		}

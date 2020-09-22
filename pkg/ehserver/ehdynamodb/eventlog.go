@@ -202,7 +202,9 @@ func (e *Client) CreateStream(
 		return nil, err
 	}
 
-	itemInChild, err := e.entryAsTxPut(streamCreationEntry(stream, dekEnvelope, now))
+	keyGroupId := "default"
+
+	itemInChild, err := e.entryAsTxPut(streamCreationEntry(stream, dekEnvelope, keyGroupId, now))
 	if err != nil {
 		return nil, err
 	}
@@ -289,9 +291,14 @@ func (e *Client) entryAsTxPut(item LogEntryRaw) (*dynamodb.TransactWriteItem, er
 	}, nil
 }
 
-func streamCreationEntry(stream eh.StreamName, dekEnvelope envelopeenc.Envelope, now time.Time) LogEntryRaw {
+func streamCreationEntry(
+	stream eh.StreamName,
+	dekEnvelope envelopeenc.Envelope,
+	keyGroupId string,
+	now time.Time,
+) LogEntryRaw {
 	return metaEntry(
-		eh.NewStreamStarted(dekEnvelope, ehevent.MetaSystemUser(now)),
+		eh.NewStreamStarted(dekEnvelope, keyGroupId, ehevent.MetaSystemUser(now)),
 		stream.At(0))
 }
 

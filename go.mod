@@ -8,7 +8,7 @@ require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/cheekybits/genny v1.0.0
 	github.com/eclipse/paho.mqtt.golang v1.2.0
-	github.com/function61/gokit v0.0.0-20200909085654-5a779b46e59c
+	github.com/function61/gokit v0.0.0-20200922085952-afda9a67250a
 	github.com/gorilla/mux v1.8.0
 	github.com/jpillora/backoff v1.0.0
 	github.com/kr/pretty v0.2.0 // indirect

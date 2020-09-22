@@ -45,6 +45,8 @@ github.com/function61/gokit v0.0.0-20200608105953-12235c68c38b/go.mod h1:qkZftFp
 github.com/function61/gokit v0.0.0-20200715130529-d3e870268fc9 h1:bni93qJbPc8zSrE+dYj5BctgYdx+J1o4x1+CZPbDg8U=
 github.com/function61/gokit v0.0.0-20200909085654-5a779b46e59c h1:w81rrtgyE+kseDH9o1eBnAOiwhTz0lsTVgqaAQHXeew=
 github.com/function61/gokit v0.0.0-20200909085654-5a779b46e59c/go.mod h1:9nT4wyoyrlvYOlvTovXSmUGIx6klsr+cgqkGTw7XNgs=
+github.com/function61/gokit v0.0.0-20200922085952-afda9a67250a h1:ztns88jHU8K0gjeb5oMyeRg7AsfBaSrK8MUTVsa5z8Y=
+github.com/function61/gokit v0.0.0-20200922085952-afda9a67250a/go.mod h1:9nT4wyoyrlvYOlvTovXSmUGIx6klsr+cgqkGTw7XNgs=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-kit/kit v0.9.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/function61/eventhorizon/pkg/eh"
+	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcred"
 )
 
@@ -36,6 +37,7 @@ func (a *authenticator) AuthenticateRequest(r *http.Request) (*user, error) {
 		Reader:    wrapReaderWithAuthorizer(a.rawReader, policy),
 		Writer:    wrapWriterWithAuthorizer(a.rawWriter, policy),
 		Snapshots: wrapSnapshotStoreWithAuthorizer(a.rawSnapshotStore, policy),
+		Policy:    policy,
 	}, nil
 }
 
@@ -44,6 +46,7 @@ type user struct {
 	Reader    eh.Reader
 	Writer    eh.Writer
 	Snapshots eh.SnapshotStore
+	Policy    policy.Policy
 }
 
 func extractBearerToken(authHeader string) (string, bool) {

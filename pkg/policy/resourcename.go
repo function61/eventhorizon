@@ -1,17 +1,15 @@
 package policy
 
 var (
-	F61rn = ResourceName{"f61rn"}
+	F61rn = ResourceName("f61rn")
 )
 
-type ResourceName struct {
-	name string
-}
+type ResourceName string
 
 func (r ResourceName) Child(name string) ResourceName {
-	return ResourceName{r.name + ":" + name}
+	return ResourceName(string(r) + ":" + name)
 }
 
 func (r ResourceName) String() string {
-	return r.name
+	return string(r)
 }

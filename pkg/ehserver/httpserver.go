@@ -13,8 +13,11 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
+	"github.com/function61/eventhorizon/pkg/keyserver"
+	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcred"
-	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
+	"github.com/function61/eventhorizon/pkg/system/ehsettings"
+	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/net/http/httputils"
 	"github.com/function61/gokit/sync/taskrunner"
@@ -22,7 +25,7 @@ import (
 )
 
 func Server(ctx context.Context, logger *log.Logger) error {
-	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -41,11 +44,9 @@ func Server(ctx context.Context, logger *log.Logger) error {
 		Handler: httpHandler,
 	}
 
-	tasks.Start("listener "+srv.Addr, func(_ context.Context) error {
-		return httputils.RemoveGracefulServerClosedError(srv.ListenAndServe())
+	tasks.Start("listener "+srv.Addr, func(ctx context.Context) error {
+		return httputils.CancelableServer(ctx, srv, func() error { return srv.ListenAndServe() })
 	})
-
-	tasks.Start("listenershutdowner", httputils.ServerShutdownTask(srv))
 
 	return tasks.Wait()
 }
@@ -61,7 +62,7 @@ func createHttpHandler(
 		return nil, nil, err
 	}
 
-	pubSubState, err := ehpubsubstate.LoadUntilRealtime(ctx, systemClient, logger)
+	pubSubState, err := ehsettings.LoadUntilRealtime(ctx, systemClient)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -90,10 +91,15 @@ func createHttpHandler(
 		rawSnapshotStore: systemClient.SnapshotStore,
 	}
 
-	return serverHandler(auth), notifier, nil
+	keyServer, err := keyserver.NewServer("default.key", logex.Prefix("keyserver", logger))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return serverHandler(auth, keyServer), notifier, nil
 }
 
-func serverHandler(auth *authenticator) http.Handler {
+func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
 		cursor, err := eh.DeserializeCursor(r.URL.Query().Get("after"))
@@ -326,6 +332,36 @@ func serverHandler(auth *authenticator) http.Handler {
 			}
 		}
 	}).Methods(http.MethodDelete)
+
+	router.HandleFunc("/keyserver/envelope-decrypt", func(w http.ResponseWriter, r *http.Request) {
+		user, err := auth.AuthenticateRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		envelope := envelopeenc.Envelope{}
+		if err := json.NewDecoder(r.Body).Decode(&envelope); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// not checking for write here, because write implies also having read permissions,
+		// and our policy language doesn't have "OR" yet
+		if err := user.Policy.Authorize(eh.ActionStreamRead, policy.ResourceName(envelope.Label)); err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		contentDecrypted, err := keyServer.UnsealEnvelope(r.Context(), envelope)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write(contentDecrypted)
+	}).Methods(http.MethodPost)
 
 	return router
 }

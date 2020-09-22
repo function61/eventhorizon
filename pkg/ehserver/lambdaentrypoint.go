@@ -17,7 +17,7 @@ import (
 func LambdaEntrypoint() error {
 	logger := logex.StandardLogger()
 
-	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}

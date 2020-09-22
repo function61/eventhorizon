@@ -4,10 +4,13 @@ package ehclient
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
+	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/sync/syncutil"
 )
 
@@ -48,14 +51,18 @@ func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events 
 
 // TODO: maybe make *eh.LogData be returned from a cb, because for encrypted LogData it
 //       depends on the generated DEK
-func (e *SystemClient) CreateStream(ctx context.Context, stream eh.StreamName, data *eh.LogData) (*eh.AppendResult, error) {
+func (e *SystemClient) CreateStream(
+	ctx context.Context,
+	stream eh.StreamName,
+	data *eh.LogData,
+) (*eh.AppendResult, error) {
 	// each stream needs a DEK (whether it will be used or not). we can't let the DB server
 	// generate it b/c then the server could theoretically have access to the data. and we
 	// prefer the crypto service generate the whole envelope, so not even application
 	// servers have theoretically default un-audited access to the data.
-	dekEnvelope, err := e.cryptoSvc.NewAes256DekInEnvelope(ctx, stream.ResourceName())
+	dekEnvelope, err := e.sysConn.DekEnvelopeForStream(ctx, stream)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DekEnvelopeForStream: %w", err)
 	}
 
 	return e.EventLog.CreateStream(ctx, stream, *dekEnvelope, data)
@@ -91,14 +98,13 @@ func (e *SystemClient) LoadDek(ctx context.Context, stream eh.StreamName) ([]byt
 	return dek, nil
 }
 
+func (s *SystemClient) Logger(prefix string) *log.Logger {
+	return logex.Prefix(prefix, s.logger)
+}
+
 // result of this will be cached, and this won't be called for same stream concurrently
 func (e *SystemClient) loadAndDecryptDekEnvelope(ctx context.Context, stream eh.StreamName) ([]byte, error) {
-	// e.logl.Debug.Printf("querying DEK envelope for %s", stream.String())
+	// e.logl.Debug.Printf("resolving DEK for %s", stream.String())
 
-	dekEnvelope, err := e.resolveDekEnvelope(ctx, stream)
-	if err != nil {
-		return nil, err
-	}
-
-	return e.cryptoSvc.DecryptEnvelope(ctx, *dekEnvelope)
+	return e.sysConn.ResolveDek(ctx, stream)
 }

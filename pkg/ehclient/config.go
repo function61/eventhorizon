@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/function61/eventhorizon/pkg/cryptosvc"
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
@@ -17,7 +17,14 @@ import (
 	"github.com/function61/gokit/sync/syncutil"
 )
 
-type DekEnvelopeResolver func(context.Context, eh.StreamName) (*envelopeenc.Envelope, error)
+// things we need from outside of client package to make the system as a whole work. this
+// is basically to circumvent circular dependencies (using client required system stores
+// which depend on Reader interface). this is also the reason for "ehclientfactory" package
+// TODO: extract the interfaces the stores depend on, so we don't need this?
+type SystemConnector interface {
+	DekEnvelopeForStream(context.Context, eh.StreamName) (*envelopeenc.Envelope, error)
+	ResolveDek(context.Context, eh.StreamName) ([]byte, error)
+}
 
 type Tenant struct {
 	stream eh.StreamName
@@ -52,68 +59,80 @@ type SystemClient struct {
 	EventLog      eh.ReaderWriter
 	SnapshotStore eh.SnapshotStore
 
-	resolveDekEnvelope DekEnvelopeResolver
-	cryptoSvc          *cryptosvc.Service
-	deksCache          map[string][]byte
-	deksCacheMu        sync.Mutex
-	deksCacheStreamMu  *syncutil.MutexMap
+	conf              Config
+	logger            *log.Logger
+	sysConn           SystemConnector
+	deksCache         map[string][]byte
+	deksCacheMu       sync.Mutex
+	deksCacheStreamMu *syncutil.MutexMap
 }
 
-func ClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*Client, error) {
-	systemClient, conf, err := makeSystemClientFrom(getter, resolveDekEnvelope)
+func ClientFrom(
+	getter ConfigStringGetter,
+	logger *log.Logger,
+	sysConn SystemConnector,
+) (*Client, error) {
+	systemClient, err := SystemClientFrom(getter, logger, sysConn)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		Tenant:       TenantId(conf.tenantId),
+		Tenant:       TenantId(systemClient.conf.tenantId),
 		SystemClient: systemClient,
 	}, nil
 }
 
-func SystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*SystemClient, error) {
-	systemClient, _, err := makeSystemClientFrom(getter, resolveDekEnvelope)
-	return systemClient, err
-}
-
-func makeSystemClientFrom(getter ConfigStringGetter, resolveDekEnvelope DekEnvelopeResolver) (*SystemClient, *Config, error) {
+func SystemClientFrom(
+	getter ConfigStringGetter,
+	logger *log.Logger,
+	sysConn SystemConnector,
+) (*SystemClient, error) {
 	conf, err := getConfig(getter)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if conf.url != "" {
+		// implements EventLog, SnapshotStore
 		serverClient, err := ehserverclient.New(conf.url)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		return &SystemClient{
-			EventLog:           serverClient,
-			SnapshotStore:      serverClient,
-			resolveDekEnvelope: resolveDekEnvelope,
-			cryptoSvc:          cryptosvc.New(nil),
-			deksCache:          map[string][]byte{},
-			deksCacheStreamMu:  syncutil.NewMutexMap(),
-		}, conf, nil
+			EventLog:          serverClient,
+			SnapshotStore:     serverClient,
+			conf:              *conf,
+			logger:            logger,
+			sysConn:           sysConn,
+			deksCache:         map[string][]byte{},
+			deksCacheStreamMu: syncutil.NewMutexMap(),
+		}, nil
+	} else {
+		snapshots, err := NewDynamoDbSnapshotStore(
+			conf.SnapshotsDynamoDbOptions())
+		if err != nil {
+			return nil, err
+		}
+
+		eventLog := ehdynamodb.New(conf.ClientDynamoDbOptions())
+
+		return &SystemClient{
+			EventLog:          eventLog,
+			SnapshotStore:     snapshots,
+			conf:              *conf,
+			logger:            logger,
+			sysConn:           sysConn,
+			deksCache:         map[string][]byte{},
+			deksCacheStreamMu: syncutil.NewMutexMap(),
+		}, nil
 	}
+}
 
-	snapshots, err := NewDynamoDbSnapshotStore(
-		conf.SnapshotsDynamoDbOptions())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	eventLog := ehdynamodb.New(conf.ClientDynamoDbOptions())
-
-	return &SystemClient{
-		EventLog:           eventLog,
-		SnapshotStore:      snapshots,
-		resolveDekEnvelope: resolveDekEnvelope,
-		cryptoSvc:          cryptosvc.New(nil),
-		deksCache:          map[string][]byte{},
-		deksCacheStreamMu:  syncutil.NewMutexMap(),
-	}, conf, nil
+// returns empty if running at server side
+func (s *SystemClient) GetServerUrl() string {
+	return s.conf.url
 }
 
 type ConfigStringGetter func() (string, error)
@@ -171,6 +190,7 @@ func getConfig(getter ConfigStringGetter) (*Config, error) {
 			len(parts))
 	}
 
+	namespace := parts[0]
 	accessKeyId := parts[2]
 	accessKeySecret := parts[3]
 	accessKeyToken := ""
@@ -197,13 +217,13 @@ func getConfig(getter ConfigStringGetter) (*Config, error) {
 	}
 
 	environment, err := func() (*environment, error) {
-		switch parts[0] {
+		switch namespace {
 		case "prod":
 			return &environment{"prod_eh_events", "prod_eh_snapshots"}, nil
 		case "dev":
 			return &environment{"dev_eh_events", "dev_eh_snapshots"}, nil
 		default:
-			return nil, fmt.Errorf("unknown environment: %s", parts[0])
+			return nil, fmt.Errorf("unknown environment: %s", namespace)
 		}
 	}()
 	if err != nil {

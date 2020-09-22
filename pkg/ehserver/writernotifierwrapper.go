@@ -96,8 +96,7 @@ func (w *writerNotifierWrapper) notifySubscribers(ctx context.Context, result *e
 		ctx,
 		result.Cursor.Stream(),
 		w.systemClient,
-		ehstreammeta.GlobalCache,
-		logex.Prefix(ehstreammeta.LogPrefix, w.logl.Original))
+		ehstreammeta.GlobalCache)
 	if err != nil {
 		return err
 	}

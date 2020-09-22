@@ -16,8 +16,8 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehserver"
-	"github.com/function61/eventhorizon/pkg/system/ehpubsubdomain"
-	"github.com/function61/eventhorizon/pkg/system/ehpubsubstate"
+	"github.com/function61/eventhorizon/pkg/system/ehsettings"
+	"github.com/function61/eventhorizon/pkg/system/ehsettingsdomain"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/os/osutil"
@@ -51,7 +51,7 @@ func realtimeEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "config-update [endpoint] [auth-cert-path] [auth-cert-key-path]",
+		Use:   "config-update [namespace] [endpoint] [auth-cert-path] [auth-cert-key-path]",
 		Short: "Update MQTT configuration",
 		Args:  cobra.ExactArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -59,9 +59,10 @@ func realtimeEntrypoint() *cobra.Command {
 
 			osutil.ExitIfError(mqttConfigUpdate(
 				osutil.CancelOnInterruptOrTerminate(rootLogger),
-				args[0],
 				args[1],
 				args[2],
+				args[3],
+				args[0],
 				true,
 				rootLogger))
 		},
@@ -88,7 +89,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 
 	logl := logex.Levels(logger)
 
-	ehClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	ehClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -104,7 +105,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 		return err
 	}
 
-	sysState, err := ehpubsubstate.LoadUntilRealtime(ctx, ehClient, logger)
+	sysState, err := ehsettings.LoadUntilRealtime(ctx, ehClient)
 	if err != nil {
 		return err
 	}
@@ -122,7 +123,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 
 	incomingMsg := make(chan eh.MqttActivityNotification)
 
-	topic := ehserver.MqttTopicForSubscription(subscriptionId)
+	topic := ehserver.MqttTopicForSubscription(subscriptionId, mqttConfig.Namespace)
 
 	if err := waitToken(mqClient.Subscribe(topic, mqttQos0AtMostOnce, func(_ mqtt.Client, msg mqtt.Message) {
 		activityNotifaction := eh.MqttActivityNotification{}
@@ -156,6 +157,7 @@ func mqttConfigUpdate(
 	endpoint string,
 	authCertPath string,
 	authCertKeyPath string,
+	namespace string,
 	verifyConnectivity bool,
 	logger *log.Logger,
 ) error {
@@ -173,20 +175,21 @@ func mqttConfigUpdate(
 		return fmt.Errorf("X509KeyPair: %w", err)
 	}
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
 
-	sysState, err := ehpubsubstate.LoadUntilRealtime(ctx, client, logger)
+	sysState, err := ehsettings.LoadUntilRealtime(ctx, client)
 	if err != nil {
 		return err
 	}
 
-	configUpdated := ehpubsubdomain.NewMqttConfigUpdated(
+	configUpdated := ehsettingsdomain.NewMqttConfigUpdated(
 		endpoint,
 		string(authCert),
 		string(authCertKey),
+		namespace,
 		ehevent.MetaSystemUser(time.Now()))
 
 	if verifyConnectivity {
@@ -207,12 +210,12 @@ func mqttConfigUpdate(
 }
 
 func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
 
-	sysState, err := ehpubsubstate.LoadUntilRealtime(ctx, client, logger)
+	sysState, err := ehsettings.LoadUntilRealtime(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -227,7 +230,7 @@ func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
 	return nil
 }
 
-func connectivityCheck(configUpdated *ehpubsubdomain.MqttConfigUpdated, logger *log.Logger) error {
+func connectivityCheck(configUpdated *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger) error {
 	client, err := mqttClientFrom(configUpdated, logger)
 	if err != nil {
 		return err

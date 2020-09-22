@@ -67,7 +67,11 @@ func serverEntrypoint() *cobra.Command {
 		Short: "Bootstrap the database",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			osutil.ExitIfError(bootstrap(osutil.CancelOnInterruptOrTerminate(nil)))
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(bootstrap(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				rootLogger))
 		},
 	})
 
@@ -85,7 +89,12 @@ func streamEntrypoint() *cobra.Command {
 		Short: "Create new stream, as a child of parent",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			osutil.ExitIfError(streamCreate(osutil.CancelOnInterruptOrTerminate(nil), args[0]))
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(streamCreate(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
+				rootLogger))
 		},
 	})
 
@@ -112,8 +121,13 @@ func streamEntrypoint() *cobra.Command {
 		Short: "Append event to the stream",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
 			osutil.ExitIfError(streamAppend(
-				osutil.CancelOnInterruptOrTerminate(nil), args[0], args[1]))
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
+				args[1],
+				rootLogger))
 		},
 	})
 
@@ -145,10 +159,13 @@ func snapshotEntrypoint() *cobra.Command {
 		Short: "Inspect a snapshot",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
 			osutil.ExitIfError(snapshotCat(
-				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
-				args[1]))
+				args[1],
+				rootLogger))
 		},
 	})
 
@@ -157,10 +174,13 @@ func snapshotEntrypoint() *cobra.Command {
 		Short: "Delete a snapshot",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
 			osutil.ExitIfError(snapshotRm(
-				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
-				args[1]))
+				args[1],
+				rootLogger))
 		},
 	})
 
@@ -171,12 +191,15 @@ func snapshotEntrypoint() *cobra.Command {
 		Short: "Replace a snapshot (dangerous)",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
 			osutil.ExitIfError(snapshotPut(
-				osutil.CancelOnInterruptOrTerminate(logex.StandardLogger()),
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
 				args[1],
 				os.Stdin,
-				encrypted))
+				encrypted,
+				rootLogger))
 		},
 	}
 	snapshotPutCmd.Flags().BoolVarP(&encrypted, "encrypted", "", encrypted, "Whether to encrypt the snapshot")
@@ -185,8 +208,8 @@ func snapshotEntrypoint() *cobra.Command {
 	return parentCmd
 }
 
-func bootstrap(ctx context.Context) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+func bootstrap(ctx context.Context, logger *log.Logger) error {
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -195,7 +218,7 @@ func bootstrap(ctx context.Context) error {
 }
 
 func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -205,7 +228,7 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 		return err
 	}
 
-	streamMeta, err := ehstreammeta.LoadUntilRealtime(ctx, streamName, client, nil, logger)
+	streamMeta, err := ehstreammeta.LoadUntilRealtime(ctx, streamName, client, nil)
 	if err != nil {
 		return err
 	}
@@ -222,8 +245,13 @@ func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Log
 	return nil
 }
 
-func snapshotCat(ctx context.Context, streamNameRaw string, snapshotContext string) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+func snapshotCat(
+	ctx context.Context,
+	streamNameRaw string,
+	snapshotContext string,
+	logger *log.Logger,
+) error {
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -269,8 +297,9 @@ func snapshotPut(
 	snapshotContext string,
 	contentReader io.Reader,
 	encrypted bool,
+	logger *log.Logger,
 ) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -306,8 +335,13 @@ func snapshotPut(
 	return client.SnapshotStore.WriteSnapshot(ctx, *persisted)
 }
 
-func snapshotRm(ctx context.Context, streamName string, snapshotContext string) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+func snapshotRm(
+	ctx context.Context,
+	streamName string,
+	snapshotContext string,
+	logger *log.Logger,
+) error {
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -320,7 +354,7 @@ func snapshotRm(ctx context.Context, streamName string, snapshotContext string) 
 	return client.SnapshotStore.DeleteSnapshot(ctx, stream, snapshotContext)
 }
 
-func streamCreate(ctx context.Context, streamPath string) error {
+func streamCreate(ctx context.Context, streamPath string, logger *log.Logger) error {
 	stream, err := eh.DeserializeStreamName(streamPath)
 	if err != nil {
 		return err
@@ -332,7 +366,7 @@ func streamCreate(ctx context.Context, streamPath string) error {
 		return fmt.Errorf("please use subscription stream creation to create %s", stream.String())
 	}
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -342,7 +376,7 @@ func streamCreate(ctx context.Context, streamPath string) error {
 }
 
 func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
@@ -355,8 +389,8 @@ func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, l
 	return ehdebug.Debug(ctx, streamName.At(version), os.Stdout, client, logger)
 }
 
-func streamAppend(ctx context.Context, streamNameRaw string, event string) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv)
+func streamAppend(ctx context.Context, streamNameRaw string, event string, logger *log.Logger) error {
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}

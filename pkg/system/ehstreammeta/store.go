@@ -4,7 +4,7 @@ package ehstreammeta
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"sync"
 	"time"
 
@@ -12,14 +12,12 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/crypto/envelopeenc"
-	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/sync/syncutil"
 )
 
 //go:generate genny -in=../../cachegen/cache.go -out=cache.gen.go -pkg=ehstreammeta gen CacheItemType=*App
 
 const (
-	LogPrefix              = "ehstreammeta"
 	maxKeepTrackOfChildren = 500
 )
 
@@ -30,6 +28,7 @@ var (
 type stateFormat struct {
 	Subscriptions []eh.SubscriptionId   `json:"Subscriptions"`
 	DekEnvelope   *envelopeenc.Envelope `json:"DekEnvelope"`
+	KeyGroupId    *string               `json:"KeyGroupId"`
 	ChildStreams  []string              `json:"ChildStreams"` // child base names to conserve space
 }
 
@@ -146,6 +145,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *eh.StreamStarted:
 		s.state.DekEnvelope = &e.DekEnvelope
+		s.state.KeyGroupId = &e.KeyGroupId
 	case *eh.SubscriptionSubscribed:
 		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)
 	case *eh.SubscriptionUnsubscribed:
@@ -165,7 +165,6 @@ type App struct {
 	State  *Store
 	Reader *ehclient.Reader
 	Writer eh.Writer
-	Logger *log.Logger
 }
 
 func LoadUntilRealtime(
@@ -173,7 +172,6 @@ func LoadUntilRealtime(
 	stream eh.StreamName,
 	client *ehclient.SystemClient,
 	cache *Cache,
-	logger *log.Logger,
 ) (*App, error) {
 	app := cache.Get(stream.String(), func() *App {
 		store := New(stream)
@@ -183,9 +181,8 @@ func LoadUntilRealtime(
 			ehclient.NewReader(
 				store,
 				client,
-				logex.Prefix("Reader", logger)),
-			client.EventLog,
-			logger}
+				client.Logger(fmt.Sprintf("ehstreammeta[%s].Reader", stream.String()))),
+			client.EventLog}
 	})
 
 	return app, app.Reader.LoadUntilRealtimeIfStale(ctx, 5*time.Second)

@@ -25,35 +25,19 @@ type ReaderWriterSnapshotStore interface {
 }
 
 type serverClient struct {
-	authToken string // export EVENTHORIZON="http://:<apikey>@localhost"
+	authToken string
 	baseUrl   string
 }
 
-func New(urlSerialized string) (ReaderWriterSnapshotStore, error) {
-	urlParsed, err := url.Parse(urlSerialized)
+func New(urlRaw string) (ReaderWriterSnapshotStore, error) {
+	urlWithoutUser, authToken, err := SplitAuthTokenFromUrl(urlRaw)
 	if err != nil {
 		return nil, err
 	}
 
-	if urlParsed.User == nil {
-		return nil, errors.New("auth token not set")
-	}
-
-	if urlParsed.User.Username() != "" {
-		return nil, fmt.Errorf("specifying username is not supported: %s", urlSerialized)
-	}
-
-	authToken, _ := urlParsed.User.Password()
-	if authToken == "" {
-		return nil, errors.New("auth token not set")
-	}
-
-	// remove user info from URL
-	urlParsed.User = nil
-
 	return &serverClient{
 		authToken: authToken,
-		baseUrl:   urlParsed.String(),
+		baseUrl:   urlWithoutUser,
 	}, nil
 }
 
@@ -199,4 +183,30 @@ func (s *serverClient) DeleteSnapshot(
 	}
 
 	return nil
+}
+
+// export EVENTHORIZON="http://:<apikey>@localhost"
+func SplitAuthTokenFromUrl(rawUrl string) (string, string, error) {
+	urlParsed, err := url.Parse(rawUrl)
+	if err != nil {
+		return "", "", err
+	}
+
+	if urlParsed.User == nil {
+		return "", "", errors.New("auth token not set")
+	}
+
+	if urlParsed.User.Username() != "" {
+		return "", "", fmt.Errorf("specifying username is not supported: %s", rawUrl)
+	}
+
+	authToken, _ := urlParsed.User.Password()
+	if authToken == "" {
+		return "", "", errors.New("auth token not set")
+	}
+
+	// remove user info from URL
+	urlParsed.User = nil
+
+	return urlParsed.String(), authToken, nil
 }
