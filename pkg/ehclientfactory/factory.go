@@ -14,14 +14,14 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/keyserver"
 	"github.com/function61/eventhorizon/pkg/system/ehsettings"
+	"github.com/function61/eventhorizon/pkg/system/ehsettingsdomain"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/os/osutil"
 	"github.com/function61/gokit/sync/syncutil"
 )
-
-const todoCwk = "cwk"
 
 // TODO: implement ClientFrom
 
@@ -145,7 +145,12 @@ func (d *sysConnection) resolveKeyServer(
 ) (keyserver.Unsealer, error) {
 	// has special key for bootstrap purposes which we can decrypt without actual key server
 	if stream.Equal(eh.SysSettings) {
-		return newClusterWideKeyServer("...")
+		cwk, err := osutil.GetenvRequired("EVENTHORIZON_BOOTSTRAP_KEY")
+		if err != nil {
+			return nil, err
+		}
+
+		return newClusterWideKeyServer(cwk)
 	}
 
 	settings, err := d.getSettings(ctx)
@@ -238,7 +243,9 @@ func newClusterWideKeyServer(clusterWideKeyBase64 string) (keyserver.Unsealer, e
 		return nil, err
 	}
 
-	clusterWideKeyDecrypter := envelopeenc.NaclSecretBoxEncrypter(to32(clusterWideKey), todoCwk)
+	clusterWideKeyDecrypter := envelopeenc.NaclSecretBoxEncrypter(
+		to32(clusterWideKey),
+		ehsettingsdomain.ClusterWideKeyId)
 
 	return &clusterWideKeyServer{clusterWideKeyDecrypter}, nil
 }

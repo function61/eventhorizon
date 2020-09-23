@@ -5,6 +5,10 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 )
 
+const (
+	ClusterWideKeyId = "eh-cluster-wide-key"
+)
+
 var Types = ehevent.Types{
 	"mqtt.ConfigUpdated":    func() ehevent.Event { return &MqttConfigUpdated{} },
 	"keygroup.Created":      func() ehevent.Event { return &KeygroupCreated{} },

@@ -45,7 +45,9 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		return err
 	}
 
-	cwkEncrypter := envelopeenc.NaclSecretBoxEncrypter(clusterWideKey, "cwk")
+	cwkEncrypter := envelopeenc.NaclSecretBoxEncrypter(
+		clusterWideKey,
+		ehsettingsdomain.ClusterWideKeyId)
 
 	now := time.Now()
 	meta := ehevent.MetaSystemUser(now)
