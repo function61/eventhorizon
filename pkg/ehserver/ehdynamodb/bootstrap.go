@@ -33,18 +33,6 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		return err
 	}
 
-	// generate with:
-	// $ ssh-keygen -f default.key -m PEM -t rsa -b 4096
-	defaultPubPem, defaultPub, err := loadPublicKeyFromPrivateKey("default.key")
-	if err != nil {
-		return err
-	}
-
-	backupPubPem, backupPub, err := loadPublicKeyFromPrivateKey("backup.key")
-	if err != nil {
-		return err
-	}
-
 	cwkEncrypter := envelopeenc.NaclSecretBoxEncrypter(
 		clusterWideKey,
 		ehsettingsdomain.ClusterWideKeyId)
@@ -52,22 +40,7 @@ func Bootstrap(ctx context.Context, e *Client) error {
 	now := time.Now()
 	meta := ehevent.MetaSystemUser(now)
 
-	defaultKey := envelopeenc.RsaOaepSha256Encrypter(defaultPub)
-	backupKey := envelopeenc.RsaOaepSha256Encrypter(backupPub)
-
-	defGroup := ehsettingsdomain.NewKeygroupCreated("default", []string{defaultKey.KekId(), backupKey.KekId()}, "[internal]", meta)
-
-	keyServer := ehsettingsdomain.NewKeyserverCreated("internal", "Internal", meta)
-
-	pubAdded := ehsettingsdomain.NewKekAdded(defaultKey.KekId(), "rsa", "Default key", defaultPubPem, meta)
-
-	settingsEvents := []ehevent.Event{
-		defGroup,
-		pubAdded,
-		ehsettingsdomain.NewKekAdded(backupKey.KekId(), "rsa", "Backup key", backupPubPem, meta),
-		keyServer,
-		ehsettingsdomain.NewKeyserverKeyAttached(keyServer.Id, pubAdded.Id, meta),
-	}
+	defaultKey, backupKey, defGroupId, settingsEvents := setupEncryptionAndKeyServers(meta)
 
 	defaultGroupEncrypters := []envelopeenc.SlotEncrypter{
 		defaultKey,
@@ -81,11 +54,9 @@ func Bootstrap(ctx context.Context, e *Client) error {
 			return err
 		}
 
-		creatingSysSettings := streamToCreate.Equal(eh.SysSettings)
-
 		// TODO: make DEK envelope locally only for streams where we need to add encrypted data for
 		dekEnvelope, err := func() (*envelopeenc.Envelope, error) {
-			if !creatingSysSettings {
+			if !streamToCreate.Equal(eh.SysSettings) {
 				return keyserver.MakeDekEnvelope(
 					dek,
 					streamToCreate.ResourceName(),
@@ -102,15 +73,25 @@ func Bootstrap(ctx context.Context, e *Client) error {
 			return err
 		}
 
-		txItem, err := e.entryAsTxPut(streamCreationEntry(streamToCreate, *dekEnvelope, defGroup.Id, now))
+		txItem, err := e.entryAsTxPut(streamCreationEntry(streamToCreate, *dekEnvelope, defGroupId, now))
 		if err != nil {
 			return err
 		}
 
 		txItems = append(txItems, txItem)
 
-		if creatingSysSettings {
-			entry, err := eheventencryption.Encrypt(ehevent.Serialize(settingsEvents...), dek)
+		// some streams have initial events
+		initialEvents := func() []ehevent.Event {
+			switch {
+			case streamToCreate.Equal(eh.SysSettings):
+				return settingsEvents
+			default:
+				return nil
+			}
+		}()
+
+		if len(initialEvents) > 0 {
+			entry, err := eheventencryption.Encrypt(ehevent.Serialize(initialEvents...), dek)
 			if err != nil {
 				return err
 			}
@@ -148,6 +129,37 @@ func Bootstrap(ctx context.Context, e *Client) error {
 	fmt.Printf("Cluster-wide key: %s\n", base64.RawURLEncoding.EncodeToString(clusterWideKey[:]))
 
 	return nil
+}
+
+func setupEncryptionAndKeyServers(meta ehevent.EventMeta) (envelopeenc.SlotEncrypter, envelopeenc.SlotEncrypter, string, []ehevent.Event) {
+	// generate with:
+	// $ ssh-keygen -f default.key -m PEM -t rsa -b 4096
+	defaultPubPem, defaultPub, err := loadPublicKeyFromPrivateKey("default.key")
+	if err != nil {
+		panic(err)
+	}
+
+	backupPubPem, backupPub, err := loadPublicKeyFromPrivateKey("backup.key")
+	if err != nil {
+		panic(err)
+	}
+
+	defaultKey := envelopeenc.RsaOaepSha256Encrypter(defaultPub)
+	backupKey := envelopeenc.RsaOaepSha256Encrypter(backupPub)
+
+	defGroup := ehsettingsdomain.NewKeygroupCreated("default", []string{defaultKey.KekId(), backupKey.KekId()}, "[internal]", meta)
+
+	keyServer := ehsettingsdomain.NewKeyserverCreated("internal", "Internal", meta)
+
+	pubAdded := ehsettingsdomain.NewKekAdded(defaultKey.KekId(), "rsa", "Default key", defaultPubPem, meta)
+
+	return defaultKey, backupKey, defGroup.Id, []ehevent.Event{
+		defGroup,
+		pubAdded,
+		ehsettingsdomain.NewKekAdded(backupKey.KekId(), "rsa", "Backup key", backupPubPem, meta),
+		keyServer,
+		ehsettingsdomain.NewKeyserverKeyAttached(keyServer.Id, pubAdded.Id, meta),
+	}
 }
 
 // to read & decrypt data in EventHorizon cluster, you need to know the cluster settings.
