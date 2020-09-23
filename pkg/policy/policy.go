@@ -58,3 +58,12 @@ func HumanReadableStatement(statement Statement) string {
 		strings.Join(statement.Actions, ", "),
 		strings.Join(statement.Resources, ", "))
 }
+
+func Merge(pol ...Policy) Policy {
+	result := Policy{}
+	for _, p := range pol {
+		result.Statements = append(result.Statements, p.Statements...)
+	}
+
+	return result
+}

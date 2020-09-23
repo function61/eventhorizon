@@ -1,4 +1,4 @@
-// EventHorizon credentials state: API keys, authorizations
+// State for access control: credentials (= API keys), policies (= authorizations)
 package ehcred
 
 import (
@@ -8,33 +8,50 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
+	"github.com/function61/gokit/sliceutil"
 	"github.com/function61/gokit/sync/syncutil"
 )
 
+// credential is policy-merged view of internalCredential that is consumable without
+// having to have knowledge of inline/attachable policies
 type Credential struct {
-	Id     string
-	Name   string
-	Policy policy.Policy
+	Id      string
+	Name    string
+	Created time.Time
+	ApiKey  string
+	Policy  policy.Policy
 }
 
-type CredentialWithApiKey struct {
-	Credential
-	ApiKey string
+type internalCredential struct {
+	Id       string
+	Name     string
+	Created  time.Time
+	Policies []string
+}
+
+type Policy struct {
+	Id      string
+	Name    string
+	Created time.Time
+	Content policy.Policy
 }
 
 type stateFormat struct {
-	Credentials map[string]*Credential `json:"credentials"`
+	Credentials map[string]*internalCredential `json:"credentials"`
+	Policies    map[string]*Policy             `json:"policies"`
 }
 
 func newStateFormat() stateFormat {
 	return stateFormat{
-		Credentials: map[string]*Credential{},
+		Credentials: map[string]*internalCredential{},
+		Policies:    map[string]*Policy{},
 	}
 }
 
@@ -51,18 +68,35 @@ func New() *Store {
 	}
 }
 
-func (s *Store) Credential(apiKey string) *Credential {
+func (s *Store) CredentialByApiKey(apiKey string) *Credential {
 	defer lockAndUnlock(&s.mu)()
 
-	return s.state.Credentials[apiKey]
+	if c, found := s.state.Credentials[apiKey]; found {
+		return s.credentialFromInternal(c, apiKey)
+	} else {
+		return nil
+	}
+}
+
+// needed b/c of weird'ish stateFormat
+func (s *Store) CredentialById(id string) (*Credential, error) {
+	defer lockAndUnlock(&s.mu)()
+
+	for apiKey, cred := range s.state.Credentials {
+		if cred.Id == id {
+			return s.credentialFromInternal(cred, apiKey), nil
+		}
+	}
+
+	return nil, fmt.Errorf("API key for credential '%s' not found", id)
 }
 
 func (s *Store) Credentials() []Credential {
 	defer lockAndUnlock(&s.mu)()
 
 	credentials := []Credential{}
-	for _, cred := range s.state.Credentials {
-		credentials = append(credentials, *cred)
+	for apiKey, cred := range s.state.Credentials {
+		credentials = append(credentials, *s.credentialFromInternal(cred, apiKey))
 	}
 
 	sort.Slice(credentials, func(i, j int) bool { return credentials[i].Id < credentials[j].Id })
@@ -70,17 +104,46 @@ func (s *Store) Credentials() []Credential {
 	return credentials
 }
 
-// needed b/c of weird'ish stateFormat
-func (s *Store) CredentialById(id string) (*CredentialWithApiKey, error) {
+func (s *Store) Policies() []Policy {
 	defer lockAndUnlock(&s.mu)()
 
-	for apiKey, cred := range s.state.Credentials {
-		if cred.Id == id {
-			return &CredentialWithApiKey{*cred, apiKey}, nil
+	policies := []Policy{}
+	for _, pol := range s.state.Policies {
+		policies = append(policies, *pol)
+	}
+
+	sort.Slice(policies, func(i, j int) bool { return policies[i].Id < policies[j].Id })
+
+	return policies
+}
+
+// returns error if credential does not exist
+func (s *Store) CredentialAttachedPolicyIds(credentialId string) ([]string, error) {
+	defer lockAndUnlock(&s.mu)()
+
+	for _, cred := range s.state.Credentials {
+		if cred.Id == credentialId {
+			return cred.Policies, nil
 		}
 	}
 
-	return nil, fmt.Errorf("API key for credential '%s' not found", id)
+	return nil, fmt.Errorf("credential '%s' does not exist", credentialId)
+}
+
+func (s *Store) PolicyExistsAndIsAbleToDelete(id string) error {
+	defer lockAndUnlock(&s.mu)()
+
+	if _, exists := s.state.Policies[id]; !exists {
+		return fmt.Errorf("policy '%s' does not exist", id)
+	}
+
+	for _, cred := range s.state.Credentials {
+		if sliceutil.ContainsString(cred.Policies, id) {
+			return fmt.Errorf("credential '%s' has policy '%s' attached", cred.Id, id)
+		}
+	}
+
+	return nil
 }
 
 func (s *Store) Version() eh.Cursor {
@@ -133,15 +196,11 @@ func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.Event
 func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *ehcreddomain.CredentialCreated:
-		pol, err := policy.Deserialize([]byte(e.Policy))
-		if err != nil {
-			panic(err)
-		}
-
-		s.state.Credentials[e.ApiKey] = &Credential{
-			Id:     e.Id,
-			Name:   e.Name,
-			Policy: *pol,
+		s.state.Credentials[e.ApiKey] = &internalCredential{
+			Id:       e.Id,
+			Name:     e.Name,
+			Created:  e.Meta().Time(),
+			Policies: []string{},
 		}
 	case *ehcreddomain.CredentialRevoked:
 		for key, cred := range s.state.Credentials {
@@ -150,11 +209,79 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 				break
 			}
 		}
+	case *ehcreddomain.CredentialPolicyAttached:
+		cred, err := s.credentialById(e.Id)
+		if err != nil {
+			return err
+		}
+
+		cred.Policies = append(cred.Policies, e.Policy)
+	case *ehcreddomain.CredentialPolicyDetached:
+		cred, err := s.credentialById(e.Id)
+		if err != nil {
+			return err
+		}
+
+		cred.Policies = sliceutil.FilterString(cred.Policies, func(id string) bool { return id != e.Policy })
+	case *ehcreddomain.PolicyCreated:
+		pol, err := policy.Deserialize([]byte(e.Content))
+		if err != nil {
+			return err
+		}
+
+		s.state.Policies[e.Id] = &Policy{
+			Id:      e.Id,
+			Name:    e.Name,
+			Created: e.Meta().Time(),
+			Content: *pol,
+		}
+	case *ehcreddomain.PolicyRenamed:
+		s.state.Policies[e.Id].Name = e.Name
+	case *ehcreddomain.PolicyContentUpdated:
+		pol, err := policy.Deserialize([]byte(e.Content))
+		if err != nil {
+			return err
+		}
+
+		s.state.Policies[e.Id].Content = *pol
+	case *ehcreddomain.PolicyRemoved:
+		delete(s.state.Policies, e.Id)
 	default:
 		return ehclient.UnsupportedEventTypeErr(ev)
 	}
 
 	return nil
+}
+
+func (s *Store) credentialById(id string) (*internalCredential, error) {
+	for _, cred := range s.state.Credentials {
+		if cred.Id == id {
+			return cred, nil
+		}
+	}
+
+	return nil, fmt.Errorf("API key for credential '%s' not found", id)
+}
+
+// merges inline/attachable policies to a simpler, public credential object
+func (s *Store) credentialFromInternal(cred *internalCredential, apiKey string) *Credential {
+	policies := []policy.Policy{}
+	for _, policyId := range cred.Policies {
+		attachedPolicy, found := s.state.Policies[policyId]
+		if !found {
+			panic(fmt.Errorf("attached policy '%s' not found", policyId))
+		}
+
+		policies = append(policies, attachedPolicy.Content)
+	}
+
+	return &Credential{
+		Id:      cred.Id,
+		Name:    cred.Name,
+		Created: cred.Created,
+		ApiKey:  apiKey,
+		Policy:  policy.Merge(policies...),
+	}
 }
 
 type App struct {

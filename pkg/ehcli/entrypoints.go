@@ -34,7 +34,7 @@ func Entrypoint() *cobra.Command {
 
 	parentCmd.AddCommand(snapshotEntrypoint())
 
-	parentCmd.AddCommand(credentialsEntrypoint())
+	parentCmd.AddCommand(iamEntrypoint())
 
 	parentCmd.AddCommand(realtimeEntrypoint())
 
@@ -204,6 +204,18 @@ func snapshotEntrypoint() *cobra.Command {
 	}
 	snapshotPutCmd.Flags().BoolVarP(&encrypted, "encrypted", "", encrypted, "Whether to encrypt the snapshot")
 	parentCmd.AddCommand(snapshotPutCmd)
+
+	return parentCmd
+}
+
+func iamEntrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "iam",
+		Short: "Identity & access management",
+	}
+
+	parentCmd.AddCommand(credentialsEntrypoint())
+	parentCmd.AddCommand(policiesEntrypoint())
 
 	return parentCmd
 }

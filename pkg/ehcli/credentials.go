@@ -2,12 +2,12 @@ package ehcli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
@@ -17,13 +17,15 @@ import (
 	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
 	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/os/osutil"
+	"github.com/function61/gokit/time/timeutil"
+	"github.com/scylladb/termtables"
 	"github.com/spf13/cobra"
 )
 
 func credentialsEntrypoint() *cobra.Command {
 	parentCmd := &cobra.Command{
-		Use:   "creds",
-		Short: "Credentials management",
+		Use:   "cred",
+		Short: "Credentials management (API keys)",
 	}
 
 	parentCmd.AddCommand(&cobra.Command{
@@ -39,7 +41,8 @@ func credentialsEntrypoint() *cobra.Command {
 		},
 	})
 
-	parentCmd.AddCommand(&cobra.Command{
+	withApiKey := false
+	cmd := &cobra.Command{
 		Use:   "cat [id]",
 		Short: "Print details of a credential",
 		Args:  cobra.ExactArgs(1),
@@ -49,9 +52,12 @@ func credentialsEntrypoint() *cobra.Command {
 			osutil.ExitIfError(credentialPrint(
 				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
+				withApiKey,
 				rootLogger))
 		},
-	})
+	}
+	cmd.Flags().BoolVarP(&withApiKey, "with-api-key", "", withApiKey, "Print the API key (secret)")
+	parentCmd.AddCommand(cmd)
 
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "rm [id] [reason]",
@@ -68,24 +74,33 @@ func credentialsEntrypoint() *cobra.Command {
 		},
 	})
 
-	parentCmd.AddCommand(&cobra.Command{
+	policyNames := []string{}
+	cmd = &cobra.Command{
 		Use:   "mk [name]",
 		Short: "Create credentials",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			rootLogger := logex.StandardLogger()
 
-			osutil.ExitIfError(credentialsCreate(
+			osutil.ExitIfError(credentialCreate(
 				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
+				policyNames,
 				rootLogger))
 		},
-	})
+	}
+	cmd.Flags().StringSliceVarP(&policyNames, "policy", "", policyNames, "Policies to attach")
+	parentCmd.AddCommand(cmd)
 
 	return parentCmd
 }
 
-func credentialPrint(ctx context.Context, id string, logger *log.Logger) error {
+func credentialPrint(
+	ctx context.Context,
+	id string,
+	withApiKey bool,
+	logger *log.Logger,
+) error {
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
@@ -101,7 +116,7 @@ func credentialPrint(ctx context.Context, id string, logger *log.Logger) error {
 		return err
 	}
 
-	printOneCredential(cred.Credential, cred.ApiKey)
+	printOneCredential(*cred, withApiKey)
 
 	return nil
 }
@@ -117,22 +132,59 @@ func credentialsList(ctx context.Context, logger *log.Logger) error {
 		return err
 	}
 
-	for _, cred := range credState.State.Credentials() {
-		printOneCredential(cred, "")
+	policies := credState.State.Policies()
+
+	findPolicy := func(id string) *ehcred.Policy {
+		for _, pol := range policies {
+			if pol.Id == id {
+				return &pol
+			}
+		}
+
+		return nil
 	}
+
+	view := termtables.CreateTable()
+	// TODO: add "Has inline policy"
+	view.AddHeaders("Id", "Name", "Created", "Policies")
+
+	for _, cred := range credState.State.Credentials() {
+		policyIds, err := credState.State.CredentialAttachedPolicyIds(cred.Id)
+		if err != nil {
+			return err
+		}
+
+		policyNames := []string{}
+		for _, policyId := range policyIds {
+			pol := findPolicy(policyId)
+			if pol == nil { // shouldn't happen (referential integrity)
+				return fmt.Errorf("cannot find policy by ID '%s'", policyId)
+			}
+
+			policyNames = append(policyNames, pol.Name)
+		}
+
+		view.AddRow(
+			cred.Id,
+			cred.Name,
+			timeutil.HumanizeDuration(time.Since(cred.Created)),
+			strings.Join(policyNames, ", "))
+	}
+
+	fmt.Println(view.Render())
 
 	return nil
 }
 
-func printOneCredential(cred ehcred.Credential, apiKey string) {
+func printOneCredential(cred ehcred.Credential, printApiKey bool) {
 	statementsHumanReadable := []string{}
 	for _, statement := range cred.Policy.Statements {
 		statementsHumanReadable = append(statementsHumanReadable, policy.HumanReadableStatement(statement))
 	}
 
 	maybeApiKey := func() string {
-		if apiKey != "" {
-			return fmt.Sprintf("API key: %s\n", apiKey)
+		if printApiKey {
+			return fmt.Sprintf("API key: %s\n", cred.ApiKey)
 		} else {
 			return ""
 		}
@@ -146,7 +198,16 @@ func printOneCredential(cred ehcred.Credential, apiKey string) {
 		strings.Join(statementsHumanReadable, "\n"))
 }
 
-func credentialsCreate(ctx context.Context, name string, logger *log.Logger) error {
+func credentialCreate(
+	ctx context.Context,
+	name string,
+	policyNames []string,
+	logger *log.Logger,
+) error {
+	if len(policyNames) == 0 {
+		return errors.New("doesn't make sense to create credential without a policy")
+	}
+
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
@@ -157,37 +218,47 @@ func credentialsCreate(ctx context.Context, name string, logger *log.Logger) err
 		return err
 	}
 
-	readWrite := []policy.Action{
-		eh.ActionStreamCreate,
-		eh.ActionStreamRead,
-		eh.ActionStreamAppend,
-		eh.ActionSnapshotRead,
-		eh.ActionSnapshotWrite,
-		eh.ActionSnapshotDelete,
-	}
+	meta := ehevent.MetaSystemUser(time.Now())
 
-	policySerialized := policy.Serialize(policy.NewPolicy(policy.NewAllowStatement(
-		readWrite,
-		eh.RootName.Child("*").ResourceName(),
-		eh.ResourceNameSnapshot.Child("*"),
-	)))
-
-	created := ehcreddomain.NewCredentialCreated(
+	credentialCreated := ehcreddomain.NewCredentialCreated(
 		randomid.Short(),
 		name,
 		randomid.AlmostCryptoLong(),
-		string(policySerialized),
-		ehevent.MetaSystemUser(time.Now()))
+		meta)
+
+	events := []ehevent.Event{credentialCreated}
+
+	policies := credState.State.Policies()
+
+	for _, policyName := range policyNames {
+		policy := func() *ehcred.Policy {
+			for _, pol := range policies {
+				if pol.Name == policyName {
+					return &pol
+				}
+			}
+
+			return nil
+		}()
+		if policy == nil {
+			return fmt.Errorf("policy by name not found: %s", policyName)
+		}
+
+		events = append(events, ehcreddomain.NewCredentialPolicyAttached(
+			credentialCreated.Id,
+			policy.Id,
+			meta))
+	}
 
 	if err := client.AppendAfter(
 		ctx,
 		credState.State.Version(),
-		created,
+		events...,
 	); err != nil {
 		return err
 	}
 
-	fmt.Printf("API key: %s\n", created.ApiKey)
+	fmt.Printf("API key: %s\n", credentialCreated.ApiKey)
 
 	return nil
 }

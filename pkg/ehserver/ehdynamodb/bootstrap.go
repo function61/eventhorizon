@@ -14,6 +14,8 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
 	"github.com/function61/eventhorizon/pkg/keyserver"
+	"github.com/function61/eventhorizon/pkg/policy"
+	"github.com/function61/eventhorizon/pkg/system/ehcreddomain"
 	"github.com/function61/eventhorizon/pkg/system/ehsettingsdomain"
 	"github.com/function61/gokit/crypto/cryptoutil"
 	"github.com/function61/gokit/crypto/envelopeenc"
@@ -85,6 +87,8 @@ func Bootstrap(ctx context.Context, e *Client) error {
 			switch {
 			case streamToCreate.Equal(eh.SysSettings):
 				return settingsEvents
+			case streamToCreate.Equal(eh.SysCredentials):
+				return []ehevent.Event{fullAccessPolicyCreatedEvent(meta)}
 			default:
 				return nil
 			}
@@ -160,6 +164,29 @@ func setupEncryptionAndKeyServers(meta ehevent.EventMeta) (envelopeenc.SlotEncry
 		keyServer,
 		ehsettingsdomain.NewKeyserverKeyAttached(keyServer.Id, pubAdded.Id, meta),
 	}
+}
+
+func fullAccessPolicyCreatedEvent(meta ehevent.EventMeta) ehevent.Event {
+	fullAccessPolicySerialized := policy.Serialize(policy.NewPolicy(policy.NewAllowStatement(
+		[]policy.Action{
+			eh.ActionStreamCreate,
+			eh.ActionStreamRead,
+			eh.ActionStreamAppend,
+			eh.ActionSnapshotRead,
+			eh.ActionSnapshotWrite,
+			eh.ActionSnapshotDelete,
+		},
+		eh.RootName.Child("*").ResourceName(),
+		eh.ResourceNameSnapshot.Child("*"),
+	)))
+
+	fullAccessPolicyCreated := ehcreddomain.NewPolicyCreated(
+		ehcreddomain.NewPolicyId(),
+		"Full access",
+		string(fullAccessPolicySerialized),
+		meta)
+
+	return fullAccessPolicyCreated
 }
 
 // to read & decrypt data in EventHorizon cluster, you need to know the cluster settings.

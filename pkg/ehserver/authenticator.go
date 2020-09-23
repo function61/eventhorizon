@@ -26,7 +26,7 @@ func (a *authenticator) AuthenticateRequest(r *http.Request) (*user, error) {
 		return nil, errors.New("missing header 'Authorization: Bearer ...'")
 	}
 
-	credential := a.credentials.State.Credential(apiKey)
+	credential := a.credentials.State.CredentialByApiKey(apiKey)
 	if credential == nil {
 		return nil, errors.New("invalid API key")
 	}
