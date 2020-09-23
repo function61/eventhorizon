@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/function61/eventhorizon/pkg/ehclient"
-	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/randomid"
@@ -101,17 +99,12 @@ func credentialPrint(
 	withApiKey bool,
 	logger *log.Logger,
 ) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, _, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	cred, err := credState.State.CredentialById(id)
+	cred, err := creds.State.CredentialById(id)
 	if err != nil {
 		return err
 	}
@@ -122,17 +115,12 @@ func credentialPrint(
 }
 
 func credentialsList(ctx context.Context, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, _, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	policies := credState.State.Policies()
+	policies := creds.State.Policies()
 
 	findPolicy := func(id string) *ehcred.Policy {
 		for _, pol := range policies {
@@ -148,8 +136,8 @@ func credentialsList(ctx context.Context, logger *log.Logger) error {
 	// TODO: add "Has inline policy"
 	view.AddHeaders("Id", "Name", "Created", "Policies")
 
-	for _, cred := range credState.State.Credentials() {
-		policyIds, err := credState.State.CredentialAttachedPolicyIds(cred.Id)
+	for _, cred := range creds.State.Credentials() {
+		policyIds, err := creds.State.CredentialAttachedPolicyIds(cred.Id)
 		if err != nil {
 			return err
 		}
@@ -208,12 +196,7 @@ func credentialCreate(
 		return errors.New("doesn't make sense to create credential without a policy")
 	}
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
-	if err != nil {
-		return err
-	}
-
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
@@ -228,7 +211,7 @@ func credentialCreate(
 
 	events := []ehevent.Event{credentialCreated}
 
-	policies := credState.State.Policies()
+	policies := creds.State.Policies()
 
 	for _, policyName := range policyNames {
 		policy := func() *ehcred.Policy {
@@ -252,7 +235,7 @@ func credentialCreate(
 
 	if err := client.AppendAfter(
 		ctx,
-		credState.State.Version(),
+		creds.State.Version(),
 		events...,
 	); err != nil {
 		return err
@@ -264,19 +247,14 @@ func credentialCreate(
 }
 
 func credentialRemove(ctx context.Context, id string, reason string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	return credState.Reader.TransactWrite(ctx, func() error {
+	return creds.Reader.TransactWrite(ctx, func() error {
 		if found := func() bool {
-			for _, cred := range credState.State.Credentials() {
+			for _, cred := range creds.State.Credentials() {
 				if cred.Id == id {
 					return true
 				}
@@ -294,7 +272,7 @@ func credentialRemove(ctx context.Context, id string, reason string, logger *log
 
 		return client.AppendAfter(
 			ctx,
-			credState.State.Version(),
+			creds.State.Version(),
 			revoked)
 	})
 }

@@ -57,7 +57,7 @@ func createHttpHandler(
 	startMqttTask func(task func(context.Context) error),
 	logger *log.Logger,
 ) (http.Handler, SubscriptionNotifier, error) {
-	credState, err := ehcred.LoadUntilRealtime(ctx, systemClient, logger)
+	credState, err := ehcred.LoadUntilRealtime(ctx, systemClient)
 	if err != nil {
 		return nil, nil, err
 	}

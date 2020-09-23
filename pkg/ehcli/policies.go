@@ -21,12 +21,7 @@ import (
 )
 
 func policiesList(ctx context.Context, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
-	if err != nil {
-		return err
-	}
-
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
+	creds, _, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
@@ -34,7 +29,7 @@ func policiesList(ctx context.Context, logger *log.Logger) error {
 	view := termtables.CreateTable()
 	view.AddHeaders("Id", "Name", "Created")
 
-	for _, pol := range credState.State.Policies() {
+	for _, pol := range creds.State.Policies() {
 		view.AddRow(
 			pol.Id,
 			pol.Name,
@@ -48,17 +43,12 @@ func policiesList(ctx context.Context, logger *log.Logger) error {
 }
 
 func policyPrint(ctx context.Context, id string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, _, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	pol, err := findPolicyById(id, credState.State)
+	pol, err := findPolicyById(id, creds.State)
 	if err != nil {
 		return err
 	}
@@ -78,41 +68,31 @@ func policyPrint(ctx context.Context, id string, logger *log.Logger) error {
 }
 
 func policyDelete(ctx context.Context, id string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	return credState.Reader.TransactWrite(ctx, func() error {
-		if err := credState.State.PolicyExistsAndIsAbleToDelete(id); err != nil {
+	return creds.Reader.TransactWrite(ctx, func() error {
+		if err := creds.State.PolicyExistsAndIsAbleToDelete(id); err != nil {
 			return err
 		}
 
 		return client.AppendAfter(
 			ctx,
-			credState.State.Version(),
+			creds.State.Version(),
 			ehcreddomain.NewPolicyRemoved(id, ehevent.MetaSystemUser(time.Now())))
 	})
 }
 
 func policyRename(ctx context.Context, id string, newName string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	return credState.Reader.TransactWrite(ctx, func() error {
-		pol, err := findPolicyById(id, credState.State)
+	return creds.Reader.TransactWrite(ctx, func() error {
+		pol, err := findPolicyById(id, creds.State)
 		if err != nil {
 			return err
 		}
@@ -123,24 +103,19 @@ func policyRename(ctx context.Context, id string, newName string, logger *log.Lo
 
 		return client.AppendAfter(
 			ctx,
-			credState.State.Version(),
+			creds.State.Version(),
 			ehcreddomain.NewPolicyRenamed(id, newName, ehevent.MetaSystemUser(time.Now())))
 	})
 }
 
 func policyAttach(ctx context.Context, credentialId string, policyId string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	return credState.Reader.TransactWrite(ctx, func() error {
-		exists, err := credentialHasPolicyAttached(credentialId, policyId, credState.State)
+	return creds.Reader.TransactWrite(ctx, func() error {
+		exists, err := credentialHasPolicyAttached(credentialId, policyId, creds.State)
 		if err != nil {
 			return err
 		}
@@ -154,24 +129,19 @@ func policyAttach(ctx context.Context, credentialId string, policyId string, log
 
 		return client.AppendAfter(
 			ctx,
-			credState.State.Version(),
+			creds.State.Version(),
 			ehcreddomain.NewCredentialPolicyAttached(credentialId, policyId, ehevent.MetaSystemUser(time.Now())))
 	})
 }
 
 func policyDetach(ctx context.Context, credentialId string, policyId string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
-	credState, err := ehcred.LoadUntilRealtime(ctx, client, logger)
-	if err != nil {
-		return err
-	}
-
-	return credState.Reader.TransactWrite(ctx, func() error {
-		exists, err := credentialHasPolicyAttached(credentialId, policyId, credState.State)
+	return creds.Reader.TransactWrite(ctx, func() error {
+		exists, err := credentialHasPolicyAttached(credentialId, policyId, creds.State)
 		if err != nil {
 			return err
 		}
@@ -185,7 +155,7 @@ func policyDetach(ctx context.Context, credentialId string, policyId string, log
 
 		return client.AppendAfter(
 			ctx,
-			credState.State.Version(),
+			creds.State.Version(),
 			ehcreddomain.NewCredentialPolicyDetached(credentialId, policyId, ehevent.MetaSystemUser(time.Now())))
 	})
 }
@@ -302,4 +272,18 @@ func credentialHasPolicyAttached(credentialId string, policyId string, state *eh
 	}
 
 	return sliceutil.ContainsString(policyIds, policyId), nil
+}
+
+func loadCreds(ctx context.Context, logger *log.Logger) (*ehcred.App, *ehclient.SystemClient, error) {
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	creds, err := ehcred.LoadUntilRealtime(ctx, client)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return creds, client, nil
 }
