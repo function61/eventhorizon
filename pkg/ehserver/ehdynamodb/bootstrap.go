@@ -49,6 +49,14 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		backupKey,
 	}
 
+	// some system streams need to be EventHorizon-accessable.
+	// that is: defaultGroupEncrypters + cluster-wide key
+	eventHorizonAccessable := []envelopeenc.SlotEncrypter{
+		defaultKey,
+		backupKey,
+		cwkEncrypter,
+	}
+
 	txItems := []*dynamodb.TransactWriteItem{}
 	for _, streamToCreate := range eh.InternalStreamsToCreate {
 		dek, err := keyserver.NewDek()
@@ -56,21 +64,20 @@ func Bootstrap(ctx context.Context, e *Client) error {
 			return err
 		}
 
-		// TODO: make DEK envelope locally only for streams where we need to add encrypted data for
-		dekEnvelope, err := func() (*envelopeenc.Envelope, error) {
-			if !streamToCreate.Equal(eh.SysSettings) {
-				return keyserver.MakeDekEnvelope(
-					dek,
-					streamToCreate.ResourceName(),
-					defaultGroupEncrypters)
-			} else {
-				// TODO: does the append have side effects?
-				return keyserver.MakeDekEnvelope(
-					dek,
-					streamToCreate.ResourceName(),
-					append(defaultGroupEncrypters, cwkEncrypter))
+		encrypters := func() []envelopeenc.SlotEncrypter {
+			switch {
+			case streamToCreate.Equal(eh.SysSettings), streamToCreate.Equal(eh.SysSubscriptions):
+				return eventHorizonAccessable
+			default:
+				return defaultGroupEncrypters
 			}
 		}()
+
+		// TODO: make DEK envelope locally only for streams where we need to add encrypted data for
+		dekEnvelope, err := keyserver.MakeDekEnvelope(
+			dek,
+			streamToCreate.ResourceName(),
+			encrypters)
 		if err != nil {
 			return err
 		}
