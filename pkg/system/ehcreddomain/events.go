@@ -11,6 +11,13 @@ var (
 	NewPolicyId     = randomid.Short
 )
 
+type PolicyKind string
+
+// leaving room for "inline" (= per-user) policies
+const (
+	PolicyKindStandalone PolicyKind = "standalone"
+)
+
 var Types = ehevent.Types{
 	"credential.Created":        func() ehevent.Event { return &CredentialCreated{} },
 	"credential.Revoked":        func() ehevent.Event { return &CredentialRevoked{} },
@@ -122,6 +129,7 @@ func NewCredentialPolicyDetached(
 type PolicyCreated struct {
 	meta    ehevent.EventMeta
 	Id      string
+	Kind    PolicyKind
 	Name    string
 	Content string
 }
@@ -131,6 +139,7 @@ func (e *PolicyCreated) Meta() *ehevent.EventMeta { return &e.meta }
 
 func NewPolicyCreated(
 	id string,
+	kind PolicyKind,
 	name string,
 	policy string,
 	meta ehevent.EventMeta,
@@ -138,6 +147,7 @@ func NewPolicyCreated(
 	return &PolicyCreated{
 		meta:    meta,
 		Id:      id,
+		Kind:    kind,
 		Name:    name,
 		Content: policy,
 	}

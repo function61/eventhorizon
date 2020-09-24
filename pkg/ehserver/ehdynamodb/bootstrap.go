@@ -182,6 +182,7 @@ func fullAccessPolicyCreatedEvent(meta ehevent.EventMeta) ehevent.Event {
 
 	fullAccessPolicyCreated := ehcreddomain.NewPolicyCreated(
 		ehcreddomain.NewPolicyId(),
+		ehcreddomain.PolicyKindStandalone,
 		"Full access",
 		string(fullAccessPolicySerialized),
 		meta)
