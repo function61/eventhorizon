@@ -174,7 +174,7 @@ func setupEncryptionAndKeyServers(meta ehevent.EventMeta) (envelopeenc.SlotEncry
 }
 
 func fullAccessPolicyCreatedEvent(meta ehevent.EventMeta) ehevent.Event {
-	fullAccessPolicySerialized := policy.Serialize(policy.NewPolicy(policy.NewAllowStatement(
+	fullAccessPolicy := policy.NewPolicy(policy.NewAllowStatement(
 		[]policy.Action{
 			eh.ActionStreamCreate,
 			eh.ActionStreamRead,
@@ -185,13 +185,13 @@ func fullAccessPolicyCreatedEvent(meta ehevent.EventMeta) ehevent.Event {
 		},
 		eh.RootName.Child("*").ResourceName(),
 		eh.ResourceNameSnapshot.Child("*"),
-	)))
+	))
 
 	fullAccessPolicyCreated := ehcreddomain.NewPolicyCreated(
 		ehcreddomain.NewPolicyId(),
 		ehcreddomain.PolicyKindStandalone,
 		"Full access",
-		string(fullAccessPolicySerialized),
+		fullAccessPolicy,
 		meta)
 
 	return fullAccessPolicyCreated

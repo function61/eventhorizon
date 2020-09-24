@@ -44,8 +44,8 @@ type Policy struct {
 }
 
 type stateFormat struct {
-	Credentials map[string]*internalCredential `json:"credentials"`
-	Policies    map[string]*Policy             `json:"policies"`
+	Credentials map[string]*internalCredential
+	Policies    map[string]*Policy
 }
 
 func newStateFormat() stateFormat {
@@ -224,26 +224,16 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 
 		cred.Policies = sliceutil.FilterString(cred.Policies, func(id string) bool { return id != e.Policy })
 	case *ehcreddomain.PolicyCreated:
-		pol, err := policy.Deserialize([]byte(e.Content))
-		if err != nil {
-			return err
-		}
-
 		s.state.Policies[e.Id] = &Policy{
 			Id:      e.Id,
 			Name:    e.Name,
 			Created: e.Meta().Time(),
-			Content: *pol,
+			Content: e.Content,
 		}
 	case *ehcreddomain.PolicyRenamed:
 		s.state.Policies[e.Id].Name = e.Name
 	case *ehcreddomain.PolicyContentUpdated:
-		pol, err := policy.Deserialize([]byte(e.Content))
-		if err != nil {
-			return err
-		}
-
-		s.state.Policies[e.Id].Content = *pol
+		s.state.Policies[e.Id].Content = e.Content
 	case *ehcreddomain.PolicyRemoved:
 		delete(s.state.Policies, e.Id)
 	default:

@@ -3,6 +3,7 @@ package ehcreddomain
 
 import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/randomid"
 )
 
@@ -131,7 +132,7 @@ type PolicyCreated struct {
 	Id      string
 	Kind    PolicyKind
 	Name    string
-	Content string
+	Content policy.Policy // pretty safe b/c we can always switch to json.RawMessage if we want to decouple
 }
 
 func (e *PolicyCreated) MetaType() string         { return "policy.Created" }
@@ -141,7 +142,7 @@ func NewPolicyCreated(
 	id string,
 	kind PolicyKind,
 	name string,
-	policy string,
+	policy policy.Policy,
 	meta ehevent.EventMeta,
 ) *PolicyCreated {
 	return &PolicyCreated{
@@ -181,7 +182,7 @@ func NewPolicyRenamed(
 type PolicyContentUpdated struct {
 	meta    ehevent.EventMeta
 	Id      string
-	Content string
+	Content policy.Policy
 }
 
 func (e *PolicyContentUpdated) MetaType() string         { return "policy.ContentUpdated" }
@@ -189,7 +190,7 @@ func (e *PolicyContentUpdated) Meta() *ehevent.EventMeta { return &e.meta }
 
 func NewPolicyContentUpdated(
 	id string,
-	content string,
+	content policy.Policy,
 	meta ehevent.EventMeta,
 ) *PolicyContentUpdated {
 	return &PolicyContentUpdated{
