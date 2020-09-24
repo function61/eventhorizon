@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 	"time"
@@ -278,13 +277,11 @@ type App struct {
 	State  *Store
 	Reader *ehclient.Reader
 	Writer eh.Writer
-	Logger *log.Logger
 }
 
 func LoadUntilRealtime(
 	ctx context.Context,
 	client *ehclient.SystemClient,
-	logger *log.Logger,
 ) (*App, error) {
 	store := New()
 
@@ -293,9 +290,8 @@ func LoadUntilRealtime(
 		ehclient.NewReader(
 			store,
 			client,
-			logger),
-		client.EventLog,
-		logger}
+			client.Logger("ehcred.Reader")),
+		client.EventLog}
 
 	if err := a.Reader.LoadUntilRealtime(ctx); err != nil {
 		return nil, err
