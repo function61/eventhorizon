@@ -96,12 +96,19 @@ func createHttpHandler(
 		return nil, nil, err
 	}
 
-	return serverHandler(auth, keyServer), notifier, nil
+	// routePrefix:=os.Getenv("HTTP_ROUTE_PREFIX")
+	routePrefix := "/api/eventhorizon"
+
+	return serverHandler(auth, keyServer, routePrefix), notifier, nil
 }
 
-func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handler {
+func serverHandler(
+	auth *authenticator,
+	keyServer keyserver.Unsealer,
+	prefix string,
+) http.Handler {
 	router := mux.NewRouter()
-	router.HandleFunc("/read", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/read", func(w http.ResponseWriter, r *http.Request) {
 		cursor, err := eh.DeserializeCursor(r.URL.Query().Get("after"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -123,7 +130,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, res)
 	}).Methods(http.MethodGet)
 
-	router.HandleFunc("/stream-create", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/stream-create", func(w http.ResponseWriter, r *http.Request) {
 		stream, err := eh.DeserializeStreamName(r.URL.Query().Get("stream"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -155,7 +162,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, appendResult)
 	}).Methods(http.MethodPost)
 
-	router.HandleFunc("/append", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/append", func(w http.ResponseWriter, r *http.Request) {
 		// TODO: assert request content-type
 
 		stream, err := eh.DeserializeStreamName(r.URL.Query().Get("stream"))
@@ -189,7 +196,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, appendResult)
 	}).Methods(http.MethodPost)
 
-	router.HandleFunc("/append-after", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/append-after", func(w http.ResponseWriter, r *http.Request) {
 		// TODO: assert request content-type
 
 		after, err := eh.DeserializeCursor(r.URL.Query().Get("after"))
@@ -223,7 +230,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, appendResult)
 	}).Methods(http.MethodPost)
 
-	router.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		snapshotContext := r.URL.Query().Get("context")
 		if snapshotContext == "" {
 			http.Error(w, "snapshot context not defined", http.StatusBadRequest)
@@ -255,7 +262,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, snap)
 	}).Methods(http.MethodGet)
 
-	router.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		snapshotContext := r.URL.Query().Get("context")
 		if snapshotContext == "" {
 			http.Error(w, "snapshot context not defined", http.StatusBadRequest)
@@ -287,7 +294,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		respondJson(w, snap)
 	}).Methods(http.MethodGet)
 
-	router.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.AuthenticateRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -305,7 +312,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		}
 	}).Methods(http.MethodPut)
 
-	router.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.AuthenticateRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -333,7 +340,7 @@ func serverHandler(auth *authenticator, keyServer keyserver.Unsealer) http.Handl
 		}
 	}).Methods(http.MethodDelete)
 
-	router.HandleFunc("/keyserver/envelope-decrypt", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(prefix+"/keyserver/envelope-decrypt", func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.AuthenticateRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
