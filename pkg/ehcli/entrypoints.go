@@ -28,6 +28,8 @@ func Entrypoint() *cobra.Command {
 
 	parentCmd.AddCommand(iamEntrypoint())
 
+	parentCmd.AddCommand(encEntrypoint())
+
 	parentCmd.AddCommand(realtimeEntrypoint())
 
 	parentCmd.AddCommand(subscriptionsEntrypoint())
@@ -78,6 +80,18 @@ func iamEntrypoint() *cobra.Command {
 
 	parentCmd.AddCommand(credentialsEntrypoint())
 	parentCmd.AddCommand(policiesEntrypoint())
+
+	return parentCmd
+}
+
+func encEntrypoint() *cobra.Command {
+	parentCmd := &cobra.Command{
+		Use:   "enc",
+		Short: "Encryption management",
+	}
+
+	parentCmd.AddCommand(kekEntrypoint())
+	parentCmd.AddCommand(keyServerEntrypoint())
 
 	return parentCmd
 }

@@ -84,6 +84,28 @@ func (s *Store) Kek(kekId string) *Kek {
 	return nil
 }
 
+func (s *Store) Keks() []Kek {
+	defer lockAndUnlock(&s.mu)()
+
+	keks := []Kek{}
+	for _, kek := range s.state.Keks {
+		keks = append(keks, *kek)
+	}
+
+	return keks
+}
+
+func (s *Store) KeyServers() []KeyServer {
+	defer lockAndUnlock(&s.mu)()
+
+	keyServers := []KeyServer{}
+	for _, keyServer := range s.state.KeyServers {
+		keyServers = append(keyServers, *keyServer)
+	}
+
+	return keyServers
+}
+
 func (s *Store) KeyServerWithKekAttached(kekId string) *KeyServer {
 	defer lockAndUnlock(&s.mu)()
 
