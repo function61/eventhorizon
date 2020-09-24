@@ -155,12 +155,12 @@ func setupEncryptionAndKeyServers(meta ehevent.EventMeta) (envelopeenc.SlotEncry
 
 	keyServer := ehsettingsdomain.NewKeyserverCreated("internal", "Internal", meta)
 
-	pubAdded := ehsettingsdomain.NewKekAdded(defaultKey.KekId(), "rsa", "Default key", defaultPubPem, meta)
+	pubAdded := ehsettingsdomain.NewKekRegistered(defaultKey.KekId(), "rsa", "Default key", defaultPubPem, meta)
 
 	return defaultKey, backupKey, defGroup.Id, []ehevent.Event{
 		defGroup,
 		pubAdded,
-		ehsettingsdomain.NewKekAdded(backupKey.KekId(), "rsa", "Backup key", backupPubPem, meta),
+		ehsettingsdomain.NewKekRegistered(backupKey.KekId(), "rsa", "Backup key", backupPubPem, meta),
 		keyServer,
 		ehsettingsdomain.NewKeyserverKeyAttached(keyServer.Id, pubAdded.Id, meta),
 	}

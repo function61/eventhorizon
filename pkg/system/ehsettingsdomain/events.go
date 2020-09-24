@@ -12,7 +12,7 @@ const (
 var Types = ehevent.Types{
 	"mqtt.ConfigUpdated":    func() ehevent.Event { return &MqttConfigUpdated{} },
 	"keygroup.Created":      func() ehevent.Event { return &KeygroupCreated{} },
-	"kek.Added":             func() ehevent.Event { return &KekAdded{} },
+	"kek.Registered":        func() ehevent.Event { return &KekRegistered{} },
 	"keyserver.Created":     func() ehevent.Event { return &KeyserverCreated{} },
 	"keyserver.KeyAttached": func() ehevent.Event { return &KeyserverKeyAttached{} },
 	"keyserver.KeyDetached": func() ehevent.Event { return &KeyserverKeyDetached{} },
@@ -46,7 +46,7 @@ func NewKeygroupCreated(
 
 // ------
 
-type KekAdded struct {
+type KekRegistered struct {
 	meta      ehevent.EventMeta
 	Id        string // same as envelopeenc's slot's KEK ID
 	Kind      string // "rsa" | "nacl-secretbox"
@@ -54,17 +54,17 @@ type KekAdded struct {
 	PublicKey string `json:"PublicKey,omitempty"` // used for RSA
 }
 
-func (e *KekAdded) MetaType() string         { return "kek.Added" }
-func (e *KekAdded) Meta() *ehevent.EventMeta { return &e.meta }
+func (e *KekRegistered) MetaType() string         { return "kek.Registered" }
+func (e *KekRegistered) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewKekAdded(
+func NewKekRegistered(
 	id string,
 	kind string,
 	label string,
 	publicKey string,
 	meta ehevent.EventMeta,
-) *KekAdded {
-	return &KekAdded{
+) *KekRegistered {
+	return &KekRegistered{
 		meta:      meta,
 		Id:        id,
 		Kind:      kind,

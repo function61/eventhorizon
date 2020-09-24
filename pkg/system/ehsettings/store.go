@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
@@ -23,15 +24,17 @@ type stateFormat struct {
 
 type KeyServer struct {
 	Id             string
+	Created        time.Time
 	Label          string
 	AttachedKekIds []string
 }
 
 type Kek struct {
-	Id        string
-	Kind      string
-	Label     string
-	PublicKey string
+	Id         string
+	Registered time.Time
+	Kind       string
+	Label      string
+	PublicKey  string
 }
 
 func newStateFormat() stateFormat {
@@ -145,16 +148,18 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	case *ehsettingsdomain.MqttConfigUpdated:
 		serialized := ehevent.SerializeOne(e)
 		s.state.MqttConfig = &serialized
-	case *ehsettingsdomain.KekAdded:
+	case *ehsettingsdomain.KekRegistered:
 		s.state.Keks = append(s.state.Keks, &Kek{
-			Id:        e.Id,
-			Kind:      e.Kind,
-			Label:     e.Label,
-			PublicKey: e.PublicKey,
+			Id:         e.Id,
+			Registered: e.Meta().Time(),
+			Kind:       e.Kind,
+			Label:      e.Label,
+			PublicKey:  e.PublicKey,
 		})
 	case *ehsettingsdomain.KeyserverCreated:
 		s.state.KeyServers = append(s.state.KeyServers, &KeyServer{
 			Id:             e.Id,
+			Created:        e.Meta().Time(),
 			Label:          e.Label,
 			AttachedKekIds: []string{},
 		})
