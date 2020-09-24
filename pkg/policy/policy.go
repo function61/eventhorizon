@@ -6,11 +6,13 @@ import (
 	"strings"
 )
 
+// grammar keywords are lowercase because these documents are often handwritten
+
 type StatementEffect string
 
 const (
-	Allow StatementEffect = "Allow"
-	Deny  StatementEffect = "Deny"
+	Allow StatementEffect = "allow"
+	Deny  StatementEffect = "deny"
 )
 
 type Policy struct {
