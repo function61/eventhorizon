@@ -17,7 +17,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	// IV is stored as prefix, which is now easy to spot as "AAA.."
 	assert.EqualJson(t, encryptedEvents, `{
   "Kind": 2,
-  "Raw": "AAAAAAAAAAAAAAAAAAAAACI9iaVbddA="
+  "Raw": "AAAAAAAAAAAAAAAAAAAAAAAAIj2JpVt10A=="
 }`)
 
 	events, err := Decrypt(*encryptedEvents, dek)
@@ -29,6 +29,28 @@ func TestEncryptDecrypt(t *testing.T) {
 ]`)
 }
 
+func TestCompression(t *testing.T) {
+	dek := dummyDek()
+
+	encryptedEvents, err := encryptWithRand([]string{"fooooooooooooooooooooooooooooooooooooooooooo"}, dek, nullIv())
+	assert.Ok(t, err)
+
+	// remember the long "AAAA".. from earlier test? the difference below is for the
+	// CompressionMethod=deflate being specified in the header
+	assert.EqualJson(t, encryptedEvents, `{
+  "Kind": 2,
+  "Raw": "AQAAAAAAAAAAAAAAAAAAAAAADpnBsTkWorvMSQ=="
+}`)
+
+	events, err := Decrypt(*encryptedEvents, dek)
+	assert.Ok(t, err)
+
+	assert.EqualJson(t, events, `[
+  "fooooooooooooooooooooooooooooooooooooooooooo"
+]`)
+}
+
+// dangerous in production, but we'll use this in our test so the base64 is distinctive
 func nullIv() io.Reader {
 	return bytes.NewReader([]byte{
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

@@ -10,7 +10,7 @@ type LogDataKind uint8
 
 const (
 	LogDataKindMeta          LogDataKind = 1 // one single unencrypted meta event in "ehevent" format
-	LogDataKindEncryptedData LogDataKind = 2 // 16 bytes IV || AES256_CTR(plaintext, dek). plaintext is multiple "ehevent" lines split by \n character.
+	LogDataKindEncryptedData LogDataKind = 2 // encrypted & maybe compressed according to "eheventencryption". content is multiple "ehevent" lines split by \n character.
 )
 
 func (k LogDataKind) IsEncrypted() bool {
