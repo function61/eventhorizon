@@ -263,38 +263,6 @@ func serverHandler(
 	}).Methods(http.MethodGet)
 
 	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		snapshotContext := r.URL.Query().Get("context")
-		if snapshotContext == "" {
-			http.Error(w, "snapshot context not defined", http.StatusBadRequest)
-			return
-		}
-
-		stream, err := eh.DeserializeStreamName(r.URL.Query().Get("stream"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		user, err := auth.AuthenticateRequest(r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-
-		snap, err := user.Snapshots.ReadSnapshot(r.Context(), stream, snapshotContext)
-		if err != nil {
-			if os.IsNotExist(err) {
-				http.NotFound(w, r)
-			} else {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-			return
-		}
-
-		respondJson(w, snap)
-	}).Methods(http.MethodGet)
-
-	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		user, err := auth.AuthenticateRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
