@@ -205,7 +205,7 @@ func (d *sysConnection) unsealerForKeyServerUncached(keyServer ehsettings.KeySer
 			return nil, err
 		}
 
-		return keyserver.NewClient(serverUrl, authToken), nil
+		return keyserver.NewClient(serverUrl, authToken, logex.Prefix("network", d.logger)), nil
 	} else { // server perspective
 		return keyserver.NewServer("default.key", logex.Prefix("keyserver-internaluse", d.logger))
 	}
