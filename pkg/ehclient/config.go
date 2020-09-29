@@ -13,6 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/eventhorizon/pkg/ehserver/ehserverclient"
 	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/os/osutil"
 	"github.com/function61/gokit/sync/syncutil"
 )
@@ -95,7 +96,7 @@ func SystemClientFrom(
 
 	if conf.url != "" {
 		// implements EventLog, SnapshotStore
-		serverClient, err := ehserverclient.New(conf.url)
+		serverClient, err := ehserverclient.New(conf.url, logex.Prefix("network", logger))
 		if err != nil {
 			return nil, err
 		}
@@ -175,6 +176,7 @@ func getConfig(getter ConfigStringGetter) (*Config, error) {
 		return nil, err
 	}
 
+	// works for "http://" | "https://"
 	if strings.HasPrefix(confString, "http") {
 		return &Config{
 			url: confString,

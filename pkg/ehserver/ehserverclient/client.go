@@ -5,12 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/gokit/crypto/envelopeenc"
+	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/net/http/ezhttp"
 )
 
@@ -27,9 +29,13 @@ type ReaderWriterSnapshotStore interface {
 type serverClient struct {
 	authToken string
 	baseUrl   string
+	logl      *logex.Leveled
 }
 
-func New(urlRaw string) (ReaderWriterSnapshotStore, error) {
+func New(
+	urlRaw string,
+	logger *log.Logger,
+) (ReaderWriterSnapshotStore, error) {
 	urlWithoutUser, authToken, err := SplitAuthTokenFromUrl(urlRaw)
 	if err != nil {
 		return nil, err
@@ -38,6 +44,7 @@ func New(urlRaw string) (ReaderWriterSnapshotStore, error) {
 	return &serverClient{
 		authToken: authToken,
 		baseUrl:   urlWithoutUser,
+		logl:      logex.Levels(logger),
 	}, nil
 }
 
@@ -45,6 +52,8 @@ func (s *serverClient) Read(
 	ctx context.Context,
 	after eh.Cursor,
 ) (*eh.ReadResult, error) {
+	s.logl.Debug.Printf("Read")
+
 	res := &eh.ReadResult{}
 	if _, err := ezhttp.Get(
 		ctx,
@@ -63,6 +72,8 @@ func (s *serverClient) Append(
 	stream eh.StreamName,
 	data eh.LogData,
 ) (*eh.AppendResult, error) {
+	s.logl.Debug.Printf("Append")
+
 	res := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
@@ -82,6 +93,8 @@ func (s *serverClient) AppendAfter(
 	after eh.Cursor,
 	data eh.LogData,
 ) (*eh.AppendResult, error) {
+	s.logl.Debug.Printf("AppendAfter")
+
 	result := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
@@ -106,6 +119,8 @@ func (s *serverClient) CreateStream(
 	dekEnvelope envelopeenc.Envelope,
 	data *eh.LogData,
 ) (*eh.AppendResult, error) {
+	s.logl.Debug.Printf("CreateStream")
+
 	result := &eh.AppendResult{}
 	if _, err := ezhttp.Post(
 		ctx,
@@ -128,6 +143,8 @@ func (s *serverClient) ReadSnapshot(
 	stream eh.StreamName,
 	snapshotContext string,
 ) (*eh.PersistedSnapshot, error) {
+	s.logl.Debug.Printf("ReadSnapshot %s :%s", stream.String(), snapshotContext)
+
 	snap := &eh.PersistedSnapshot{}
 	if _, err := ezhttp.Get(
 		ctx,
@@ -149,6 +166,8 @@ func (s *serverClient) WriteSnapshot(
 	ctx context.Context,
 	snapshot eh.PersistedSnapshot,
 ) error {
+	s.logl.Debug.Printf("WriteSnapshot")
+
 	if _, err := ezhttp.Put(
 		ctx,
 		s.baseUrl+"/snapshot",
@@ -170,6 +189,8 @@ func (s *serverClient) DeleteSnapshot(
 	stream eh.StreamName,
 	snapshotContext string,
 ) error {
+	s.logl.Debug.Printf("DeleteSnapshot")
+
 	if _, err := ezhttp.Del(
 		ctx,
 		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&context="+url.QueryEscape(snapshotContext),
