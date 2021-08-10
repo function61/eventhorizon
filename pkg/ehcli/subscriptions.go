@@ -85,7 +85,7 @@ func subscriptionsEntrypoint() *cobra.Command {
 }
 
 func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Logger) error {
-	id := eh.NewSubscriptionId(idRaw)
+	id := eh.NewSubscriberID(idRaw)
 
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
@@ -122,7 +122,7 @@ func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Lo
 }
 
 func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
-	id := eh.NewSubscriptionId(idRaw)
+	id := eh.NewSubscriberID(idRaw)
 
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
@@ -157,7 +157,7 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 }
 
 func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
-	id := eh.NewSubscriptionId(idRaw)
+	id := eh.NewSubscriberID(idRaw)
 
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {

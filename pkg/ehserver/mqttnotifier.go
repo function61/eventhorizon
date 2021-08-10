@@ -133,7 +133,7 @@ func (l *mqttNotifier) taskAwsIotDataplane(ctx context.Context) error {
 
 func (l *mqttNotifier) NotifySubscriberOfActivity(
 	ctx context.Context,
-	subscription eh.SubscriptionId,
+	subscription eh.SubscriberID,
 	appendResult eh.AppendResult,
 ) error {
 	msg, err := json.Marshal(eh.MqttActivityNotification{
@@ -176,7 +176,7 @@ func (l *mqttNotifier) addInflight(by int) {
 // "prod/_/sub/foo"
 //
 // namespace="prod" | "staging" | "dev" | ...
-func MqttTopicForSubscription(subscription eh.SubscriptionId, namespace string) string {
+func MqttTopicForSubscription(subscription eh.SubscriberID, namespace string) string {
 	return namespace + subscription.StreamName().String()
 }
 

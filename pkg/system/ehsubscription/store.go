@@ -41,7 +41,7 @@ type Store struct {
 	state   stateFormat // for easy snapshotting
 }
 
-func New(subscription eh.SubscriptionId) *Store {
+func New(subscription eh.SubscriberID) *Store {
 	return &Store{
 		version: subscription.StreamName().Beginning(),
 		state:   newStateFormat(),
@@ -172,7 +172,7 @@ type App struct {
 
 func LoadUntilRealtime(
 	ctx context.Context,
-	subscription eh.SubscriptionId,
+	subscription eh.SubscriberID,
 	client *ehclient.SystemClient,
 	cache *Cache,
 	logger *log.Logger,

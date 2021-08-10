@@ -16,7 +16,7 @@ type SubscriptionNotifier interface {
 	// nil return does not indicate success, but only that the handling did not immediately fail
 	NotifySubscriberOfActivity(
 		ctx context.Context,
-		subscription eh.SubscriptionId,
+		subscription eh.SubscriberID,
 		appendResult eh.AppendResult,
 	) error
 	// waits for in-flight notifications to be sent. this is so that before reporting a request

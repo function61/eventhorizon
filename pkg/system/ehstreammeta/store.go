@@ -34,7 +34,7 @@ type stateFormat struct {
 
 func newStateFormat() stateFormat {
 	return stateFormat{
-		Subscriptions: []eh.SubscriptionId{},
+		Subscriptions: []eh.SubscriberID{},
 		DekEnvelope:   nil,
 		ChildStreams:  []string{},
 	}
@@ -59,13 +59,13 @@ func (s *Store) DekEnvelope() *envelopeenc.Envelope {
 	return s.state.DekEnvelope
 }
 
-func (s *Store) Subscriptions() []eh.SubscriptionId {
+func (s *Store) Subscriptions() []eh.SubscriberID {
 	defer lockAndUnlock(&s.mu)()
 
 	return s.state.Subscriptions
 }
 
-func (s *Store) Subscribed(id eh.SubscriptionId) bool {
+func (s *Store) Subscribed(id eh.SubscriberID) bool {
 	defer lockAndUnlock(&s.mu)()
 
 	for _, candidate := range s.state.Subscriptions {
@@ -192,8 +192,8 @@ var (
 	lockAndUnlock = syncutil.LockAndUnlock // shorthand
 )
 
-func remove(input []eh.SubscriptionId, remove eh.SubscriptionId) []eh.SubscriptionId {
-	removed := []eh.SubscriptionId{}
+func remove(input []eh.SubscriberID, remove eh.SubscriberID) []eh.SubscriberID {
+	removed := []eh.SubscriberID{}
 	for _, item := range input {
 		if !item.Equal(remove) {
 			removed = append(removed, item)

@@ -85,7 +85,7 @@ func realtimeEntrypoint() *cobra.Command {
 }
 
 func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Logger) error {
-	subscriptionId := eh.NewSubscriptionId(subscriptionIdRaw)
+	subscriptionId := eh.NewSubscriberID(subscriptionIdRaw)
 
 	logl := logex.Levels(logger)
 

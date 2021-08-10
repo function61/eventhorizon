@@ -56,13 +56,13 @@ func NewStreamStarted(dekEnvelope envelopeenc.Envelope, keyGroupId string, meta 
 
 type SubscriptionSubscribed struct {
 	meta ehevent.EventMeta
-	Id   SubscriptionId
+	Id   SubscriberID
 }
 
 func (e *SubscriptionSubscribed) MetaType() string         { return "$subscription.Subscribed" }
 func (e *SubscriptionSubscribed) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewSubscriptionSubscribed(id SubscriptionId, meta ehevent.EventMeta) *SubscriptionSubscribed {
+func NewSubscriptionSubscribed(id SubscriberID, meta ehevent.EventMeta) *SubscriptionSubscribed {
 	return &SubscriptionSubscribed{meta, id}
 }
 
@@ -70,12 +70,12 @@ func NewSubscriptionSubscribed(id SubscriptionId, meta ehevent.EventMeta) *Subsc
 
 type SubscriptionUnsubscribed struct {
 	meta ehevent.EventMeta
-	Id   SubscriptionId
+	Id   SubscriberID
 }
 
 func (e *SubscriptionUnsubscribed) MetaType() string         { return "$subscription.Unsubscribed" }
 func (e *SubscriptionUnsubscribed) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewSubscriptionUnsubscribed(id SubscriptionId, meta ehevent.EventMeta) *SubscriptionUnsubscribed {
+func NewSubscriptionUnsubscribed(id SubscriberID, meta ehevent.EventMeta) *SubscriptionUnsubscribed {
 	return &SubscriptionUnsubscribed{meta, id}
 }

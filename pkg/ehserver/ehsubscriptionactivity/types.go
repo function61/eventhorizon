@@ -63,7 +63,7 @@ func (a *allSubscriptionsActivities) Subscriptions() []*subscriptionActivity {
 	return subs
 }
 
-func (a *allSubscriptionsActivities) UpsertSubscription(sub eh.SubscriptionId) *subscriptionActivity {
+func (a *allSubscriptionsActivities) UpsertSubscription(sub eh.SubscriberID) *subscriptionActivity {
 	defer syncutil.LockAndUnlock(&a.subMu)()
 
 	key := sub.String()
@@ -77,12 +77,12 @@ func (a *allSubscriptionsActivities) UpsertSubscription(sub eh.SubscriptionId) *
 }
 
 type subscriptionActivity struct {
-	subscription eh.SubscriptionId
+	subscription eh.SubscriberID
 	cursors      []eh.Cursor
 	cursorsMu    sync.Mutex
 }
 
-func newSubscriptionActivity(subscription eh.SubscriptionId) *subscriptionActivity {
+func newSubscriptionActivity(subscription eh.SubscriberID) *subscriptionActivity {
 	return &subscriptionActivity{
 		subscription: subscription,
 		cursors:      []eh.Cursor{},
