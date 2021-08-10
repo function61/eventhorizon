@@ -84,8 +84,7 @@ func publishActivityToSubscribers(
 			ctx,
 			subAct.subscription,
 			client,
-			ehsubscription.GlobalCache,
-			logl.Original)
+			ehsubscription.GlobalCache)
 		if err != nil {
 			return err
 		}

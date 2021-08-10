@@ -4,7 +4,6 @@ package ehsubscription
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
 	"time"
 
@@ -166,7 +165,6 @@ type App struct {
 	State  *Store
 	Reader *ehclient.Reader
 	Writer eh.Writer
-	Logger *log.Logger
 }
 
 func LoadUntilRealtime(
@@ -174,7 +172,6 @@ func LoadUntilRealtime(
 	subscription eh.SubscriberID,
 	client *ehclient.SystemClient,
 	cache *Cache,
-	logger *log.Logger,
 ) (*App, error) {
 	app := cache.Get(subscription.String(), func() *App {
 		store := New(subscription)
@@ -184,8 +181,7 @@ func LoadUntilRealtime(
 			ehclient.NewReader(
 				store,
 				client),
-			client.EventLog,
-			logger}
+			client.EventLog}
 	})
 
 	return app, app.Reader.LoadUntilRealtimeIfStale(ctx, 5*time.Second)

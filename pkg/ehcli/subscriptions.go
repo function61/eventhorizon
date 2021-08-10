@@ -135,7 +135,7 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 	}
 
 	// validate existence
-	if _, err := ehsubscription.LoadUntilRealtime(ctx, id, client, nil, logger); err != nil {
+	if _, err := ehsubscription.LoadUntilRealtime(ctx, id, client, nil); err != nil {
 		return err
 	}
 

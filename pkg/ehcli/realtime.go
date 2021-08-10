@@ -100,7 +100,6 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 		subscriptionId,
 		ehClient,
 		ehsubscription.GlobalCache,
-		logger,
 	); err != nil {
 		return err
 	}
