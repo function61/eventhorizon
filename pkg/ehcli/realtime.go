@@ -50,10 +50,12 @@ func realtimeEntrypoint() *cobra.Command {
 		},
 	})
 
+	// use example:
+	// $ ... dev tls://abcdefghijklmn-ats.iot.eu-central-1.amazonaws.com:8883 aws-iot-mqtt-certs/46dbb863bd-certificate.pem.crt aws-iot-mqtt-certs/46dbb863bd-private.pem.key
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "config-update [namespace] [endpoint] [auth-cert-path] [auth-cert-key-path]",
 		Short: "Update MQTT configuration",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(4),
 		Run: func(cmd *cobra.Command, args []string) {
 			rootLogger := logex.StandardLogger()
 
@@ -232,7 +234,7 @@ func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
 func connectivityCheck(configUpdated *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger) error {
 	client, err := mqttClientFrom(configUpdated, logger)
 	if err != nil {
-		return err
+		return fmt.Errorf("MqttClientFrom: %w", err)
 	}
 	defer client.Disconnect(250) // doesn't offer error status :O
 

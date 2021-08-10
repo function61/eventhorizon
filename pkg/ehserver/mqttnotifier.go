@@ -204,7 +204,7 @@ func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger
 	client := mqtt.NewClient(opts)
 
 	if err := WaitToken(client.Connect()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Connect: %w", err)
 	}
 
 	return client, nil
