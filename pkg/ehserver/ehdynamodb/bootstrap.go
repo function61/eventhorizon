@@ -66,7 +66,7 @@ func Bootstrap(ctx context.Context, e *Client) error {
 
 		encrypters := func() []envelopeenc.SlotEncrypter {
 			switch {
-			case streamToCreate.Equal(eh.SysSettings), streamToCreate.Equal(eh.SysSubscriptions):
+			case streamToCreate.Equal(eh.SysSettings), streamToCreate.Equal(eh.SysSubscribers):
 				return eventHorizonAccessable
 			default:
 				return defaultGroupEncrypters

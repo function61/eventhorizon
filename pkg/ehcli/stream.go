@@ -121,7 +121,7 @@ func streamCreate(ctx context.Context, streamPath string, logger *log.Logger) er
 		return err
 	}
 
-	if stream.IsUnder(eh.SysSubscriptions) {
+	if stream.IsUnder(eh.SysSubscribers) {
 		// this is because subscription stream creation does extra: it subscribes to itself
 		// (for realtime notifications, not activity events which would be an infinite loop)
 		return fmt.Errorf("please use subscription stream creation to create %s", stream.String())

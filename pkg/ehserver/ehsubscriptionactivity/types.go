@@ -23,7 +23,7 @@ func NewDiscoveredMaxCursors() *DiscoveredMaxCursors {
 func (d *DiscoveredMaxCursors) StreamsWithoutSubscriptionStreams() []eh.Cursor {
 	filtered := []eh.Cursor{}
 	for _, stream := range d.streams {
-		if !stream.Stream().IsUnder(eh.SysSubscriptions) {
+		if !stream.Stream().IsUnder(eh.SysSubscribers) {
 			filtered = append(filtered, stream)
 		}
 	}
