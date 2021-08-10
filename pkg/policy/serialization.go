@@ -16,5 +16,5 @@ func Serialize(policy Policy) []byte {
 
 func Deserialize(policySerialized []byte) (*Policy, error) {
 	pol := &Policy{}
-	return pol, jsonfile.Unmarshal(bytes.NewReader(policySerialized), pol, true)
+	return pol, jsonfile.UnmarshalDisallowUnknownFields(bytes.NewReader(policySerialized), pol)
 }
