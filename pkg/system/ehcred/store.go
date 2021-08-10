@@ -289,8 +289,7 @@ func LoadUntilRealtime(
 		store,
 		ehclient.NewReader(
 			store,
-			client,
-			client.Logger("ehcred.Reader")),
+			client),
 		client.EventLog}
 
 	if err := a.Reader.LoadUntilRealtime(ctx); err != nil {

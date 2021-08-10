@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
@@ -15,9 +14,8 @@ func Debug(
 	cursor eh.Cursor,
 	output io.Writer,
 	client *ehclient.SystemClient,
-	logger *log.Logger,
 ) error {
-	debugStore, err := loadUntilRealtime(ctx, cursor, client, logger)
+	debugStore, err := loadUntilRealtime(ctx, cursor, client)
 	if err != nil {
 		return err
 	}

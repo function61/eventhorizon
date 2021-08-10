@@ -180,8 +180,7 @@ func LoadUntilRealtime(
 			store,
 			ehclient.NewReader(
 				store,
-				client,
-				client.Logger(fmt.Sprintf("ehstreammeta[%s].Reader", stream.String()))),
+				client),
 			client.EventLog}
 	})
 

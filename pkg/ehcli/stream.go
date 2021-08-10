@@ -147,7 +147,7 @@ func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, l
 		return err
 	}
 
-	return ehdebug.Debug(ctx, streamName.At(version), os.Stdout, client, logger)
+	return ehdebug.Debug(ctx, streamName.At(version), os.Stdout, client)
 }
 
 func streamAppend(ctx context.Context, streamNameRaw string, event string, logger *log.Logger) error {

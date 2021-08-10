@@ -12,7 +12,6 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscriptiondomain"
-	"github.com/function61/gokit/log/logex"
 	"github.com/function61/gokit/sync/syncutil"
 )
 
@@ -184,8 +183,7 @@ func LoadUntilRealtime(
 			store,
 			ehclient.NewReader(
 				store,
-				client,
-				logex.Prefix("Reader", logger)),
+				client),
 			client.EventLog,
 			logger}
 	})

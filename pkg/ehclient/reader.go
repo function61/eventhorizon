@@ -4,7 +4,6 @@ package ehclient
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
@@ -64,7 +63,7 @@ type Reader struct {
 }
 
 // "keep processor happy by feeding it from client"
-func NewReader(processor EventsProcessor, client *SystemClient, logger *log.Logger) *Reader {
+func NewReader(processor EventsProcessor, client *SystemClient) *Reader {
 	snapshotEncrypt := false
 
 	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
@@ -85,8 +84,8 @@ func NewReader(processor EventsProcessor, client *SystemClient, logger *log.Logg
 		processorVersion: nil, // unknown at start
 		snapshotCapable:  snapshotCapable,
 		snapshotEncrypt:  snapshotEncrypt,
-		snapshotVersion:  nil, // unknown at start
-		logl:             logex.Levels(logger),
+		snapshotVersion:  nil,                                                          // unknown at start
+		logl:             logex.Levels(logex.Prefix("Reader[unknown]", client.logger)), // unknown stream name at start. will be augmented by discoverProcessorVersion()
 	}
 }
 
@@ -215,6 +214,10 @@ func (r *Reader) discoverProcessorVersion(ctx context.Context) error {
 	}
 
 	r.processorVersion = &processorVersion
+
+	// re-bind log prefix to not be unknown stream name
+	newPrefix := fmt.Sprintf("Reader[%s]", processorVersion.Stream().String())
+	r.logl = logex.Levels(logex.Prefix(newPrefix, r.client.logger))
 
 	return nil
 }

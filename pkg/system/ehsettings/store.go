@@ -236,8 +236,7 @@ func LoadUntilRealtime(
 		store,
 		ehclient.NewReader(
 			store,
-			client,
-			client.Logger("ehsettings.Reader")),
+			client),
 		client.EventLog}
 
 	if err := a.Reader.LoadUntilRealtime(ctx); err != nil {

@@ -6,13 +6,11 @@ package ehdebug
 
 import (
 	"context"
-	"log"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
-	"github.com/function61/gokit/log/logex"
 )
 
 type entry struct {
@@ -54,7 +52,6 @@ func loadUntilRealtime(
 	ctx context.Context,
 	cursor eh.Cursor,
 	client *ehclient.SystemClient,
-	logger *log.Logger,
 ) (*store, error) {
 	store := &store{
 		version: cursor,
@@ -63,7 +60,6 @@ func loadUntilRealtime(
 	if err := ehclient.NewReader(
 		store,
 		client,
-		logex.Prefix("Reader", logger),
 	).LoadUntilRealtime(ctx); err != nil {
 		return nil, err
 	}
