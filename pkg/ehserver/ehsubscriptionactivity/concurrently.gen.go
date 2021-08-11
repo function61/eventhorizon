@@ -2,6 +2,8 @@
 // Any changes will be lost if this file is regenerated.
 // see https://github.com/cheekybits/genny
 
+//nolint:unused,deadcode
+// Code is generated based off of this file, so "unused code" is false positive
 package ehsubscriptionactivity
 
 import (
@@ -47,10 +49,14 @@ func concurrentlyEhCursorSlice(
 		break
 	}
 
+	// makes workers exit with nil error (if no errors happened)
 	close(itemsCh)
 
 	return errGroup.Wait()
 }
+
+//nolint:unused,deadcode
+// Code is generated based off of this file, so "unused code" is false positive
 
 func concurrentlySubscriptionActivitySlice(
 	ctx context.Context,
@@ -88,6 +94,7 @@ func concurrentlySubscriptionActivitySlice(
 		break
 	}
 
+	// makes workers exit with nil error (if no errors happened)
 	close(itemsCh)
 
 	return errGroup.Wait()
