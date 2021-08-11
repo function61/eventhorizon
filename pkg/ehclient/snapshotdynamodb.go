@@ -3,6 +3,7 @@ package ehclient
 import (
 	"context"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -13,6 +14,16 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehserver/ehdynamodb"
 	"github.com/function61/gokit/app/aws/dynamoutils"
 )
+
+type SnapshotReference struct {
+	Stream  eh.StreamName
+	Context string
+}
+
+type SnapshotVersion struct {
+	Snapshot SnapshotReference
+	Version  int64
+}
 
 type DynamoSnapshotItem struct {
 	Stream  string `json:"s"` // stream + context form the composite key
@@ -138,4 +149,38 @@ func (d *dynamoSnapshotStorage) DeleteSnapshot(
 	}
 
 	return nil
+}
+
+// mainly useful for debugging
+func (d *dynamoSnapshotStorage) ListSnapshotsForStream(ctx context.Context, stream eh.StreamName) ([]SnapshotVersion, error) {
+	contextNames, err := d.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
+		TableName:              d.snapshotsTableName,
+		KeyConditionExpression: aws.String("s = :s"),
+		ExpressionAttributeValues: dynamoutils.Record{
+			":s": dynamoutils.String(stream.String()),
+		},
+		ProjectionExpression: aws.String("c,v"), // only fetch context and version (= don't bother fetching data)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	names := []SnapshotVersion{}
+
+	for _, item := range contextNames.Items {
+		ver, err := strconv.ParseInt(*item["v"].N, 10, 64) // DynamoDB network APIs send numbers as string
+		if err != nil {
+			return nil, err
+		}
+
+		names = append(names, SnapshotVersion{
+			Snapshot: SnapshotReference{
+				Stream:  stream,
+				Context: *item["c"].S,
+			},
+			Version: ver,
+		})
+	}
+
+	return names, nil
 }
