@@ -13,15 +13,13 @@ import (
 	"io"
 	"io/ioutil"
 	"strings"
-
-	"github.com/function61/eventhorizon/pkg/eh"
 )
 
-// format is:
+// format is: <reserved 0x0> <compression method> <dek version> <iv> <ciphertextMaybeCompressed>
 //
 // 1 byte     Header
 //            |- upper 4 bits reserved. if non-zero, assume incompatible format version & stop decoding!
-//            `- lowest 4 bits compression method (0x0 = uncompressed, 0x1 = deflate)
+//            └- lowest 4 bits compression method (0x0 = uncompressed, 0x1 = deflate)
 // 1-n bytes  Reserved for DEK version (key rotation). N is defined by encoding/binary.Uvarint semantics
 // 16 bytes   IV
 // rest       AES256_CTR(plaintextMaybeCompressed, dek).
@@ -35,17 +33,17 @@ const (
 	CompressionMethodDeflate CompressionMethod = 1
 )
 
-func Encrypt(lines []string, dek []byte) (*eh.LogData, error) {
-	return encryptWithRand(lines, dek, rand.Reader)
+func Encrypt(plaintext []byte, dek []byte) ([]byte, error) {
+	return encryptWithRand(plaintext, dek, rand.Reader)
 }
 
-func encryptWithRand(lines []string, dek []byte, cryptoRand io.Reader) (*eh.LogData, error) {
-	if len(lines) == 0 {
-		return nil, errors.New("EncryptedData: empty event slices are not supported")
+func encryptWithRand(plaintext []byte, dek []byte, cryptoRand io.Reader) ([]byte, error) {
+	if len(plaintext) == 0 {
+		return nil, errors.New("Encrypt: no data")
 	}
 
 	plaintextMaybeCompressed, compressionMethod, err := compressIfWellCompressible(
-		[]byte(strings.Join(lines, "\n")))
+		plaintext)
 	if err != nil {
 		return nil, err
 	}
@@ -72,18 +70,11 @@ func encryptWithRand(lines []string, dek []byte, cryptoRand io.Reader) (*eh.LogD
 		return nil, err
 	}
 
-	return &eh.LogData{
-		Kind: eh.LogDataKindEncryptedData,
-		Raw:  raw.Bytes(),
-	}, nil
+	return raw.Bytes(), nil
 }
 
-func Decrypt(data eh.LogData, dek []byte) ([]string, error) {
-	if data.Kind != eh.LogDataKindEncryptedData {
-		return nil, fmt.Errorf("Decrypt: kind not LogDataKindEncryptedData; got %d", data.Kind)
-	}
-
-	raw := bytes.NewReader(data.Raw)
+func Decrypt(ciphertext []byte, dek []byte) ([]byte, error) {
+	raw := bytes.NewReader(ciphertext)
 
 	header, err := raw.ReadByte()
 	if err != nil {
@@ -128,7 +119,7 @@ func Decrypt(data eh.LogData, dek []byte) ([]string, error) {
 		R: raw,
 	}
 
-	plaintext, err := func() (io.ReadCloser, error) {
+	plaintextReader, err := func() (io.ReadCloser, error) {
 		switch compressionMethod {
 		case CompressionMethodNone:
 			return ioutil.NopCloser(plaintextMaybeCompressed), nil // as-is
@@ -142,13 +133,16 @@ func Decrypt(data eh.LogData, dek []byte) ([]string, error) {
 		return nil, fmt.Errorf("Decrypt: %w", err)
 	}
 
-	// split plaintext into lines
-	lines, err := scan(bufio.NewScanner(plaintext))
+	plaintext, err := io.ReadAll(plaintextReader)
 	if err != nil {
 		return nil, fmt.Errorf("Decrypt: %w", err)
 	}
 
-	return lines, plaintext.Close()
+	if err := plaintextReader.Close(); err != nil {
+		return nil, fmt.Errorf("Decrypt: %w", err)
+	}
+
+	return plaintext, nil
 }
 
 func encryptStream(ciphertext io.Writer, plaintext io.Reader, cipherStream cipher.Stream) error {
@@ -163,11 +157,23 @@ func encryptStream(ciphertext io.Writer, plaintext io.Reader, cipherStream ciphe
 	return ciphertextWriter.Close()
 }
 
-func scan(scanner *bufio.Scanner) ([]string, error) {
+// helper. last line won't have \n after it.
+// WARNING: you're responsible for making sure none of the lines have \n on it.
+func LinesToPlaintext(lines []string) []byte {
+	return []byte(strings.Join(lines, "\n"))
+}
+
+func PlaintextToLines(plaintext []byte) []string {
+	scanner := bufio.NewScanner(bytes.NewReader(plaintext))
+
 	items := []string{}
 	for scanner.Scan() {
 		items = append(items, scanner.Text())
 	}
 
-	return items, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		panic(err) // shouldn't ever happen (we're reading in-RAM buffer)
+	}
+
+	return items
 }

@@ -35,12 +35,12 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 					return nil, err
 				}
 
-				eventsSerialized, err := eheventencryption.Decrypt(entry.Data, dek)
+				eventsSerialized, err := eheventencryption.Decrypt(entry.Data.Raw, dek)
 				if err != nil {
 					return nil, err
 				}
 
-				for _, eventSerialized := range eventsSerialized {
+				for _, eventSerialized := range eheventencryption.PlaintextToLines(eventsSerialized) {
 					event, err := ehevent.Deserialize(eventSerialized, types)
 					if err != nil {
 						return nil, err

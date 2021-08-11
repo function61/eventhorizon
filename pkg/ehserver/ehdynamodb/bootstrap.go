@@ -102,12 +102,18 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		}()
 
 		if len(initialEvents) > 0 {
-			entry, err := eheventencryption.Encrypt(ehevent.Serialize(initialEvents...), dek)
+			dataEncrypted, err := eheventencryption.Encrypt(
+				eheventencryption.LinesToPlaintext(
+					ehevent.Serialize(initialEvents...)),
+				dek)
 			if err != nil {
 				return err
 			}
 
-			txItem, err := e.entryAsTxPut(mkLogEntryRaw(cur(streamToCreate), *entry))
+			txItem, err := e.entryAsTxPut(mkLogEntryRaw(cur(streamToCreate), eh.LogData{
+				Kind: eh.LogDataKindEncryptedData,
+				Raw:  dataEncrypted,
+			}))
 			if err != nil {
 				return err
 			}

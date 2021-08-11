@@ -1,14 +1,10 @@
 package eh
 
 import (
-	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
-	"io"
-	"io/ioutil"
+
+	"github.com/function61/eventhorizon/pkg/eheventencryption"
 )
 
 // application-visible Snapshot. contrast this with PersistedSnapshot that is transparently
@@ -32,26 +28,15 @@ func (s *Snapshot) Unencrypted() *PersistedSnapshot {
 }
 
 func (s *Snapshot) Encrypted(dek []byte) (*PersistedSnapshot, error) {
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
-	}
-
-	aesCipher, err := aes.NewCipher(dek)
+	ciphertext, err := eheventencryption.Encrypt(s.Data, dek)
 	if err != nil {
-		return nil, err
-	}
-
-	ciphertext := &bytes.Buffer{}
-
-	if err := encryptStream(ciphertext, bytes.NewReader(s.Data), cipher.NewCTR(aesCipher, iv)); err != nil {
 		return nil, err
 	}
 
 	return &PersistedSnapshot{
 		Cursor:  s.Cursor,
 		Context: s.Context,
-		RawData: append(append([]byte{byte(PersistedSnapshotKindEncrypted)}, iv...), ciphertext.Bytes()...),
+		RawData: append([]byte{byte(PersistedSnapshotKindEncrypted)}, ciphertext...),
 	}, nil
 }
 
@@ -105,7 +90,7 @@ func (e *PersistedSnapshot) DecryptIfRequired(loadDek func() ([]byte, error)) (*
 			return nil, err
 		}
 
-		plaintextSnapshot, err := decryptEncryptedSnapshot(e.RawData[1:], dek)
+		plaintextSnapshot, err := eheventencryption.Decrypt(e.RawData[1:], dek)
 		if err != nil {
 			return nil, err
 		}
@@ -114,40 +99,4 @@ func (e *PersistedSnapshot) DecryptIfRequired(loadDek func() ([]byte, error)) (*
 	default:
 		return nil, fmt.Errorf("unknown PersistedSnapshotKind: %d", e.Kind())
 	}
-}
-
-func decryptEncryptedSnapshot(ivAndCiphertextBytes []byte, dek []byte) ([]byte, error) {
-	ivAndCiphertext := bytes.NewReader(ivAndCiphertextBytes)
-	// after reading IV, next reads contain only ciphertext
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(ivAndCiphertext, iv); err != nil {
-		return nil, err
-	}
-
-	aesCipher, err := aes.NewCipher(dek)
-	if err != nil {
-		return nil, err
-	}
-
-	plaintextSnapshot, err := ioutil.ReadAll(&cipher.StreamReader{
-		S: cipher.NewCTR(aesCipher, iv),
-		R: ivAndCiphertext,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return plaintextSnapshot, nil
-}
-
-func encryptStream(ciphertext io.Writer, plaintext io.Reader, cipherStream cipher.Stream) error {
-	ciphertextWriter := cipher.StreamWriter{
-		S: cipherStream,
-		W: ciphertext,
-	}
-	if _, err := io.Copy(ciphertextWriter, plaintext); err != nil {
-		return err
-	}
-
-	return ciphertextWriter.Close()
 }

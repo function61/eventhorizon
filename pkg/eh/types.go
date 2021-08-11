@@ -10,7 +10,7 @@ type LogDataKind uint8
 
 const (
 	LogDataKindMeta          LogDataKind = 1 // one single unencrypted meta event in "ehevent" format
-	LogDataKindEncryptedData LogDataKind = 2 // encrypted & maybe compressed according to "eheventencryption". content is multiple "ehevent" lines split by \n character.
+	LogDataKindEncryptedData LogDataKind = 2 // encrypted & maybe compressed according to "eheventencryption". plaintext is multiple "ehevent" lines split by \n character.
 )
 
 // "sub" shortened to save space b/c they're expected to get a lot of writes

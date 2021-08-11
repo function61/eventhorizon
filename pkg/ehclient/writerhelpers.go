@@ -24,12 +24,15 @@ func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, 
 		return err
 	}
 
-	logData, err := eheventencryption.Encrypt(eventsSerialized, dek)
+	eventsEncrypted, err := eheventencryption.Encrypt(eheventencryption.LinesToPlaintext(eventsSerialized), dek)
 	if err != nil {
 		return err
 	}
 
-	_, err = e.EventLog.Append(ctx, stream, *logData)
+	_, err = e.EventLog.Append(ctx, stream, eh.LogData{
+		Kind: eh.LogDataKindEncryptedData,
+		Raw:  eventsEncrypted,
+	})
 	return err
 }
 
@@ -40,12 +43,15 @@ func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events 
 	}
 
 	eventsSerialized := ehevent.Serialize(events...)
-	logData, err := eheventencryption.Encrypt(eventsSerialized, dek)
+	eventsEncrypted, err := eheventencryption.Encrypt(eheventencryption.LinesToPlaintext(eventsSerialized), dek)
 	if err != nil {
 		return err
 	}
 
-	_, err = e.EventLog.AppendAfter(ctx, after, *logData)
+	_, err = e.EventLog.AppendAfter(ctx, after, eh.LogData{
+		Kind: eh.LogDataKindEncryptedData,
+		Raw:  eventsEncrypted,
+	})
 	return err
 }
 

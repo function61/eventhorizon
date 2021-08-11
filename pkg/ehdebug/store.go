@@ -103,12 +103,12 @@ var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 				return nil, err
 			}
 
-			eventsSerialized, err := eheventencryption.Decrypt(entry.Data, dek)
+			eventsSerialized, err := eheventencryption.Decrypt(entry.Data.Raw, dek)
 			if err != nil {
 				return nil, err
 			}
 
-			for _, eventSerialized := range eventsSerialized {
+			for _, eventSerialized := range eheventencryption.PlaintextToLines(eventsSerialized) {
 				events = append(events, newRawEvent(eventSerialized))
 			}
 

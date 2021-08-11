@@ -11,7 +11,7 @@ import (
 func TestEncryptDecrypt(t *testing.T) {
 	dek := dummyDek()
 
-	encryptedEvents, err := encryptWithRand([]string{"foo", "bar"}, dek, nullIv())
+	encryptedEvents, err := encryptWithRand(LinesToPlaintext([]string{"foo", "bar"}), dek, nullIv())
 	assert.Ok(t, err)
 
 	// IV is stored as prefix, which is now easy to spot as "AAA.."
@@ -23,7 +23,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	events, err := Decrypt(*encryptedEvents, dek)
 	assert.Ok(t, err)
 
-	assert.EqualJson(t, events, `[
+	assert.EqualJson(t, PlaintextToLines(events), `[
   "foo",
   "bar"
 ]`)
@@ -32,7 +32,10 @@ func TestEncryptDecrypt(t *testing.T) {
 func TestCompression(t *testing.T) {
 	dek := dummyDek()
 
-	encryptedEvents, err := encryptWithRand([]string{"fooooooooooooooooooooooooooooooooooooooooooo"}, dek, nullIv())
+	encryptedEvents, err := encryptWithRand(
+		LinesToPlaintext([]string{"fooooooooooooooooooooooooooooooooooooooooooo"}),
+		dek,
+		nullIv())
 	assert.Ok(t, err)
 
 	// remember the long "AAAA".. from earlier test? the difference below is for the
@@ -45,7 +48,7 @@ func TestCompression(t *testing.T) {
 	events, err := Decrypt(*encryptedEvents, dek)
 	assert.Ok(t, err)
 
-	assert.EqualJson(t, events, `[
+	assert.EqualJson(t, PlaintextToLines(events), `[
   "fooooooooooooooooooooooooooooooooooooooooooo"
 ]`)
 }
