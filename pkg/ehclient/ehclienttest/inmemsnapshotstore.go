@@ -13,7 +13,7 @@ type SnapshotStore struct {
 }
 
 // interface assertion
-var _ = (eh.SnapshotStore)(&SnapshotStore{})
+var _ eh.SnapshotStore = (*SnapshotStore)(nil)
 
 // do not use in anything else than testing
 func NewSnapshotStore() *SnapshotStore {

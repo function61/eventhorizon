@@ -256,6 +256,8 @@ type clusterWideKeyServer struct {
 	clusterWideKey envelopeenc.SlotDecrypter
 }
 
+var _ keyserver.Unsealer = (*clusterWideKeyServer)(nil)
+
 func (s *clusterWideKeyServer) UnsealEnvelope(ctx context.Context, envelope envelopeenc.Envelope) ([]byte, error) {
 	return envelope.Decrypt(s.clusterWideKey)
 }
