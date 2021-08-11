@@ -172,8 +172,8 @@ func (l *mqttNotifier) addInflight(by int) {
 	})
 }
 
-// "dev/_/sub/foo"
-// "prod/_/sub/foo"
+// "dev/$/sub/foo"
+// "prod/$/sub/foo"
 //
 // namespace="prod" | "staging" | "dev" | ...
 func MqttTopicForSubscription(subscription eh.SubscriberID, namespace string) string {

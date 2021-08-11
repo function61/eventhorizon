@@ -19,11 +19,11 @@ func (k LogDataKind) IsEncrypted() bool {
 
 // "sub" shortened to save space b/c they're expected to get a lot of writes
 var (
-	SysCredentials = sysStreamAddToToCreate("credentials") // /_/credentials
-	SysSettings    = sysStreamAddToToCreate("settings")    // /_/settings
-	SysSubscribers = sysStreamAddToToCreate("sub")         // /_/sub
+	SysCredentials = sysStreamAddToToCreate("credentials") // /$/credentials
+	SysSettings    = sysStreamAddToToCreate("settings")    // /$/settings
+	SysSubscribers = sysStreamAddToToCreate("sub")         // /$/sub
 
-	InternalStreamsToCreate = []StreamName{RootName, RootName.Child("_")} // above streams added here as well
+	InternalStreamsToCreate = []StreamName{RootName, RootName.Child("$")} // above streams added here as well
 )
 
 type AppendResult struct {
@@ -81,7 +81,7 @@ type MqttActivityNotification struct {
 }
 
 func sysStreamAddToToCreate(name string) StreamName {
-	stream := RootName.Child("_").Child(name)
+	stream := RootName.Child("$").Child(name)
 	InternalStreamsToCreate = append(InternalStreamsToCreate, stream)
 	return stream
 }

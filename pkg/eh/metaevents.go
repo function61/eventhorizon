@@ -13,7 +13,7 @@ func LogDataMeta(e ehevent.Event) *LogData {
 }
 
 // - these are common events that can appear in *any* application-stream. contrast this with
-//   system streams like "/_/credentials" where events are application-specific streams
+//   system streams like "/$/credentials" where events are application-specific streams
 //   (b/c they can't appear anywhere else)
 // - please have a very good reason if you use this from outside of this package.
 var MetaTypes = ehevent.Types{
