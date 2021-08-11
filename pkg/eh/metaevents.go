@@ -40,16 +40,16 @@ func NewStreamChildStreamCreated(stream StreamName, meta ehevent.EventMeta) *Str
 // ------
 
 type StreamStarted struct {
-	meta        ehevent.EventMeta
-	DekEnvelope envelopeenc.Envelope // Data Encryption Key (DEK) envelope (see pkg envelopeenc)
-	KeyGroupId  string
+	meta       ehevent.EventMeta
+	DEK        envelopeenc.Envelope // Data Encryption Key (DEK) envelope (see pkg envelopeenc)
+	KeyGroupId string
 }
 
 func (e *StreamStarted) MetaType() string         { return "$stream.Started" }
 func (e *StreamStarted) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewStreamStarted(dekEnvelope envelopeenc.Envelope, keyGroupId string, meta ehevent.EventMeta) *StreamStarted {
-	return &StreamStarted{meta, dekEnvelope, keyGroupId}
+func NewStreamStarted(dek envelopeenc.Envelope, keyGroupId string, meta ehevent.EventMeta) *StreamStarted {
+	return &StreamStarted{meta, dek, keyGroupId}
 }
 
 // ------

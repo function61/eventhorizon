@@ -4,7 +4,6 @@ package ehstreammeta
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -28,7 +27,7 @@ var (
 type stateFormat struct {
 	Created       time.Time
 	Subscriptions []eh.SubscriberID
-	DekEnvelope   *envelopeenc.Envelope
+	DEK           *envelopeenc.Envelope
 	KeyGroupId    *string
 	ChildStreams  []string // child base names to conserve space
 	TotalBytes    int64
@@ -37,7 +36,7 @@ type stateFormat struct {
 func newStateFormat() stateFormat {
 	return stateFormat{
 		Subscriptions: []eh.SubscriberID{},
-		DekEnvelope:   nil,
+		DEK:           nil,
 		ChildStreams:  []string{},
 	}
 }
@@ -55,10 +54,15 @@ func New(stream eh.StreamName) *Store {
 	}
 }
 
-func (s *Store) DekEnvelope() *envelopeenc.Envelope {
+func (s *Store) Data() stateFormat {
 	defer lockAndUnlock(&s.mu)()
 
-	return s.state.DekEnvelope
+	return s.state
+}
+
+// minimum number of events in the stream. matches # of events only if each log message has exactly one event.
+func (s *Store) TotalLogMessages() int64 {
+	return s.version.Version() + 1
 }
 
 func (s *Store) Subscriptions() []eh.SubscriberID {
@@ -153,7 +157,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *eh.StreamStarted:
 		s.state.Created = e.Meta().Time()
-		s.state.DekEnvelope = &e.DekEnvelope
+		s.state.DEK = &e.DEK
 		s.state.KeyGroupId = &e.KeyGroupId
 	case *eh.SubscriptionSubscribed:
 		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)

@@ -44,6 +44,9 @@ func changedStreamsFromDynamoDbEvent(
 			continue
 		}
 
+		// TODO: would like to unmarshal to LogEntryRaw, but events package has different
+		// structs than dynamodb package
+
 		version, err := record.Change.Keys["v"].Integer()
 		if err != nil {
 			return nil, err
