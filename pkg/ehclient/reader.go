@@ -67,10 +67,10 @@ func NewReader(processor EventsProcessor, client *SystemClient) *Reader {
 	snapshotEncrypt := false
 
 	deserializers := map[eh.LogDataKind]LogDataDeserializerFn{}
-	for _, item := range processor.GetEventTypes() {
-		deserializers[item.Kind] = item.Deserializer
+	for _, deserializer := range processor.GetEventTypes() {
+		deserializers[deserializer.Kind] = deserializer.Deserializer
 
-		if item.Kind.IsEncrypted() {
+		if deserializer.Encryption {
 			snapshotEncrypt = true
 		}
 	}

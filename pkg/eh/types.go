@@ -13,10 +13,6 @@ const (
 	LogDataKindEncryptedData LogDataKind = 2 // encrypted & maybe compressed according to "eheventencryption". content is multiple "ehevent" lines split by \n character.
 )
 
-func (k LogDataKind) IsEncrypted() bool {
-	return k == LogDataKindEncryptedData
-}
-
 // "sub" shortened to save space b/c they're expected to get a lot of writes
 var (
 	SysCredentials = sysStreamAddToToCreate("credentials") // /$/credentials

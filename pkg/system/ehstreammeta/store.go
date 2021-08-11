@@ -26,10 +26,12 @@ var (
 )
 
 type stateFormat struct {
-	Subscriptions []eh.SubscriptionId   `json:"Subscriptions"`
-	DekEnvelope   *envelopeenc.Envelope `json:"DekEnvelope"`
-	KeyGroupId    *string               `json:"KeyGroupId"`
-	ChildStreams  []string              `json:"ChildStreams"` // child base names to conserve space
+	Created       time.Time
+	Subscriptions []eh.SubscriberID
+	DekEnvelope   *envelopeenc.Envelope
+	KeyGroupId    *string
+	ChildStreams  []string // child base names to conserve space
+	TotalBytes    int64
 }
 
 func newStateFormat() stateFormat {
@@ -125,7 +127,13 @@ func (s *Store) SnapshotContextAndVersion() string {
 }
 
 func (s *Store) GetEventTypes() []ehclient.LogDataKindDeserializer {
-	return ehclient.MetaDeserializer()
+	metaDeserializer := ehclient.MetaDeserializer()[0]
+
+	// somewhat hackish setup to:
+	// 1) only actually parse LogDataKindMeta events
+	// 2) but count all log messages (even encrypted ones) and synthesize statistics log event for them
+	//    so we can count bytes consumed by the stream
+	return injectSyntheticStatisticsDeserializer(metaDeserializer)
 }
 
 func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.EventProcessorHandler) error {
@@ -144,6 +152,7 @@ func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.Event
 func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *eh.StreamStarted:
+		s.state.Created = e.Meta().Time()
 		s.state.DekEnvelope = &e.DekEnvelope
 		s.state.KeyGroupId = &e.KeyGroupId
 	case *eh.SubscriptionSubscribed:
@@ -156,6 +165,8 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 		if len(s.state.ChildStreams) > maxKeepTrackOfChildren {
 			s.state.ChildStreams = s.state.ChildStreams[1 : 1+maxKeepTrackOfChildren]
 		}
+	case *syntheticStatisticsEvent: // not actually present in the stream
+		s.state.TotalBytes += int64(e.NumBytes)
 	}
 
 	return nil

@@ -13,14 +13,20 @@ import (
 type LogDataKindDeserializer struct {
 	Kind         eh.LogDataKind
 	Deserializer LogDataDeserializerFn
+
+	// otherwise could be detected from Kind==LogDataKindEncryptedData but see "synthetic statistics"
+	// (which lies about deserializing LogDataKindEncryptedData but does not actually deal with encryption)
+	Encryption bool
 }
 
 type LogDataDeserializerFn func(ctx context.Context, entry *eh.LogEntry, client *SystemClient) ([]ehevent.Event, error)
 
+// returns a slice for ergonomics
 func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 	return []LogDataKindDeserializer{
 		{
-			Kind: eh.LogDataKindEncryptedData,
+			Kind:       eh.LogDataKindEncryptedData,
+			Encryption: true,
 			Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *SystemClient) ([]ehevent.Event, error) {
 				events := []ehevent.Event{}
 
@@ -49,6 +55,7 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 	}
 }
 
+// returns a slice for ergonomics
 func MetaDeserializer() []LogDataKindDeserializer {
 	return []LogDataKindDeserializer{
 		{

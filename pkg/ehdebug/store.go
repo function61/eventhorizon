@@ -93,7 +93,8 @@ var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 		},
 	},
 	{
-		Kind: eh.LogDataKindEncryptedData,
+		Kind:       eh.LogDataKindEncryptedData,
+		Encryption: true,
 		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehclient.SystemClient) ([]ehevent.Event, error) {
 			events := []ehevent.Event{}
 
