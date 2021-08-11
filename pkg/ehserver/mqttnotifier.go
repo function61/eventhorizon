@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -181,7 +182,10 @@ func MqttTopicForSubscription(subscription eh.SubscriberID, namespace string) st
 }
 
 func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger) (mqtt.Client, error) {
-	logl := logex.Levels(logger)
+	if !strings.HasPrefix(conf.Endpoint, "tls://") {
+		return nil, errors.New("endpoint does not begin with tls://")
+	}
+
 	clientCert, err := tls.X509KeyPair(
 		[]byte(conf.ClientCertAuthCert),
 		[]byte(conf.ClientCertAuthPrivateKey))
@@ -196,10 +200,12 @@ func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger
 	opts := mqtt.NewClientOptions().
 		AddBroker(conf.Endpoint).
 		SetClientID(clientId).
-		SetTLSConfig(clientCertAuth(clientCert))
-	opts.OnConnectionLost = func(_ mqtt.Client, err error) { // FIXME
-		logl.Error.Printf("connection lost: %v", err)
-	}
+		SetOrderMatters(false). // optimizes async message delivery (we're effectively sending CRDTs so we're fine)
+		SetConnectTimeout(5 * time.Second).
+		SetTLSConfig(clientCertAuth(clientCert)).
+		SetConnectionLostHandler(func(_ mqtt.Client, err error) {
+			logex.Levels(logger).Error.Printf("connection lost: %v", err)
+		})
 
 	client := mqtt.NewClient(opts)
 
