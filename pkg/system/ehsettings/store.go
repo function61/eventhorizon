@@ -226,10 +226,21 @@ type App struct {
 	Writer eh.Writer
 }
 
+var (
+	appCache   *App
+	appCacheMu sync.Mutex
+)
+
 func LoadUntilRealtime(
 	ctx context.Context,
 	client *ehclient.SystemClient,
 ) (*App, error) {
+	defer lockAndUnlock(&appCacheMu)()
+
+	if appCache != nil {
+		return appCache, nil
+	}
+
 	store := New()
 
 	a := &App{
@@ -238,6 +249,8 @@ func LoadUntilRealtime(
 			store,
 			client),
 		client.EventLog}
+
+	appCache = a
 
 	if err := a.Reader.LoadUntilRealtime(ctx); err != nil {
 		return nil, err
