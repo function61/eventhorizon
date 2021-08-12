@@ -97,6 +97,8 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 		return fmt.Errorf("LoadUntilRealtime: %w", err)
 	}
 
+	r.lastLoad = time.Now()
+
 	return nil
 }
 
@@ -290,7 +292,8 @@ func (r *Reader) uploadNewerSnapshot(ctx context.Context) (*eh.Cursor, error) {
 	return &snap.Cursor, nil
 }
 
-// same as LoadUntilRealtime(), but only loads if not done so recently
+// same as LoadUntilRealtime(), but only loads if not done so recently.
+// safe for concurrent access.
 func (r *Reader) LoadUntilRealtimeIfStale(
 	ctx context.Context,
 	staleDuration time.Duration,
@@ -302,8 +305,6 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 		if err := r.loadUntilRealtime(ctx); err != nil {
 			return fmt.Errorf("LoadUntilRealtimeIfStale: %w", err)
 		}
-
-		r.lastLoad = time.Now()
 	}
 
 	return nil
