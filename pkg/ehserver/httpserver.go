@@ -89,6 +89,8 @@ func createHttpHandler(
 		rawWriter:        writerMaybeWithNotifier,
 		rawReader:        systemClient.EventLog,
 		rawSnapshotStore: systemClient.SnapshotStore,
+
+		logl: logex.Levels(logex.Prefix("authenticator", logger)),
 	}
 
 	keyServer, err := keyserver.NewServer("default.key", logex.Prefix("keyserver", logger))

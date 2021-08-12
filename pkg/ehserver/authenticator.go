@@ -4,10 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/policy"
 	"github.com/function61/eventhorizon/pkg/system/ehcred"
+	"github.com/function61/gokit/log/logex"
 )
 
 // authenticates HTTP requests to a user who can be authorization checked
@@ -18,9 +20,16 @@ type authenticator struct {
 	rawReader        eh.Reader
 	rawWriter        eh.Writer // probably already wrapped with notifier
 	rawSnapshotStore eh.SnapshotStore
+
+	logl *logex.Leveled
 }
 
 func (a *authenticator) AuthenticateRequest(r *http.Request) (*user, error) {
+	// so we're not operating on too old data
+	if err := a.credentials.Reader.LoadUntilRealtimeIfStale(r.Context(), 10*time.Second); err != nil {
+		a.logl.Error.Printf("LoadUntilRealtimeIfStale: %v", err)
+	}
+
 	apiKey, got := extractBearerToken(r.Header.Get("Authorization"))
 	if !got {
 		return nil, errors.New("missing header 'Authorization: Bearer ...'")
