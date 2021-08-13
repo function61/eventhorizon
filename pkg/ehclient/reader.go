@@ -58,6 +58,7 @@ type Reader struct {
 	snapshotEncrypt  bool // true if processor handles any LogDataKind that are encrypted
 	snapshotVersion  *eh.Cursor
 	logl             *logex.Leveled
+	logPrefix        string // in rare cases (like eh:streammeta, i.e. 2nd reader for same stream) it would make sense to disambiguate
 	lastLoad         time.Time
 	lastLoadMu       sync.Mutex
 }
@@ -218,7 +219,7 @@ func (r *Reader) discoverProcessorVersion(ctx context.Context) error {
 	r.processorVersion = &processorVersion
 
 	// re-bind log prefix to not be unknown stream name
-	newPrefix := fmt.Sprintf("Reader[%s]", processorVersion.Stream().String())
+	newPrefix := fmt.Sprintf("Reader[%s%s]", processorVersion.Stream().String(), r.logPrefix)
 	r.logl = logex.Levels(logex.Prefix(newPrefix, r.client.logger))
 
 	return nil
@@ -308,4 +309,9 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 	}
 
 	return nil
+}
+
+// you should probably not use this
+func (r *Reader) AddLogPrefix(prefix string) {
+	r.logPrefix = prefix
 }

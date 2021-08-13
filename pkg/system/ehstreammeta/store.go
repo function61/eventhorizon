@@ -191,11 +191,15 @@ func LoadUntilRealtime(
 	app := cache.Get(stream.String(), func() *App {
 		store := New(stream)
 
+		reader := ehclient.NewReader(store, client)
+		// to disambiguate as there are probably multiple readers for this same stream to prevent this:
+		//   Reader[/$/settings] [DEBUG] reached realtime: /$/settings@1
+		//   Reader[/$/settings] [DEBUG] reached realtime: /$/settings@1
+		reader.AddLogPrefix("(streammeta)")
+
 		return &App{
 			store,
-			ehclient.NewReader(
-				store,
-				client),
+			reader,
 			client.EventLog}
 	})
 
