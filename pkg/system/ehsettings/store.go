@@ -84,7 +84,7 @@ func (s *Store) Kek(kekId string) *Kek {
 	return nil
 }
 
-func (s *Store) Keks() []Kek {
+func (s *Store) KEKs() []Kek {
 	defer lockAndUnlock(&s.mu)()
 
 	keks := []Kek{}
@@ -180,7 +180,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 		})
 	case *ehsettingsdomain.KeyserverCreated:
 		s.state.KeyServers = append(s.state.KeyServers, &KeyServer{
-			Id:             e.Id,
+			Id:             e.ID,
 			Created:        e.Meta().Time(),
 			Label:          e.Label,
 			AttachedKekIds: []string{},

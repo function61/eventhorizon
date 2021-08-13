@@ -108,7 +108,7 @@ func snapshotCat(
 		snapPersisted.Cursor.Serialize())
 
 	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
-		return client.LoadDek(ctx, snapPersisted.Cursor.Stream())
+		return client.LoadDEK(ctx, snapPersisted.Cursor.Stream())
 	})
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func snapshotPut(
 
 	persisted, err := func() (*eh.PersistedSnapshot, error) {
 		if encrypted {
-			dek, err := client.LoadDek(ctx, cursor.Stream())
+			dek, err := client.LoadDEK(ctx, cursor.Stream())
 			if err != nil {
 				return nil, err
 			}

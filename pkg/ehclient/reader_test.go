@@ -238,8 +238,8 @@ func (s *SystemClientTesting) CreateStreamT(t *testing.T, streamName string) eh.
 	return stream
 }
 
-func (s *SystemClientTesting) DekForT(t *testing.T, stream eh.StreamName) []byte {
-	dekEnvelope, err := s.resolveDekEnvelope(context.Background(), stream)
+func (s *SystemClientTesting) DEKForT(t *testing.T, stream eh.StreamName) []byte {
+	dekEnvelope, err := s.resolveDEKEnvelope(context.Background(), stream)
 	assert.Ok(t, err)
 	dek, err := s.cryptoSvc.DecryptEnvelope(context.Background(), *dekEnvelope)
 	assert.Ok(t, err)
@@ -254,8 +254,8 @@ func newTestingClient() (*SystemClientTesting, context.Context) {
 		SystemClient: &SystemClient{
 			EventLog:      eventLog,
 			SnapshotStore: snapshotStore,
-			resolveDekEnvelope: func(_ context.Context, stream eh.StreamName) (*envelopeenc.Envelope, error) {
-				dekEnvelope := eventLog.ResolveDekEnvelope(stream)
+			resolveDEKEnvelope: func(_ context.Context, stream eh.StreamName) (*envelopeenc.EnvelopeBundle, error) {
+				dekEnvelope := eventLog.ResolveDEKEnvelope(stream)
 				if dekEnvelope == nil {
 					return nil, fmt.Errorf("Failed to resolve DEK envelope for %s", stream.String())
 				}

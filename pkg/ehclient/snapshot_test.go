@@ -25,7 +25,7 @@ func TestSnapshot(t *testing.T) {
 
 	chatRoom := newChatRoomProjection(stream)
 
-	dek := client.DekForT(t, stream)
+	dek := client.DEKForT(t, stream)
 
 	initialSnap, err := eh.NewSnapshot(stream.At(1), []byte(`[
 		"12:00:01 joonas: First msg from snapshot",
@@ -67,7 +67,7 @@ func TestSnapshot(t *testing.T) {
 	assert.Ok(t, err)
 
 	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
-		return client.DekForT(t, stream), nil
+		return client.DEKForT(t, stream), nil
 	})
 	assert.Ok(t, err)
 

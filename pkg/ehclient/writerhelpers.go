@@ -19,7 +19,7 @@ func (e *SystemClient) Append(ctx context.Context, stream eh.StreamName, events 
 }
 
 func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, eventsSerialized []string) error {
-	dek, err := e.LoadDek(ctx, stream)
+	dek, err := e.LoadDEK(ctx, stream)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, 
 }
 
 func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events ...ehevent.Event) error {
-	dek, err := e.LoadDek(ctx, after.Stream())
+	dek, err := e.LoadDEK(ctx, after.Stream())
 	if err != nil {
 		return err
 	}
@@ -66,16 +66,16 @@ func (e *SystemClient) CreateStream(
 	// generate it b/c then the server could theoretically have access to the data. and we
 	// prefer the crypto service generate the whole envelope, so not even application
 	// servers have theoretically default un-audited access to the data.
-	dekEnvelope, err := e.sysConn.DekEnvelopeForStream(ctx, stream)
+	dekEnvelope, err := e.sysConn.DEKEnvelopeForNewStream(ctx, stream)
 	if err != nil {
-		return nil, fmt.Errorf("DekEnvelopeForStream: %w", err)
+		return nil, fmt.Errorf("DEKEnvelopeForNewStream: %w", err)
 	}
 
 	return e.EventLog.CreateStream(ctx, stream, *dekEnvelope, data)
 }
 
 // loads DEK (Data Encryption Key) for a given stream (by loading DEK envelope and decrypting it)
-func (e *SystemClient) LoadDek(ctx context.Context, stream eh.StreamName) ([]byte, error) {
+func (e *SystemClient) LoadDEK(ctx context.Context, stream eh.StreamName) ([]byte, error) {
 	// now that we're holding stream-specific mutex, we can without races read from DEK cache
 	// to determine if we have it cached or not, and fetch it to cache if needed (all inside a lock)
 	key := stream.String()
@@ -91,7 +91,7 @@ func (e *SystemClient) LoadDek(ctx context.Context, stream eh.StreamName) ([]byt
 
 	if dek == nil {
 		var err error
-		dek, err = e.loadAndDecryptDekEnvelope(ctx, stream)
+		dek, err = e.loadAndDecryptDEKEnvelope(ctx, stream)
 		if err != nil {
 			return nil, err
 		}
@@ -109,8 +109,8 @@ func (s *SystemClient) Logger(prefix string) *log.Logger {
 }
 
 // result of this will be cached, and this won't be called for same stream concurrently
-func (e *SystemClient) loadAndDecryptDekEnvelope(ctx context.Context, stream eh.StreamName) ([]byte, error) {
+func (e *SystemClient) loadAndDecryptDEKEnvelope(ctx context.Context, stream eh.StreamName) ([]byte, error) {
 	// e.logl.Debug.Printf("resolving DEK for %s", stream.String())
 
-	return e.sysConn.ResolveDek(ctx, stream)
+	return e.sysConn.ResolveDEK(ctx, stream)
 }

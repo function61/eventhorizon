@@ -247,7 +247,7 @@ func (r *Reader) fetchAndInstallSnapshot(ctx context.Context) error {
 
 	// convert to app-level snapshot by decrypting
 	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
-		return r.client.LoadDek(ctx, stream)
+		return r.client.LoadDEK(ctx, stream)
 	})
 	if err != nil {
 		return err
@@ -271,7 +271,7 @@ func (r *Reader) uploadNewerSnapshot(ctx context.Context) (*eh.Cursor, error) {
 
 	persisted, err := func() (*eh.PersistedSnapshot, error) {
 		if r.snapshotEncrypt {
-			dek, err := r.client.LoadDek(ctx, snap.Cursor.Stream())
+			dek, err := r.client.LoadDEK(ctx, snap.Cursor.Stream())
 			if err != nil {
 				return nil, err
 			}

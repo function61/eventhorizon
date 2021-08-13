@@ -47,7 +47,7 @@ func kekList(ctx context.Context, logger *log.Logger) error {
 	view := termtables.CreateTable()
 	view.AddHeaders("Id", "Kind", "Registered", "Label")
 
-	for _, kek := range settings.State.Keks() {
+	for _, kek := range settings.State.KEKs() {
 		view.AddRow(
 			kek.Id,
 			kek.Kind,

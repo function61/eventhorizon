@@ -53,8 +53,8 @@ type sysConnection struct {
 	logger       *log.Logger
 }
 
-func (d *sysConnection) ResolveDek(ctx context.Context, stream eh.StreamName) ([]byte, error) {
-	dekEnvelope, err := d.resolveDekEnvelope(ctx, stream)
+func (d *sysConnection) ResolveDEK(ctx context.Context, stream eh.StreamName) ([]byte, error) {
+	dekEnvelope, err := d.resolveDEKEnvelope(ctx, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +67,7 @@ func (d *sysConnection) ResolveDek(ctx context.Context, stream eh.StreamName) ([
 	return keyServer.UnsealEnvelope(ctx, *dekEnvelope)
 }
 
-// the stream does not exist yet
-func (d *sysConnection) DekEnvelopeForStream(
+func (d *sysConnection) DEKEnvelopeForNewStream(
 	ctx context.Context,
 	stream eh.StreamName,
 ) (*envelopeenc.Envelope, error) {
@@ -107,7 +106,7 @@ func (d *sysConnection) DekEnvelopeForStream(
 		slotEncrypters = append(slotEncrypters, envelopeenc.RsaOaepSha256Encrypter(pubKey))
 	}
 
-	dek, err := keyserver.NewDek()
+	dek, err := keyserver.NewDEK()
 	if err != nil {
 		return nil, fmt.Errorf("DekEnvelopeForStream: %w", err)
 	}
@@ -116,7 +115,7 @@ func (d *sysConnection) DekEnvelopeForStream(
 	return envelopeenc.Encrypt(dek, slotEncrypters, stream.ResourceName().String())
 }
 
-func (d *sysConnection) resolveDekEnvelope(
+func (d *sysConnection) resolveDEKEnvelope(
 	ctx context.Context,
 	stream eh.StreamName,
 ) (*envelopeenc.Envelope, error) {

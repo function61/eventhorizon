@@ -30,7 +30,7 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 			Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *SystemClient) ([]ehevent.Event, error) {
 				events := []ehevent.Event{}
 
-				dek, err := client.LoadDek(ctx, entry.Cursor.Stream())
+				dek, err := client.LoadDEK(ctx, entry.Cursor.Stream())
 				if err != nil {
 					return nil, err
 				}

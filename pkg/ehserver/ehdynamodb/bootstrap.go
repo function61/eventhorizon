@@ -59,7 +59,7 @@ func Bootstrap(ctx context.Context, e *Client) error {
 
 	txItems := []*dynamodb.TransactWriteItem{}
 	for _, streamToCreate := range eh.InternalStreamsToCreate {
-		dek, err := keyserver.NewDek()
+		dek, err := keyserver.NewDEK()
 		if err != nil {
 			return err
 		}

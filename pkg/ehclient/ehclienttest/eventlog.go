@@ -107,6 +107,6 @@ func (e *EventLog) Read(_ context.Context, lastKnown eh.Cursor) (*eh.ReadResult,
 }
 
 // for testing
-func (e *EventLog) ResolveDekEnvelope(stream eh.StreamName) *envelopeenc.Envelope {
+func (e *EventLog) ResolveDEKEnvelope(stream eh.StreamName) *envelopeenc.Envelope {
 	return e.dekEnvelopes[stream.String()]
 }

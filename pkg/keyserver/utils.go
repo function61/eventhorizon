@@ -21,7 +21,7 @@ func MakeDekEnvelope(
 	return dekEnvelope, nil
 }
 
-func NewDek() ([]byte, error) {
+func NewDEK() ([]byte, error) {
 	dek := make([]byte, 256/8)
 	if _, err := io.ReadFull(rand.Reader, dek); err != nil {
 		return nil, err

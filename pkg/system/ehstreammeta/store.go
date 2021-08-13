@@ -160,9 +160,9 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 		s.state.DEK = &e.DEK
 		s.state.KeyGroupId = &e.KeyGroupId
 	case *eh.SubscriptionSubscribed:
-		s.state.Subscriptions = append(s.state.Subscriptions, e.Id)
+		s.state.Subscriptions = append(s.state.Subscriptions, e.ID)
 	case *eh.SubscriptionUnsubscribed:
-		s.state.Subscriptions = remove(s.state.Subscriptions, e.Id)
+		s.state.Subscriptions = remove(s.state.Subscriptions, e.ID)
 	case *eh.StreamChildStreamCreated:
 		s.state.ChildStreams = append(s.state.ChildStreams, e.Stream.Base())
 

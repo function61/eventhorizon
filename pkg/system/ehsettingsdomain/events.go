@@ -77,7 +77,7 @@ func NewKekRegistered(
 
 type KeyserverCreated struct {
 	meta  ehevent.EventMeta
-	Id    string
+	ID    string
 	Label string
 }
 
@@ -91,7 +91,7 @@ func NewKeyserverCreated(
 ) *KeyserverCreated {
 	return &KeyserverCreated{
 		meta:  meta,
-		Id:    id,
+		ID:    id,
 		Label: label,
 	}
 }
