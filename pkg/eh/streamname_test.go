@@ -9,7 +9,7 @@ import (
 func TestStreamName(t *testing.T) {
 	assert.Assert(t, RootName.Parent() == nil)
 
-	assert.EqualString(t, RootName.ResourceName().String(), "f61rn:eventhorizon:stream:/")
+	assert.EqualString(t, RootName.ResourceName().String(), "f61:eventhorizon:stream:/")
 
 	uid3 := RootName.Child("t-3").Child("users").Child("uid3")
 

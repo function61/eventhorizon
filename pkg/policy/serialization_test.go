@@ -17,7 +17,7 @@ func TestSerializeDeserialize(t *testing.T) {
                 "eventhorizon:Read"
             ],
             "resources": [
-                "f61rn:eventhorizon:/_system*"
+                "f61:eventhorizon:/_system*"
             ]
         }
     ]
@@ -27,7 +27,7 @@ func TestSerializeDeserialize(t *testing.T) {
 	policy, err := Deserialize(policySerialized)
 	assert.Ok(t, err)
 
-	assert.EqualString(t, policy.Statements[0].Resources[0], "f61rn:eventhorizon:/_system*")
+	assert.EqualString(t, policy.Statements[0].Resources[0], "f61:eventhorizon:/_system*")
 }
 
 func testingPolicy() Policy {

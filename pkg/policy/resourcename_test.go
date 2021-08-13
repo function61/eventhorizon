@@ -7,10 +7,10 @@ import (
 )
 
 func TestResourceName(t *testing.T) {
-	iam := F61rn.Child("iam")
+	iam := F61.Child("iam")
 	iamUser := iam.Child("user3")
 
-	assert.EqualString(t, F61rn.String(), "f61rn")
-	assert.EqualString(t, iam.String(), "f61rn:iam")
-	assert.EqualString(t, iamUser.String(), "f61rn:iam:user3")
+	assert.EqualString(t, F61.String(), "f61")
+	assert.EqualString(t, iam.String(), "f61:iam")
+	assert.EqualString(t, iamUser.String(), "f61:iam:user3")
 }

@@ -17,6 +17,6 @@ var (
 
 // resource prefixes for which actions will be authorized against
 var (
-	ResourceNameStream   = policy.F61rn.Child("eventhorizon").Child("stream")   // f61rn:eventhorizon:stream
-	ResourceNameSnapshot = policy.F61rn.Child("eventhorizon").Child("snapshot") // f61rn:eventhorizon:snapshot
+	ResourceNameStream   = policy.F61.Child("eventhorizon").Child("stream")   // f61:eventhorizon:stream
+	ResourceNameSnapshot = policy.F61.Child("eventhorizon").Child("snapshot") // f61:eventhorizon:snapshot
 )

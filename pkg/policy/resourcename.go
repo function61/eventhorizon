@@ -1,7 +1,7 @@
 package policy
 
 var (
-	F61rn = ResourceName("f61rn")
+	F61 = ResourceName("f61")
 )
 
 type ResourceName string

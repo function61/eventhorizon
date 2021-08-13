@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	eventHorizonRn = F61rn.Child("eventhorizon") // to prevent dependency
+	eventHorizonRn = F61.Child("eventhorizon") // to prevent dependency
 )
 
 func TestAuthorize(t *testing.T) {
