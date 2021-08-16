@@ -83,11 +83,11 @@ func (s *Store) Snapshot() (*eh.Snapshot, error) {
 		return nil, err
 	}
 
-	return eh.NewSnapshot(s.version, data, s.SnapshotContextAndVersion()), nil
+	return eh.NewSnapshot(s.version, data, s.Perspective()), nil
 }
 
-func (s *Store) SnapshotContextAndVersion() string {
-	return "eh:sub:v1" // change if persisted stateFormat changes in backwards-incompat way
+func (s *Store) Perspective() eh.SnapshotPerspective {
+	return eh.NewV1Perspective("eh.sub") // change if persisted stateFormat changes in backwards-incompat way
 }
 
 func (s *Store) GetEventTypes() []ehclient.LogDataKindDeserializer {

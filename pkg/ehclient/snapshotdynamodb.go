@@ -16,8 +16,8 @@ import (
 )
 
 type SnapshotReference struct {
-	Stream  eh.StreamName
-	Context string
+	Stream      eh.StreamName
+	Perspective eh.SnapshotPerspective
 }
 
 type SnapshotVersion struct {
@@ -26,10 +26,10 @@ type SnapshotVersion struct {
 }
 
 type DynamoSnapshotItem struct {
-	Stream  string `json:"s"` // stream + context form the composite key
-	Context string `json:"c"` // context = different software can have different perspective for the same stream
-	Version int64  `json:"v"` // we conditionally put updates into DynamoDB as not to overwrite advanced state
-	RawData []byte `json:"d"` // actual snapshot data, probably encrypted
+	Stream      string `json:"s"` // stream + perspective form the composite key
+	Perspective string `json:"c"` // different software can have different perspective for the same stream
+	Version     int64  `json:"v"` // we conditionally put updates into DynamoDB as not to overwrite advanced state
+	RawData     []byte `json:"d"` // actual snapshot data, probably encrypted
 }
 
 type dynamoSnapshotStorage struct {
@@ -61,12 +61,12 @@ func NewDynamoDbSnapshotStore(opts ehdynamodb.DynamoDbOptions) (eh.SnapshotStore
 func (d *dynamoSnapshotStorage) ReadSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) (*eh.PersistedSnapshot, error) {
 	getResponse, err := d.dynamo.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		Key: dynamoutils.Record{
 			"s": dynamoutils.String(stream.String()),
-			"c": dynamoutils.String(snapshotContext),
+			"c": dynamoutils.String(perspective.String()),
 		},
 		TableName: d.snapshotsTableName,
 	})
@@ -91,18 +91,18 @@ func (d *dynamoSnapshotStorage) ReadSnapshot(
 	}
 
 	return &eh.PersistedSnapshot{
-		Cursor:  streamName.At(dynamoSnapshot.Version),
-		RawData: dynamoSnapshot.RawData,
-		Context: dynamoSnapshot.Context,
-	}, nil
+		Cursor:      streamName.At(dynamoSnapshot.Version),
+		RawData:     dynamoSnapshot.RawData,
+		Perspective: eh.ParseSnapshotPerspective(dynamoSnapshot.Perspective),
+	}, nil, nil
 }
 
 func (d *dynamoSnapshotStorage) WriteSnapshot(ctx context.Context, snap eh.PersistedSnapshot) error {
 	dynamoSnapshot, err := dynamoutils.Marshal(DynamoSnapshotItem{
-		Stream:  snap.Cursor.Stream().String(),
-		Context: snap.Context,
-		Version: snap.Cursor.Version(),
-		RawData: snap.RawData,
+		Stream:      snap.Cursor.Stream().String(),
+		Perspective: snap.Perspective.String(),
+		Version:     snap.Cursor.Version(),
+		RawData:     snap.RawData,
 	})
 	if err != nil {
 		return err
@@ -130,14 +130,14 @@ func (d *dynamoSnapshotStorage) WriteSnapshot(ctx context.Context, snap eh.Persi
 func (d *dynamoSnapshotStorage) DeleteSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) error {
 	_, err := d.dynamo.DeleteItemWithContext(ctx, &dynamodb.DeleteItemInput{
 		TableName:           d.snapshotsTableName,
 		ConditionExpression: aws.String("attribute_exists(s)"), // without this we don't get error if item does not exist
 		Key: dynamoutils.Record{
 			"s": dynamoutils.String(stream.String()),
-			"c": dynamoutils.String(snapshotContext),
+			"c": dynamoutils.String(perspective.String()),
 		},
 	})
 	if err != nil {
@@ -175,8 +175,8 @@ func (d *dynamoSnapshotStorage) ListSnapshotsForStream(ctx context.Context, stre
 
 		names = append(names, SnapshotVersion{
 			Snapshot: SnapshotReference{
-				Stream:  stream,
-				Context: *item["c"].S,
+				Stream:      stream,
+				Perspective: eh.ParseSnapshotPerspective(*item["c"].S),
 			},
 			Version: ver,
 		})

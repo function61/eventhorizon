@@ -25,7 +25,7 @@ func NewSnapshotStore() *SnapshotStore {
 func (i *SnapshotStore) ReadSnapshot(
 	_ context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) (*eh.PersistedSnapshot, error) {
 	i.stats.ReadOps++
 

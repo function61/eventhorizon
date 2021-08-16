@@ -141,21 +141,21 @@ func (s *serverClient) CreateStream(
 func (s *serverClient) ReadSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) (*eh.PersistedSnapshot, error) {
-	s.logl.Debug.Printf("ReadSnapshot %s :%s", stream.String(), snapshotContext)
+	s.logl.Debug.Printf("ReadSnapshot %s (%s)", stream.String(), perspective.String())
 
 	snap := &eh.PersistedSnapshot{}
 	if _, err := ezhttp.Get(
 		ctx,
-		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&context="+url.QueryEscape(snapshotContext),
+		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&perspective="+url.QueryEscape(perspective.String()),
 		ezhttp.AuthBearer(s.authToken),
 		ezhttp.RespondsJson(snap, false),
 	); err != nil {
 		if ezhttp.ErrorIs(err, http.StatusNotFound) {
 			return nil, os.ErrNotExist
 		} else {
-			return nil, fmt.Errorf("ReadSnapshot(%s, %s): %w", stream.String(), snapshotContext, err)
+			return nil, fmt.Errorf("ReadSnapshot(%s, %s): %w", stream.String(), perspective.String(), err)
 		}
 	}
 
@@ -177,7 +177,7 @@ func (s *serverClient) WriteSnapshot(
 		return fmt.Errorf(
 			"WriteSnapshot(%s, %s): %w",
 			snapshot.Cursor.Stream().String(),
-			snapshot.Context,
+			snapshot.Perspective,
 			err)
 	}
 
@@ -187,13 +187,13 @@ func (s *serverClient) WriteSnapshot(
 func (s *serverClient) DeleteSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) error {
 	s.logl.Debug.Printf("DeleteSnapshot")
 
 	if _, err := ezhttp.Del(
 		ctx,
-		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&context="+url.QueryEscape(snapshotContext),
+		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&perspective="+url.QueryEscape(perspective.String()),
 		ezhttp.AuthBearer(s.authToken),
 	); err != nil {
 		if ezhttp.ErrorIs(err, http.StatusNotFound) {

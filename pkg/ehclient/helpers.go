@@ -21,8 +21,8 @@ func (n *NoSnapshots) Snapshot() (*eh.Snapshot, error) {
 	return nil, errors.New("Snapshotting not implemented")
 }
 
-func (n *NoSnapshots) SnapshotContextAndVersion() string {
-	return "" // signals to Reader that we opt out of snapshotting
+func (n *NoSnapshots) Perspective() eh.SnapshotPerspective {
+	return eh.SnapshotPerspective{} // signals to Reader that we opt out of snapshotting
 }
 
 // wraps your AppendAfter() result with state-refreshed retries for ErrOptimisticLockingFailed

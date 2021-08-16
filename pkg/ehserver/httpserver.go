@@ -232,11 +232,20 @@ func serverHandler(
 		respondJson(w, appendResult)
 	}).Methods(http.MethodPost)
 
-	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
-		snapshotContext := r.URL.Query().Get("context")
-		if snapshotContext == "" {
+	parsePerspectiveOrOutputHTTPError := func(serialized string, w http.ResponseWriter) *eh.SnapshotPerspective {
+		if serialized == "" {
 			http.Error(w, "snapshot context not defined", http.StatusBadRequest)
-			return
+			return nil
+		}
+
+		perspective := eh.ParseSnapshotPerspective(serialized)
+		return &perspective
+	}
+
+	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {
+		perspective := parsePerspectiveOrOutputHTTPError(r.URL.Query().Get("perspective"), w)
+		if perspective == nil {
+			return // HTTP error was output
 		}
 
 		stream, err := eh.DeserializeStreamName(r.URL.Query().Get("stream"))
@@ -251,7 +260,7 @@ func serverHandler(
 			return
 		}
 
-		snap, err := user.Snapshots.ReadSnapshot(r.Context(), stream, snapshotContext)
+		snap, err := user.Snapshots.ReadSnapshot(r.Context(), stream, *perspective)
 		if err != nil {
 			if os.IsNotExist(err) {
 				http.NotFound(w, r)
@@ -289,10 +298,9 @@ func serverHandler(
 			return
 		}
 
-		snapshotContext := r.URL.Query().Get("context")
-		if snapshotContext == "" {
-			http.Error(w, "snapshot context not defined", http.StatusBadRequest)
-			return
+		perspective := parsePerspectiveOrOutputHTTPError(r.URL.Query().Get("perspective"), w)
+		if perspective == nil {
+			return // HTTP error was output
 		}
 
 		stream, err := eh.DeserializeStreamName(r.URL.Query().Get("stream"))
@@ -301,7 +309,7 @@ func serverHandler(
 			return
 		}
 
-		if err := user.Snapshots.DeleteSnapshot(r.Context(), stream, snapshotContext); err != nil {
+		if err := user.Snapshots.DeleteSnapshot(r.Context(), stream, *perspective); err != nil {
 			if err == os.ErrNotExist {
 				http.NotFound(w, r)
 			} else {

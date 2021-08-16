@@ -45,7 +45,7 @@ type EventsProcessor interface {
 	InstallSnapshot(*eh.Snapshot) error
 	Snapshot() (*eh.Snapshot, error)
 	// return "" if you don't implement snapshots
-	SnapshotContextAndVersion() string
+	Perspective() eh.SnapshotPerspective
 }
 
 // Serves reads for one processor. not safe for concurrent use
@@ -58,7 +58,7 @@ type Reader struct {
 	snapshotEncrypt  bool // true if processor handles any LogDataKind that are encrypted
 	snapshotVersion  *eh.Cursor
 	logl             *logex.Leveled
-	logPrefix        string // in rare cases (like eh:streammeta, i.e. 2nd reader for same stream) it would make sense to disambiguate
+	logPrefix        string // in rare cases (like eh.streammeta, i.e. 2nd reader for same stream) it would make sense to disambiguate
 	lastLoad         time.Time
 	lastLoadMu       sync.Mutex
 }
@@ -76,7 +76,7 @@ func NewReader(processor EventsProcessor, client *SystemClient) *Reader {
 		}
 	}
 
-	snapshotCapable := processor.SnapshotContextAndVersion() != ""
+	snapshotCapable := !processor.Perspective().IsEmpty()
 
 	return &Reader{
 		client:           client,
@@ -233,7 +233,7 @@ func (r *Reader) fetchAndInstallSnapshot(ctx context.Context) error {
 	snapPersisted, err := r.client.SnapshotStore.ReadSnapshot(
 		ctx,
 		stream,
-		r.processor.SnapshotContextAndVersion())
+		r.processor.Perspective())
 	if err != nil {
 		if err == os.ErrNotExist { // the snapshot just does not exist
 			r.logl.Info.Printf("no initial snapshot for %s", stream)

@@ -109,17 +109,17 @@ type authorizedSnapshotStore struct {
 func (a *authorizedSnapshotStore) ReadSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) (*eh.PersistedSnapshot, error) {
 	if err := a.policy.Authorize(eh.ActionSnapshotRead, stream.ResourceName()); err != nil {
 		return nil, err
 	}
 
-	if err := a.policy.Authorize(eh.ActionSnapshotRead, ctxToResourceName(snapshotContext)); err != nil {
+	if err := a.policy.Authorize(eh.ActionSnapshotRead, perspectiveToResourceName(perspective)); err != nil {
 		return nil, err
 	}
 
-	return a.inner.ReadSnapshot(ctx, stream, snapshotContext)
+	return a.inner.ReadSnapshot(ctx, stream, perspective)
 }
 
 func (a *authorizedSnapshotStore) WriteSnapshot(
@@ -130,7 +130,7 @@ func (a *authorizedSnapshotStore) WriteSnapshot(
 		return err
 	}
 
-	if err := a.policy.Authorize(eh.ActionSnapshotWrite, ctxToResourceName(snapshot.Context)); err != nil {
+	if err := a.policy.Authorize(eh.ActionSnapshotWrite, perspectiveToResourceName(snapshot.Perspective)); err != nil {
 		return err
 	}
 
@@ -140,19 +140,20 @@ func (a *authorizedSnapshotStore) WriteSnapshot(
 func (a *authorizedSnapshotStore) DeleteSnapshot(
 	ctx context.Context,
 	stream eh.StreamName,
-	snapshotContext string,
+	perspective eh.SnapshotPerspective,
 ) error {
 	if err := a.policy.Authorize(eh.ActionSnapshotDelete, stream.ResourceName()); err != nil {
 		return err
 	}
 
-	if err := a.policy.Authorize(eh.ActionSnapshotDelete, ctxToResourceName(snapshotContext)); err != nil {
+	if err := a.policy.Authorize(eh.ActionSnapshotDelete, perspectiveToResourceName(perspective)); err != nil {
 		return err
 	}
 
-	return a.inner.DeleteSnapshot(ctx, stream, snapshotContext)
+	return a.inner.DeleteSnapshot(ctx, stream, perspective)
 }
 
-func ctxToResourceName(snapshotContext string) policy.ResourceName {
-	return eh.ResourceNameSnapshot.Child(snapshotContext)
+func perspectiveToResourceName(perspective eh.SnapshotPerspective) policy.ResourceName {
+	// access control based only on AppID (ignore version)
+	return eh.ResourceNameSnapshot.Child(perspective.AppID)
 }

@@ -3,6 +3,7 @@ package eh
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/function61/eventhorizon/pkg/eheventencryption"
 )
@@ -10,20 +11,20 @@ import (
 // application-visible Snapshot. contrast this with PersistedSnapshot that is transparently
 // encrypted/marshaled into the SnapshotStore
 type Snapshot struct {
-	Cursor  Cursor `json:"Cursor"`
-	Data    []byte `json:"Data"` // opaque byte blob, usually but not necessarily JSON
-	Context string `json:"Context"`
+	Cursor      Cursor              `json:"Cursor"`
+	Data        []byte              `json:"Data"` // opaque byte blob, usually but not necessarily JSON
+	Perspective SnapshotPerspective `json:"Perspective"`
 }
 
-func NewSnapshot(cursor Cursor, data []byte, context string) *Snapshot {
-	return &Snapshot{cursor, data, context}
+func NewSnapshot(cursor Cursor, data []byte, perspective SnapshotPerspective) *Snapshot {
+	return &Snapshot{cursor, data, perspective}
 }
 
 func (s *Snapshot) Unencrypted() *PersistedSnapshot {
 	return &PersistedSnapshot{
-		Cursor:  s.Cursor,
-		Context: s.Context,
-		RawData: append([]byte{byte(PersistedSnapshotKindUnencrypted)}, s.Data...),
+		Cursor:      s.Cursor,
+		Perspective: s.Perspective,
+		RawData:     append([]byte{byte(PersistedSnapshotKindUnencrypted)}, s.Data...),
 	}
 }
 
@@ -34,19 +35,19 @@ func (s *Snapshot) Encrypted(dek []byte) (*PersistedSnapshot, error) {
 	}
 
 	return &PersistedSnapshot{
-		Cursor:  s.Cursor,
-		Context: s.Context,
-		RawData: append([]byte{byte(PersistedSnapshotKindEncrypted)}, ciphertext...),
+		Cursor:      s.Cursor,
+		Perspective: s.Perspective,
+		RawData:     append([]byte{byte(PersistedSnapshotKindEncrypted)}, ciphertext...),
 	}, nil
 }
 
 type SnapshotStore interface {
 	// NOTE: returns os.ErrNotExist if snapshot is not found (which MUST not be
 	//       considered an actual error)
-	ReadSnapshot(ctx context.Context, stream StreamName, snapshotContext string) (*PersistedSnapshot, error)
+	ReadSnapshot(ctx context.Context, stream StreamName, perspective SnapshotPerspective) (*PersistedSnapshot, error)
 	WriteSnapshot(ctx context.Context, snapshot PersistedSnapshot) error
 	// returns os.ErrNotExist if snapshot-to-delete not found
-	DeleteSnapshot(ctx context.Context, stream StreamName, snapshotContext string) error
+	DeleteSnapshot(ctx context.Context, stream StreamName, perspective SnapshotPerspective) error
 }
 
 type PersistedSnapshotKind uint8
@@ -71,21 +72,21 @@ func (k PersistedSnapshotKind) String() string {
 // processor consumes only non-encrypted data.
 // JSON marshaling required for client-server comms
 type PersistedSnapshot struct {
-	Cursor  Cursor `json:"Cursor"`
-	RawData []byte `json:"RawData"` // first byte is kind, following bytes documented by kind
-	Context string `json:"Context"`
+	Cursor      Cursor              `json:"Cursor"`
+	RawData     []byte              `json:"RawData"` // first byte is kind, following bytes documented by kind
+	Perspective SnapshotPerspective `json:"Perspective"`
 }
 
 func (e *PersistedSnapshot) Kind() PersistedSnapshotKind {
 	return PersistedSnapshotKind(e.RawData[0])
 }
 
-func (e *PersistedSnapshot) DecryptIfRequired(loadDek func() ([]byte, error)) (*Snapshot, error) {
+func (e *PersistedSnapshot) DecryptIfRequired(loadDEK func() ([]byte, error)) (*Snapshot, error) {
 	switch e.Kind() {
 	case PersistedSnapshotKindUnencrypted:
-		return NewSnapshot(e.Cursor, e.RawData[1:], e.Context), nil
+		return NewSnapshot(e.Cursor, e.RawData[1:], e.Perspective), nil
 	case PersistedSnapshotKindEncrypted:
-		dek, err := loadDek()
+		dek, err := loadDEK()
 		if err != nil {
 			return nil, err
 		}
@@ -95,8 +96,48 @@ func (e *PersistedSnapshot) DecryptIfRequired(loadDek func() ([]byte, error)) (*
 			return nil, err
 		}
 
-		return NewSnapshot(e.Cursor, plaintextSnapshot, e.Context), nil
+		return NewSnapshot(e.Cursor, plaintextSnapshot, e.Perspective), nil
 	default:
 		return nil, fmt.Errorf("unknown PersistedSnapshotKind: %d", e.Kind())
 	}
+}
+
+// processor ("projection") reads streams and has a certain perspective in mind when looking at the events.
+// since a stream can have multiple processors looking at it, it is likely that they have different
+// perspectives and thus have different snapshot shapes. we separate them in snapshot storage by this perspective ID.
+//
+// tl;dr: when you make changes to your snapshot's "schema" that are incompatible with the old schema,
+//        you'll want to increase the version number.
+type SnapshotPerspective struct {
+	AppID   string
+	Version string
+}
+
+// parsed format returned by String()
+func ParseSnapshotPerspective(serialized string) SnapshotPerspective {
+	parts := strings.Split(serialized, ":")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		panic(fmt.Errorf("ParseSnapshotPerspective: failed to parse: %s", serialized))
+	}
+
+	return NewPerspective(parts[0], parts[1])
+}
+
+// looks like "myapp:v1"
+func (p SnapshotPerspective) String() string {
+	return fmt.Sprintf("%s:%s", p.AppID, p.Version)
+}
+
+// a way for processor to declare that it doesn't use snapshots
+func (p SnapshotPerspective) IsEmpty() bool {
+	return p.AppID == "" && p.Version == ""
+}
+
+// helper for the most common use case - v1 (or first version) of a processor's perspective.
+func NewV1Perspective(appID string) SnapshotPerspective {
+	return NewPerspective(appID, "v1")
+}
+
+func NewPerspective(appID string, version string) SnapshotPerspective {
+	return SnapshotPerspective{appID, version}
 }

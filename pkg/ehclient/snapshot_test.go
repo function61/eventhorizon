@@ -136,7 +136,7 @@ func (l *storingSnapshotFails) WriteSnapshot(_ context.Context, snap eh.Persiste
 	return fmt.Errorf("too lazy to store %s", snap.Cursor.Serialize())
 }
 
-func (l *storingSnapshotFails) ReadSnapshot(_ context.Context, _ eh.Cursor, snapshotContext string) (*eh.PersistedSnapshot, error) {
+func (l *storingSnapshotFails) ReadSnapshot(_ context.Context, _ eh.Cursor, perspective eh.SnapshotPerspective) (*eh.PersistedSnapshot, error) {
 	// not found, not an error per se
 	return nil, os.ErrNotExist
 }
@@ -147,7 +147,7 @@ func (l *loadingSnapshotFails) WriteSnapshot(_ context.Context, snap eh.Persiste
 	return fmt.Errorf("too lazy to store %s", snap.Cursor.Serialize())
 }
 
-func (l *loadingSnapshotFails) ReadSnapshot(_ context.Context, _ eh.Cursor, snapshotContext string) (*eh.PersistedSnapshot, error) {
+func (l *loadingSnapshotFails) ReadSnapshot(_ context.Context, _ eh.Cursor, perspective eh.SnapshotPerspective) (*eh.PersistedSnapshot, error) {
 	return nil, errors.New("transport error")
 }
 */
