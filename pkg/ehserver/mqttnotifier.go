@@ -178,7 +178,7 @@ func (l *mqttNotifier) addInflight(by int) {
 //
 // namespace="prod" | "staging" | "dev" | ...
 func MqttTopicForSubscription(subscription eh.SubscriberID, namespace string) string {
-	return namespace + subscription.StreamName().String()
+	return namespace + subscription.BackingStream().String()
 }
 
 func MqttClientFrom(conf *ehsettingsdomain.MqttConfigUpdated, logger *log.Logger) (mqtt.Client, error) {

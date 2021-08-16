@@ -43,6 +43,7 @@ func (s SubscriberID) String() string {
 	return s.id
 }
 
-func (s SubscriberID) StreamName() StreamName {
+// returns the stream name that backs subscription notifications for this subscriber
+func (s SubscriberID) BackingStream() StreamName {
 	return SysSubscribers.Child(s.id)
 }

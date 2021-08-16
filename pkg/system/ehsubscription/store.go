@@ -41,7 +41,7 @@ type Store struct {
 
 func New(subscription eh.SubscriberID) *Store {
 	return &Store{
-		version: subscription.StreamName().Beginning(),
+		version: subscription.BackingStream().Beginning(),
 		state:   newStateFormat(),
 	}
 }

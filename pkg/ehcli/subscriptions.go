@@ -98,9 +98,13 @@ func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Log
 
 	_, err = client.CreateStream(
 		ctx,
-		id.StreamName(),
-		eh.LogDataMeta(subscribed))
-	return err
+		id.BackingStream(),
+		eh.LogDataMeta(subscribed),
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
