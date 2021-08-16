@@ -89,7 +89,21 @@ var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 	{
 		Kind: eh.LogDataKindMeta,
 		Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *ehclient.SystemClient) ([]ehevent.Event, error) {
-			return []ehevent.Event{newRawEvent(string(entry.Data.Raw))}, nil
+			rawEvents := []ehevent.Event{}
+
+			for idx, eventSerialized := range ehevent.DeserializeLines(entry.Data.Raw) {
+				e := newRawEvent(eventSerialized, func() string {
+					if idx == 0 {
+						return fmt.Sprintf("kind=%d", entry.Data.Kind)
+					} else {
+						return ""
+					}
+				}())
+
+				rawEvents = append(rawEvents, e)
+			}
+
+			return rawEvents, nil
 		},
 	},
 	{
@@ -108,11 +122,21 @@ var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 				return nil, err
 			}
 
-			for _, eventSerialized := range eheventencryption.PlaintextToLines(eventsSerialized) {
-				events = append(events, newRawEvent(eventSerialized))
+			rawEvents := []ehevent.Event{}
+
+			for idx, eventSerialized := range ehevent.DeserializeLines(eventsSerialized) {
+				e := newRawEvent(eventSerialized, func() string {
+					if idx == 0 {
+						return fmt.Sprintf("kind=%d", entry.Data.Kind)
+					} else {
+						return ""
+					}
+				}())
+
+				rawEvents = append(rawEvents, e)
 			}
 
-			return events, nil
+			return rawEvents, nil
 		},
 	},
 }

@@ -54,7 +54,7 @@ func Deserialize(input string, allocators Types) (Event, error) {
 		return nil, fmt.Errorf("deserialize: unknown type: %s", metaWithType.Type)
 	}
 
-	// create empty struct for this event type that we can unmarshal JSON into
+	// initialize zero-valued struct for this event type that we can unmarshal JSON into
 	event := eventAllocator()
 
 	if err := dec.Decode(event); err != nil {
@@ -72,3 +72,14 @@ type eventMetaWithEventType struct {
 	Type string `json:"_"`
 	EventMeta
 }
+
+// helper. last line won't have \n after it.
+// WARNING: you're responsible for making sure none of the lines have \n on it.
+func SerializeLines(lines []string) []byte {
+	return []byte(strings.Join(lines, "\n"))
+}
+
+func DeserializeLines(lines []byte) []string {
+	return strings.Split(string(lines), "\n")
+}
+

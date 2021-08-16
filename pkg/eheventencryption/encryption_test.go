@@ -11,7 +11,7 @@ import (
 func TestEncryptDecrypt(t *testing.T) {
 	dek := dummyDek()
 
-	encryptedEvents, err := encryptWithRand(LinesToPlaintext([]string{"foo", "bar"}), dek, nullIv())
+	encryptedEvents, err := encryptWithRand(ehevent.SerializeLines([]string{"foo", "bar"}), dek, nullIv())
 	assert.Ok(t, err)
 
 	// IV is stored as prefix, which is now easy to spot as "AAA.."
@@ -33,7 +33,7 @@ func TestCompression(t *testing.T) {
 	dek := dummyDek()
 
 	encryptedEvents, err := encryptWithRand(
-		LinesToPlaintext([]string{"fooooooooooooooooooooooooooooooooooooooooooo"}),
+		ehevent.SerializeLines([]string{"fooooooooooooooooooooooooooooooooooooooooooo"}),
 		dek,
 		nullIv())
 	assert.Ok(t, err)
@@ -48,7 +48,7 @@ func TestCompression(t *testing.T) {
 	events, err := Decrypt(*encryptedEvents, dek)
 	assert.Ok(t, err)
 
-	assert.EqualJson(t, PlaintextToLines(events), `[
+	assert.EqualJson(t, ehevent.PlaintextToLines(events), `[
   "fooooooooooooooooooooooooooooooooooooooooooo"
 ]`)
 }

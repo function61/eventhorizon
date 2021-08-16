@@ -4,6 +4,7 @@ package ehclient
 
 import (
 	"context"
+	"errors"
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehevent"
@@ -40,7 +41,9 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 					return nil, err
 				}
 
-				for _, eventSerialized := range eheventencryption.PlaintextToLines(eventsSerialized) {
+				events := []ehevent.Event{}
+
+				for _, eventSerialized := range ehevent.DeserializeLines(eventsSerialized) {
 					event, err := ehevent.Deserialize(eventSerialized, types)
 					if err != nil {
 						return nil, err
@@ -57,16 +60,26 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 
 // returns a slice for ergonomics
 func MetaDeserializer() []LogDataKindDeserializer {
+	return MetaDeserializer2(eh.MetaTypes)
+}
+
+func MetaDeserializer2(types ehevent.Types) []LogDataKindDeserializer {
 	return []LogDataKindDeserializer{
 		{
 			Kind: eh.LogDataKindMeta,
 			Deserializer: func(ctx context.Context, entry *eh.LogEntry, client *SystemClient) ([]ehevent.Event, error) {
-				metaEvent, err := ehevent.Deserialize(string(entry.Data.Raw), eh.MetaTypes)
-				if err != nil {
-					return nil, err
+				events := []ehevent.Event{}
+
+				for _, eventSerialized := range ehevent.DeserializeLines(entry.Data.Raw) {
+					metaEvent, err := ehevent.Deserialize(eventSerialized, types)
+					if err != nil {
+						return nil, err
+					}
+
+					events = append(events, metaEvent)
 				}
 
-				return []ehevent.Event{metaEvent}, nil
+				return events, nil
 			},
 		},
 	}

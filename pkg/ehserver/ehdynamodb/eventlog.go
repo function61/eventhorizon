@@ -306,6 +306,10 @@ func metaEntry(metaEvent ehevent.Event, pos eh.Cursor) LogEntryRaw {
 	return mkLogEntryRaw(pos, *eh.LogDataMeta(metaEvent))
 }
 
+func metaEntry2(pos eh.Cursor, metaEvent ...ehevent.Event) LogEntryRaw {
+	return mkLogEntryRaw(pos, *eh.LogDataMeta(metaEvent...))
+}
+
 func mkLogEntryRaw(cursor eh.Cursor, data eh.LogData) LogEntryRaw {
 	return LogEntryRaw{
 		Stream:      cursor.Stream().String(),

@@ -24,7 +24,7 @@ func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, 
 		return err
 	}
 
-	eventsEncrypted, err := eheventencryption.Encrypt(eheventencryption.LinesToPlaintext(eventsSerialized), dek)
+	eventsEncrypted, err := eheventencryption.Encrypt(ehevent.SerializeLines(eventsSerialized), dek)
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events 
 	}
 
 	eventsSerialized := ehevent.Serialize(events...)
-	eventsEncrypted, err := eheventencryption.Encrypt(eheventencryption.LinesToPlaintext(eventsSerialized), dek)
+	eventsEncrypted, err := eheventencryption.Encrypt(ehevent.SerializeLines(eventsSerialized), dek)
 	if err != nil {
 		return err
 	}

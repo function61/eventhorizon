@@ -1,14 +1,16 @@
 package eh
 
+// These are all the Event Horizon -internal metadata events
+
 import (
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/crypto/envelopeenc"
 )
 
-func LogDataMeta(e ehevent.Event) *LogData {
+func LogDataMeta(events ...ehevent.Event) *LogData {
 	return &LogData{
 		Kind: LogDataKindMeta,
-		Raw:  []byte(ehevent.SerializeOne(e)),
+		Raw:  []byte(ehevent.SerializeLines(ehevent.Serialize(events...))),
 	}
 }
 

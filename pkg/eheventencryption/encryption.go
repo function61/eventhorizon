@@ -2,7 +2,6 @@
 package eheventencryption
 
 import (
-	"bufio"
 	"bytes"
 	"compress/flate"
 	"crypto/aes"
@@ -12,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"strings"
 )
 
 // format is: <reserved 0x0> <compression method> <dek version> <iv> <ciphertextMaybeCompressed>
@@ -155,25 +153,4 @@ func encryptStream(ciphertext io.Writer, plaintext io.Reader, cipherStream ciphe
 	}
 
 	return ciphertextWriter.Close()
-}
-
-// helper. last line won't have \n after it.
-// WARNING: you're responsible for making sure none of the lines have \n on it.
-func LinesToPlaintext(lines []string) []byte {
-	return []byte(strings.Join(lines, "\n"))
-}
-
-func PlaintextToLines(plaintext []byte) []string {
-	scanner := bufio.NewScanner(bytes.NewReader(plaintext))
-
-	items := []string{}
-	for scanner.Scan() {
-		items = append(items, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		panic(err) // shouldn't ever happen (we're reading in-RAM buffer)
-	}
-
-	return items
 }
