@@ -34,7 +34,8 @@ func (e *EventMeta) Serialize(payload Event) string {
 	return fmt.Sprintf("%s %s", metaJson, payloadJson)
 }
 
-// deserialized one event from the line format
+// deserialized one event from the line format.
+// returns *ErrUnsupportedEvent* if event type not in *allocators*
 func Deserialize(input string, allocators Types) (Event, error) {
 	dec := json.NewDecoder(strings.NewReader(input))
 
@@ -51,7 +52,9 @@ func Deserialize(input string, allocators Types) (Event, error) {
 
 	eventAllocator, found := allocators[metaWithType.Type]
 	if !found {
-		return nil, fmt.Errorf("deserialize: unknown type: %s", metaWithType.Type)
+		// an event the processor doesn't recognize. it's important for the caller to detect this
+		// error because most callers won't want to treat this as an error (for forward compatibility)
+		return nil, &ErrUnsupportedEvent{kind: metaWithType.Type}
 	}
 
 	// initialize zero-valued struct for this event type that we can unmarshal JSON into
@@ -83,3 +86,12 @@ func DeserializeLines(lines []byte) []string {
 	return strings.Split(string(lines), "\n")
 }
 
+type ErrUnsupportedEvent struct {
+	kind string
+}
+
+var _ error = (*ErrUnsupportedEvent)(nil)
+
+func (e *ErrUnsupportedEvent) Error() string {
+	return fmt.Sprintf("unsupported event: %s", e.kind)
+}

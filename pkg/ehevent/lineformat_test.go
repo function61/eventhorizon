@@ -1,6 +1,7 @@
 package ehevent
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -22,6 +23,14 @@ func TestDeserialize(t *testing.T) {
 	assert.EqualString(t, o.(*CredentialCreated).Id, "123")
 	assert.EqualString(t, o.MetaType(), "credential.Created")
 	assert.EqualString(t, o.Meta().UserIdOrEmptyIfSystem(), "u987")
+}
+
+func TestDeserializeUnknown(t *testing.T) {
+	o, err := Deserialize(SerializeOne(testEvent), Types{})
+	assert.Assert(t, o == nil)
+
+	var unsupp *ErrUnsupportedEvent
+	assert.Assert(t, errors.As(err, &unsupp))
 }
 
 // structure for test event

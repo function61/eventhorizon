@@ -46,7 +46,14 @@ func EncryptedDataDeserializer(types ehevent.Types) []LogDataKindDeserializer {
 				for _, eventSerialized := range ehevent.DeserializeLines(eventsSerialized) {
 					event, err := ehevent.Deserialize(eventSerialized, types)
 					if err != nil {
-						return nil, err
+						var unsupp *ehevent.ErrUnsupportedEvent
+						if errors.As(err, &unsupp) {
+							// means it was unrecognized type (not in the map). this is necessary for forward
+							// compatibility (if strict parsing is needed we can make new deserializer)
+							continue
+						} else {
+							return nil, err
+						}
 					}
 
 					events = append(events, event)
@@ -73,7 +80,14 @@ func MetaDeserializer2(types ehevent.Types) []LogDataKindDeserializer {
 				for _, eventSerialized := range ehevent.DeserializeLines(entry.Data.Raw) {
 					metaEvent, err := ehevent.Deserialize(eventSerialized, types)
 					if err != nil {
-						return nil, err
+						var unsupp *ehevent.ErrUnsupportedEvent
+						if errors.As(err, &unsupp) {
+							// means it was unrecognized type (not in the map). this is necessary for forward
+							// compatibility (if strict parsing is needed we can make new deserializer)
+							continue
+						} else {
+							return nil, err
+						}
 					}
 
 					events = append(events, metaEvent)
