@@ -40,11 +40,6 @@ func Entrypoint() *cobra.Command {
 func serverEntrypoint() *cobra.Command {
 	parentCmd := &cobra.Command{
 		Use:   "server",
-		Short: "Server management",
-	}
-
-	parentCmd.AddCommand(&cobra.Command{
-		Use:   "run",
 		Short: "Run the server",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -54,7 +49,7 @@ func serverEntrypoint() *cobra.Command {
 				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				rootLogger))
 		},
-	})
+	}
 
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "bootstrap",
