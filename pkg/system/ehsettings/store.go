@@ -19,17 +19,19 @@ import (
 type stateFormat struct {
 	MqttConfig *string `json:"mqtt_config"` // serialized event
 	KeyServers []*KeyServer
-	Keks       []*Kek
+	Keks       []*KEK
+	KeyGroups  []KeyGroup
 }
 
 type KeyServer struct {
 	Id             string
 	Created        time.Time
 	Label          string
+	URL            string
 	AttachedKekIds []string
 }
 
-type Kek struct {
+type KEK struct {
 	Id         string
 	Registered time.Time
 	Kind       string
@@ -37,10 +39,19 @@ type Kek struct {
 	PublicKey  string
 }
 
+// each stream has one associated key group.
+// this group is consulted on stream creation and on DEK rotation.
+type KeyGroup struct {
+	ID   string
+	Name string
+	KEKs []string // which KEKs should control access to the stream's data
+}
+
 func newStateFormat() stateFormat {
 	return stateFormat{
 		KeyServers: []*KeyServer{},
-		Keks:       []*Kek{},
+		Keks:       []*KEK{},
+		KeyGroups:  []KeyGroup{},
 	}
 }
 
@@ -72,7 +83,34 @@ func (s *Store) MqttConfig() *ehsettingsdomain.MqttConfigUpdated {
 	return e.(*ehsettingsdomain.MqttConfigUpdated)
 }
 
-func (s *Store) Kek(kekId string) *Kek {
+// used when creating new streams (or rotating DEKs for existing streams) to decide which KEKs shall
+// get to control access to the stream.
+func (s *Store) KeyGroupIDForStream(stream eh.StreamName) string {
+	// TODO: we don't have enough of understanding for the needs of this, so we'll just use default
+	//       for everything until we have enough of needs to know what to do.
+
+	return "default"
+}
+
+func (s *Store) Data() stateFormat {
+	defer lockAndUnlock(&s.mu)()
+
+	return s.state
+}
+
+func (s *Store) KeyGroup(id string) *KeyGroup {
+	defer lockAndUnlock(&s.mu)()
+
+	for _, keyGroup := range s.state.KeyGroups {
+		if keyGroup.ID == id {
+			return &keyGroup
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) KEK(kekId string) *KEK {
 	defer lockAndUnlock(&s.mu)()
 
 	for _, kek := range s.state.Keks {
@@ -84,10 +122,10 @@ func (s *Store) Kek(kekId string) *Kek {
 	return nil
 }
 
-func (s *Store) KEKs() []Kek {
+func (s *Store) KEKs() []KEK {
 	defer lockAndUnlock(&s.mu)()
 
-	keks := []Kek{}
+	keks := []KEK{}
 	for _, kek := range s.state.Keks {
 		keks = append(keks, *kek)
 	}
@@ -106,7 +144,7 @@ func (s *Store) KeyServers() []KeyServer {
 	return keyServers
 }
 
-func (s *Store) KeyServerWithKekAttached(kekId string) *KeyServer {
+func (s *Store) KeyServerWithKEKAttached(kekId string) *KeyServer {
 	defer lockAndUnlock(&s.mu)()
 
 	for _, keyServer := range s.state.KeyServers {
@@ -171,8 +209,8 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 		serialized := ehevent.SerializeOne(e)
 		s.state.MqttConfig = &serialized
 	case *ehsettingsdomain.KekRegistered:
-		s.state.Keks = append(s.state.Keks, &Kek{
-			Id:         e.Id,
+		s.state.Keks = append(s.state.Keks, &KEK{
+			Id:         e.ID,
 			Registered: e.Meta().Time(),
 			Kind:       e.Kind,
 			Label:      e.Label,
@@ -183,6 +221,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 			Id:             e.ID,
 			Created:        e.Meta().Time(),
 			Label:          e.Label,
+			URL:            e.URL,
 			AttachedKekIds: []string{},
 		})
 	case *ehsettingsdomain.KeyserverKeyAttached:
@@ -202,7 +241,11 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 
 		ks.AttachedKekIds = sliceutil.FilterString(ks.AttachedKekIds, func(item string) bool { return item != e.Key })
 	case *ehsettingsdomain.KeygroupCreated:
-		// TODO: ignore
+		s.state.KeyGroups = append(s.state.KeyGroups, KeyGroup{
+			ID:   e.ID,
+			Name: e.Name,
+			KEKs: e.KEKs,
+		})
 	default:
 		return ehclient.UnsupportedEventTypeErr(ev)
 	}
@@ -237,6 +280,7 @@ func LoadUntilRealtime(
 ) (*App, error) {
 	defer lockAndUnlock(&appCacheMu)()
 
+	// singleton use for caching since we only have one settings stream and this is used somewhat often
 	if appCache != nil {
 		return appCache, nil
 	}

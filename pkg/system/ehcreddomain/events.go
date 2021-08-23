@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	NewCredentialId = randomid.Short
-	NewPolicyId     = randomid.Short
+	NewAccessTokenID = randomid.Shorter // average user is expected to have 2 active access tokens
+	NewUserID        = randomid.Short
+	NewPolicyID      = randomid.Short
 )
 
 type PolicyKind string
@@ -20,107 +21,134 @@ const (
 )
 
 var Types = ehevent.Types{
-	"credential.Created":        func() ehevent.Event { return &CredentialCreated{} },
-	"credential.Revoked":        func() ehevent.Event { return &CredentialRevoked{} },
-	"credential.PolicyAttached": func() ehevent.Event { return &CredentialPolicyAttached{} },
-	"credential.PolicyDetached": func() ehevent.Event { return &CredentialPolicyDetached{} },
-	"policy.Created":            func() ehevent.Event { return &PolicyCreated{} },
-	"policy.Renamed":            func() ehevent.Event { return &PolicyRenamed{} },
-	"policy.ContentUpdated":     func() ehevent.Event { return &PolicyContentUpdated{} },
-	"policy.Removed":            func() ehevent.Event { return &PolicyRemoved{} },
+	"user.Created":            func() ehevent.Event { return &UserCreated{} },
+	"user.AccessTokenCreated": func() ehevent.Event { return &UserAccessTokenCreated{} },
+	"user.AccessTokenRevoked": func() ehevent.Event { return &UserAccessTokenRevoked{} },
+	"user.PolicyAttached":     func() ehevent.Event { return &UserPolicyAttached{} },
+	"user.PolicyDetached":     func() ehevent.Event { return &UserPolicyDetached{} },
+	"policy.Created":          func() ehevent.Event { return &PolicyCreated{} },
+	"policy.Renamed":          func() ehevent.Event { return &PolicyRenamed{} },
+	"policy.ContentUpdated":   func() ehevent.Event { return &PolicyContentUpdated{} },
+	"policy.Removed":          func() ehevent.Event { return &PolicyRemoved{} },
 }
 
 // ------
 
-type CredentialCreated struct {
-	meta   ehevent.EventMeta
-	Id     string
-	Name   string
-	ApiKey string
+type UserCreated struct {
+	meta ehevent.EventMeta
+	ID   string
+	Name string
 }
 
-func (e *CredentialCreated) MetaType() string         { return "credential.Created" }
-func (e *CredentialCreated) Meta() *ehevent.EventMeta { return &e.meta }
+func (e *UserCreated) MetaType() string         { return "user.Created" }
+func (e *UserCreated) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewCredentialCreated(
+func NewUserCreated(
 	id string,
 	name string,
-	apiKey string,
 	meta ehevent.EventMeta,
-) *CredentialCreated {
-	return &CredentialCreated{
-		meta:   meta,
-		Id:     id,
-		Name:   name,
-		ApiKey: apiKey,
+) *UserCreated {
+	return &UserCreated{
+		meta: meta,
+		ID:   id,
+		Name: name,
 	}
 }
 
 // ------
 
-type CredentialRevoked struct {
+type UserAccessTokenCreated struct {
 	meta   ehevent.EventMeta
-	Id     string
+	User   string
+	ID     string // human-readable label to identify user's multiple access tokens
+	Secret string
+}
+
+func (e *UserAccessTokenCreated) MetaType() string         { return "user.AccessTokenCreated" }
+func (e *UserAccessTokenCreated) Meta() *ehevent.EventMeta { return &e.meta }
+
+func NewUserAccessTokenCreated(
+	user string,
+	id string,
+	secret string,
+	meta ehevent.EventMeta,
+) *UserAccessTokenCreated {
+	return &UserAccessTokenCreated{
+		meta:   meta,
+		User:   user,
+		ID:     id,
+		Secret: secret,
+	}
+}
+
+// ------
+
+type UserAccessTokenRevoked struct {
+	meta   ehevent.EventMeta
+	User   string
+	ID     string
 	Reason string
 }
 
-func (e *CredentialRevoked) MetaType() string         { return "credential.Revoked" }
-func (e *CredentialRevoked) Meta() *ehevent.EventMeta { return &e.meta }
+func (e *UserAccessTokenRevoked) MetaType() string         { return "user.AccessTokenRevoked" }
+func (e *UserAccessTokenRevoked) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewCredentialRevoked(
+func NewUserAccessTokenRevoked(
+	user string,
 	id string,
 	reason string,
 	meta ehevent.EventMeta,
-) *CredentialRevoked {
-	return &CredentialRevoked{
+) *UserAccessTokenRevoked {
+	return &UserAccessTokenRevoked{
 		meta:   meta,
-		Id:     id,
+		User:   user,
+		ID:     id,
 		Reason: reason,
 	}
 }
 
 // ------
 
-type CredentialPolicyAttached struct {
+type UserPolicyAttached struct {
 	meta   ehevent.EventMeta
-	Id     string
+	User   string
 	Policy string
 }
 
-func (e *CredentialPolicyAttached) MetaType() string         { return "credential.PolicyAttached" }
-func (e *CredentialPolicyAttached) Meta() *ehevent.EventMeta { return &e.meta }
+func (e *UserPolicyAttached) MetaType() string         { return "user.PolicyAttached" }
+func (e *UserPolicyAttached) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewCredentialPolicyAttached(
+func NewUserPolicyAttached(
 	id string,
 	policy string,
 	meta ehevent.EventMeta,
-) *CredentialPolicyAttached {
-	return &CredentialPolicyAttached{
+) *UserPolicyAttached {
+	return &UserPolicyAttached{
 		meta:   meta,
-		Id:     id,
+		User:   id,
 		Policy: policy,
 	}
 }
 
 // ------
 
-type CredentialPolicyDetached struct {
+type UserPolicyDetached struct {
 	meta   ehevent.EventMeta
-	Id     string
+	User   string
 	Policy string
 }
 
-func (e *CredentialPolicyDetached) MetaType() string         { return "credential.PolicyDetached" }
-func (e *CredentialPolicyDetached) Meta() *ehevent.EventMeta { return &e.meta }
+func (e *UserPolicyDetached) MetaType() string         { return "user.PolicyDetached" }
+func (e *UserPolicyDetached) Meta() *ehevent.EventMeta { return &e.meta }
 
-func NewCredentialPolicyDetached(
+func NewUserPolicyDetached(
 	id string,
 	policy string,
 	meta ehevent.EventMeta,
-) *CredentialPolicyDetached {
-	return &CredentialPolicyDetached{
+) *UserPolicyDetached {
+	return &UserPolicyDetached{
 		meta:   meta,
-		Id:     id,
+		User:   id,
 		Policy: policy,
 	}
 }
@@ -129,7 +157,7 @@ func NewCredentialPolicyDetached(
 
 type PolicyCreated struct {
 	meta    ehevent.EventMeta
-	Id      string
+	ID      string
 	Kind    PolicyKind
 	Name    string
 	Content policy.Policy // pretty safe b/c we can always switch to json.RawMessage if we want to decouple
@@ -147,7 +175,7 @@ func NewPolicyCreated(
 ) *PolicyCreated {
 	return &PolicyCreated{
 		meta:    meta,
-		Id:      id,
+		ID:      id,
 		Kind:    kind,
 		Name:    name,
 		Content: policy,
@@ -158,7 +186,7 @@ func NewPolicyCreated(
 
 type PolicyRenamed struct {
 	meta ehevent.EventMeta
-	Id   string
+	ID   string
 	Name string
 }
 
@@ -172,7 +200,7 @@ func NewPolicyRenamed(
 ) *PolicyRenamed {
 	return &PolicyRenamed{
 		meta: meta,
-		Id:   id,
+		ID:   id,
 		Name: name,
 	}
 }
@@ -181,7 +209,7 @@ func NewPolicyRenamed(
 
 type PolicyContentUpdated struct {
 	meta    ehevent.EventMeta
-	Id      string
+	ID      string
 	Content policy.Policy
 }
 
@@ -195,7 +223,7 @@ func NewPolicyContentUpdated(
 ) *PolicyContentUpdated {
 	return &PolicyContentUpdated{
 		meta:    meta,
-		Id:      id,
+		ID:      id,
 		Content: content,
 	}
 }
@@ -204,7 +232,7 @@ func NewPolicyContentUpdated(
 
 type PolicyRemoved struct {
 	meta ehevent.EventMeta
-	Id   string
+	ID   string
 }
 
 func (e *PolicyRemoved) MetaType() string         { return "policy.Removed" }
@@ -216,6 +244,6 @@ func NewPolicyRemoved(
 ) *PolicyRemoved {
 	return &PolicyRemoved{
 		meta: meta,
-		Id:   id,
+		ID:   id,
 	}
 }

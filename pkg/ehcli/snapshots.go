@@ -79,7 +79,7 @@ func snapshotEntrypoint() *cobra.Command {
 func snapshotCat(
 	ctx context.Context,
 	streamNameRaw string,
-	snapshotContext string,
+	perspective string,
 	logger *log.Logger,
 ) error {
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
@@ -96,7 +96,7 @@ func snapshotCat(
 	snapPersisted, err := client.SnapshotStore.ReadSnapshot(
 		ctx,
 		streamName,
-		snapshotContext)
+		eh.ParseSnapshotPerspective(perspective))
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func snapshotCat(
 func snapshotPut(
 	ctx context.Context,
 	cursorSerialized string,
-	snapshotContext string,
+	perspective string,
 	contentReader io.Reader,
 	encrypted bool,
 	logger *log.Logger,
@@ -145,7 +145,7 @@ func snapshotPut(
 		return err
 	}
 
-	snapshot := eh.NewSnapshot(cursor, content, snapshotContext)
+	snapshot := eh.NewSnapshot(cursor, content, eh.ParseSnapshotPerspective(perspective))
 
 	persisted, err := func() (*eh.PersistedSnapshot, error) {
 		if encrypted {
@@ -169,7 +169,7 @@ func snapshotPut(
 func snapshotRm(
 	ctx context.Context,
 	streamName string,
-	snapshotContext string,
+	perspective string,
 	logger *log.Logger,
 ) error {
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
@@ -182,5 +182,5 @@ func snapshotRm(
 		return err
 	}
 
-	return client.SnapshotStore.DeleteSnapshot(ctx, stream, snapshotContext)
+	return client.SnapshotStore.DeleteSnapshot(ctx, stream, eh.ParseSnapshotPerspective(perspective))
 }

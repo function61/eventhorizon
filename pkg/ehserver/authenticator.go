@@ -35,12 +35,12 @@ func (a *authenticator) AuthenticateRequest(r *http.Request) (*user, error) {
 		return nil, errors.New("missing header 'Authorization: Bearer ...'")
 	}
 
-	credential := a.credentials.State.CredentialByApiKey(apiKey)
+	credential := a.credentials.State.CredentialByCombinedToken(apiKey)
 	if credential == nil {
 		return nil, errors.New("invalid API key")
 	}
 
-	policy := credential.Policy // shorthand
+	policy := credential.MergedPolicy // shorthand
 
 	return &user{
 		Reader:    wrapReaderWithAuthorizer(a.rawReader, policy),

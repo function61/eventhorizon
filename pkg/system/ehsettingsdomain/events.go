@@ -21,10 +21,10 @@ var Types = ehevent.Types{
 // ------
 
 type KeygroupCreated struct {
-	meta          ehevent.EventMeta
-	Id            string
-	RsaPublicKeys []string
-	Server        string
+	meta ehevent.EventMeta
+	ID   string
+	Name string
+	KEKs []string
 }
 
 func (e *KeygroupCreated) MetaType() string         { return "keygroup.Created" }
@@ -32,15 +32,15 @@ func (e *KeygroupCreated) Meta() *ehevent.EventMeta { return &e.meta }
 
 func NewKeygroupCreated(
 	id string,
-	rsaPublicKeys []string,
-	server string,
+	name string,
+	kekIds []string,
 	meta ehevent.EventMeta,
 ) *KeygroupCreated {
 	return &KeygroupCreated{
-		meta:          meta,
-		Id:            id,
-		RsaPublicKeys: rsaPublicKeys,
-		Server:        server,
+		meta: meta,
+		ID:   id,
+		Name: name,
+		KEKs: kekIds,
 	}
 }
 
@@ -48,7 +48,7 @@ func NewKeygroupCreated(
 
 type KekRegistered struct {
 	meta      ehevent.EventMeta
-	Id        string // same as envelopeenc's slot's KEK ID
+	ID        string // same as envelopeenc's slot's KEK ID
 	Kind      string // "rsa" | "nacl-secretbox"
 	Label     string
 	PublicKey string `json:"PublicKey,omitempty"` // used for RSA
@@ -66,7 +66,7 @@ func NewKekRegistered(
 ) *KekRegistered {
 	return &KekRegistered{
 		meta:      meta,
-		Id:        id,
+		ID:        id,
 		Kind:      kind,
 		Label:     label,
 		PublicKey: publicKey,
@@ -79,6 +79,7 @@ type KeyserverCreated struct {
 	meta  ehevent.EventMeta
 	ID    string
 	Label string
+	URL   string
 }
 
 func (e *KeyserverCreated) MetaType() string         { return "keyserver.Created" }
@@ -87,12 +88,14 @@ func (e *KeyserverCreated) Meta() *ehevent.EventMeta { return &e.meta }
 func NewKeyserverCreated(
 	id string,
 	label string,
+	url string,
 	meta ehevent.EventMeta,
 ) *KeyserverCreated {
 	return &KeyserverCreated{
 		meta:  meta,
 		ID:    id,
 		Label: label,
+		URL:   url,
 	}
 }
 

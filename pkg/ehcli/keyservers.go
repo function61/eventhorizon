@@ -45,7 +45,7 @@ func keyServerList(ctx context.Context, logger *log.Logger) error {
 
 	keks := settings.State.KEKs()
 
-	findKek := func(id string) *ehsettings.Kek {
+	findKek := func(id string) *ehsettings.KEK {
 		for _, kek := range keks {
 			if kek.Id == id {
 				return &kek

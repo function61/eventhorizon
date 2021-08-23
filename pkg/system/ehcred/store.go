@@ -18,89 +18,113 @@ import (
 	"github.com/function61/gokit/sync/syncutil"
 )
 
+type User struct {
+	ID         string
+	Created    time.Time
+	Name       string
+	PolicyIDs  []string
+	AccessKeys []AccessKey  // usually has one, but during rotation there are expected to be two active ones
+	AuditLog   []AuditEntry // TODO: limit maximum # of items
+}
+
+type AuditEntry struct {
+	Time    time.Time
+	Message string
+}
+
+type AccessKey struct {
+	ID      string
+	Created time.Time
+	Secret  string
+}
+
+func (a AccessKey) CombinedToken() string {
+	// adding access key's ID in front of it to make it easier for the user to identify which
+	// access key their program was configured with.
+	//
+	// AWS has these separate (access key id + access key secret), but I feel combining these in a
+	// single string is easier to manage for the user.
+	return fmt.Sprintf("%s.%s", a.ID, a.Secret)
+}
+
 // credential is policy-merged view of internalCredential that is consumable without
 // having to have knowledge of inline/attachable policies
 type Credential struct {
-	Id      string
+	UserID  string
+	ID      string
 	Name    string
 	Created time.Time
 	ApiKey  string
 	Policy  policy.Policy
 }
 
-type internalCredential struct {
-	Id       string
-	Name     string
-	Created  time.Time
-	Policies []string
+type computedCredential struct {
+	UserID       string
+	AccessKeyID  string
+	MergedPolicy policy.Policy
 }
 
 type Policy struct {
-	Id      string
+	ID      string
 	Name    string
 	Created time.Time
 	Content policy.Policy
 }
 
 type stateFormat struct {
-	Credentials map[string]*internalCredential
-	Policies    map[string]*Policy
+	Users    []*User
+	Policies map[string]*Policy
 }
 
 func newStateFormat() stateFormat {
 	return stateFormat{
-		Credentials: map[string]*internalCredential{},
-		Policies:    map[string]*Policy{},
+		Users:    []*User{},
+		Policies: map[string]*Policy{},
 	}
 }
 
 type Store struct {
-	version eh.Cursor
-	mu      sync.Mutex
-	state   stateFormat // for easy snapshotting
+	version      eh.Cursor
+	mu           sync.Mutex
+	state        stateFormat // for easy snapshotting
+	cachedLookup map[string]*computedCredential
 }
 
 func New() *Store {
 	return &Store{
-		version: eh.SysCredentials.Beginning(),
-		state:   newStateFormat(),
+		version:      eh.SysCredentials.Beginning(),
+		state:        newStateFormat(),
+		cachedLookup: map[string]*computedCredential{},
 	}
 }
 
-func (s *Store) CredentialByApiKey(apiKey string) *Credential {
+func (s *Store) CredentialByCombinedToken(apiKey string) *computedCredential {
 	defer lockAndUnlock(&s.mu)()
 
-	if c, found := s.state.Credentials[apiKey]; found {
-		return s.credentialFromInternal(c, apiKey)
-	} else {
-		return nil
-	}
+	return s.cachedLookup[apiKey]
 }
 
-// needed b/c of weird'ish stateFormat
-func (s *Store) CredentialById(id string) (*Credential, error) {
+func (s *Store) UserByID(id string) *User {
 	defer lockAndUnlock(&s.mu)()
 
-	for apiKey, cred := range s.state.Credentials {
-		if cred.Id == id {
-			return s.credentialFromInternal(cred, apiKey), nil
-		}
-	}
-
-	return nil, fmt.Errorf("API key for credential '%s' not found", id)
+	return s.userByID(id)
 }
 
-func (s *Store) Credentials() []Credential {
+func (s *Store) Users() []User {
 	defer lockAndUnlock(&s.mu)()
 
-	credentials := []Credential{}
-	for apiKey, cred := range s.state.Credentials {
-		credentials = append(credentials, *s.credentialFromInternal(cred, apiKey))
+	users := []User{}
+	for _, user := range s.state.Users {
+		users = append(users, *user)
 	}
 
-	sort.Slice(credentials, func(i, j int) bool { return credentials[i].Id < credentials[j].Id })
+	return users
+}
 
-	return credentials
+func (s *Store) PolicyByID(id string) *Policy {
+	defer lockAndUnlock(&s.mu)()
+
+	return s.state.Policies[id]
 }
 
 func (s *Store) Policies() []Policy {
@@ -111,22 +135,9 @@ func (s *Store) Policies() []Policy {
 		policies = append(policies, *pol)
 	}
 
-	sort.Slice(policies, func(i, j int) bool { return policies[i].Id < policies[j].Id })
+	sort.Slice(policies, func(i, j int) bool { return policies[i].ID < policies[j].ID })
 
 	return policies
-}
-
-// returns error if credential does not exist
-func (s *Store) CredentialAttachedPolicyIds(credentialId string) ([]string, error) {
-	defer lockAndUnlock(&s.mu)()
-
-	for _, cred := range s.state.Credentials {
-		if cred.Id == credentialId {
-			return cred.Policies, nil
-		}
-	}
-
-	return nil, fmt.Errorf("credential '%s' does not exist", credentialId)
 }
 
 func (s *Store) PolicyExistsAndIsAbleToDelete(id string) error {
@@ -136,9 +147,9 @@ func (s *Store) PolicyExistsAndIsAbleToDelete(id string) error {
 		return fmt.Errorf("policy '%s' does not exist", id)
 	}
 
-	for _, cred := range s.state.Credentials {
-		if sliceutil.ContainsString(cred.Policies, id) {
-			return fmt.Errorf("credential '%s' has policy '%s' attached", cred.Id, id)
+	for _, user := range s.state.Users {
+		if sliceutil.ContainsString(user.PolicyIDs, id) {
+			return fmt.Errorf("user '%s' has policy '%s' attached", user.ID, id)
 		}
 	}
 
@@ -157,7 +168,13 @@ func (s *Store) InstallSnapshot(snap *eh.Snapshot) error {
 	s.version = snap.Cursor
 	s.state = stateFormat{}
 
-	return json.Unmarshal(snap.Data, &s.state)
+	if err := json.Unmarshal(snap.Data, &s.state); err != nil {
+		return err
+	}
+
+	s.rebuildComputedCredentialLookup()
+
+	return nil
 }
 
 func (s *Store) Snapshot() (*eh.Snapshot, error) {
@@ -194,47 +211,70 @@ func (s *Store) ProcessEvents(_ context.Context, processAndCommit ehclient.Event
 
 func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
-	case *ehcreddomain.CredentialCreated:
-		s.state.Credentials[e.ApiKey] = &internalCredential{
-			Id:       e.Id,
-			Name:     e.Name,
-			Created:  e.Meta().Time(),
-			Policies: []string{},
-		}
-	case *ehcreddomain.CredentialRevoked:
-		for key, cred := range s.state.Credentials {
-			if cred.Id == e.Id {
-				delete(s.state.Credentials, key)
-				break
+	case *ehcreddomain.UserCreated:
+		s.state.Users = append(s.state.Users, &User{
+			ID:         e.ID,
+			Created:    e.Meta().Time(),
+			Name:       e.Name,
+			PolicyIDs:  []string{},
+			AccessKeys: []AccessKey{},
+			AuditLog: []AuditEntry{
+				audit(e, "Created"),
+			},
+		})
+	case *ehcreddomain.UserAccessTokenCreated:
+		user := s.userByID(e.User)
+
+		user.AccessKeys = append(user.AccessKeys, AccessKey{
+			ID:      e.ID,
+			Created: e.Meta().Time(),
+			Secret:  e.Secret,
+		})
+
+		s.rebuildComputedCredentialLookup()
+		user.AuditLog = append(user.AuditLog, audit(e, "Created access token "+e.ID))
+	case *ehcreddomain.UserAccessTokenRevoked:
+		user := s.userByID(e.User)
+
+		keep := []AccessKey{}
+		for _, key := range user.AccessKeys {
+			if key.ID != e.ID {
+				keep = append(keep, key)
 			}
 		}
-	case *ehcreddomain.CredentialPolicyAttached:
-		cred, err := s.credentialById(e.Id)
-		if err != nil {
-			return err
-		}
 
-		cred.Policies = append(cred.Policies, e.Policy)
-	case *ehcreddomain.CredentialPolicyDetached:
-		cred, err := s.credentialById(e.Id)
-		if err != nil {
-			return err
-		}
+		user.AccessKeys = keep
+		s.rebuildComputedCredentialLookup()
+		user.AuditLog = append(user.AuditLog, audit(e, "Revoked access token "+e.ID))
+	case *ehcreddomain.UserPolicyAttached:
+		user := s.userByID(e.User)
 
-		cred.Policies = sliceutil.FilterString(cred.Policies, func(id string) bool { return id != e.Policy })
+		user.PolicyIDs = append(user.PolicyIDs, e.Policy)
+
+		s.rebuildComputedCredentialLookup()
+		user.AuditLog = append(user.AuditLog, audit(e, "Attached policy "+e.Policy))
+	case *ehcreddomain.UserPolicyDetached:
+		user := s.userByID(e.User)
+
+		user.PolicyIDs = sliceutil.FilterString(user.PolicyIDs, func(id string) bool { return id != e.Policy })
+
+		s.rebuildComputedCredentialLookup()
+		user.AuditLog = append(user.AuditLog, audit(e, "Detached policy "+e.Policy))
 	case *ehcreddomain.PolicyCreated:
-		s.state.Policies[e.Id] = &Policy{
-			Id:      e.Id,
+		s.state.Policies[e.ID] = &Policy{
+			ID:      e.ID,
 			Name:    e.Name,
 			Created: e.Meta().Time(),
 			Content: e.Content,
 		}
 	case *ehcreddomain.PolicyRenamed:
-		s.state.Policies[e.Id].Name = e.Name
+		s.state.Policies[e.ID].Name = e.Name
 	case *ehcreddomain.PolicyContentUpdated:
-		s.state.Policies[e.Id].Content = e.Content
+		s.state.Policies[e.ID].Content = e.Content
+
+		s.rebuildComputedCredentialLookup()
 	case *ehcreddomain.PolicyRemoved:
-		delete(s.state.Policies, e.Id)
+		delete(s.state.Policies, e.ID)
 	default:
 		return ehclient.UnsupportedEventTypeErr(ev)
 	}
@@ -242,35 +282,40 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	return nil
 }
 
-func (s *Store) credentialById(id string) (*internalCredential, error) {
-	for _, cred := range s.state.Credentials {
-		if cred.Id == id {
-			return cred, nil
+func (s *Store) rebuildComputedCredentialLookup() {
+	cache := map[string]*computedCredential{}
+
+	for _, user := range s.state.Users {
+		for _, accessKey := range user.AccessKeys {
+			policies := []policy.Policy{}
+			for _, policyId := range user.PolicyIDs {
+				attachedPolicy, found := s.state.Policies[policyId]
+				if !found {
+					panic(fmt.Errorf("attached policy '%s' not found", policyId))
+				}
+
+				policies = append(policies, attachedPolicy.Content)
+			}
+
+			cache[accessKey.CombinedToken()] = &computedCredential{
+				UserID:       user.ID,
+				AccessKeyID:  accessKey.ID,
+				MergedPolicy: policy.Merge(policies...),
+			}
 		}
 	}
 
-	return nil, fmt.Errorf("API key for credential '%s' not found", id)
+	s.cachedLookup = cache
 }
 
-// merges inline/attachable policies to a simpler, public credential object
-func (s *Store) credentialFromInternal(cred *internalCredential, apiKey string) *Credential {
-	policies := []policy.Policy{}
-	for _, policyId := range cred.Policies {
-		attachedPolicy, found := s.state.Policies[policyId]
-		if !found {
-			panic(fmt.Errorf("attached policy '%s' not found", policyId))
+func (s *Store) userByID(id string) *User {
+	for _, user := range s.state.Users {
+		if user.ID == id {
+			return user
 		}
-
-		policies = append(policies, attachedPolicy.Content)
 	}
 
-	return &Credential{
-		Id:      cred.Id,
-		Name:    cred.Name,
-		Created: cred.Created,
-		ApiKey:  apiKey,
-		Policy:  policy.Merge(policies...),
-	}
+	return nil
 }
 
 type App struct {
@@ -302,3 +347,7 @@ func LoadUntilRealtime(
 var (
 	lockAndUnlock = syncutil.LockAndUnlock // shorthand
 )
+
+func audit(e ehevent.Event, msg string) AuditEntry {
+	return AuditEntry{e.Meta().Time(), msg}
+}

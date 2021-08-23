@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"time"
 
@@ -31,7 +32,7 @@ func policiesList(ctx context.Context, logger *log.Logger) error {
 
 	for _, pol := range creds.State.Policies() {
 		view.AddRow(
-			pol.Id,
+			pol.ID,
 			pol.Name,
 			timeutil.HumanizeDuration(time.Since(pol.Created)),
 		)
@@ -60,7 +61,7 @@ func policyPrint(ctx context.Context, id string, logger *log.Logger) error {
 
 	fmt.Printf(
 		"  ID: %s\nName: %s\n\n%s\n",
-		pol.Id,
+		pol.ID,
 		pol.Name,
 		policyJson)
 
@@ -108,14 +109,14 @@ func policyRename(ctx context.Context, id string, newName string, logger *log.Lo
 	})
 }
 
-func policyAttach(ctx context.Context, credentialId string, policyId string, logger *log.Logger) error {
+func policyAttach(ctx context.Context, userID string, policyId string, logger *log.Logger) error {
 	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
 	return creds.Reader.TransactWrite(ctx, func() error {
-		exists, err := credentialHasPolicyAttached(credentialId, policyId, creds.State)
+		exists, err := userHasPolicyAttached(userID, policyId, creds.State)
 		if err != nil {
 			return err
 		}
@@ -124,24 +125,24 @@ func policyAttach(ctx context.Context, credentialId string, policyId string, log
 			return fmt.Errorf(
 				"cannot attach because policy '%s' already attached to '%s'",
 				policyId,
-				credentialId)
+				userID)
 		}
 
 		return client.AppendAfter(
 			ctx,
 			creds.State.Version(),
-			ehcreddomain.NewCredentialPolicyAttached(credentialId, policyId, ehevent.MetaSystemUser(time.Now())))
+			ehcreddomain.NewUserPolicyAttached(userID, policyId, ehevent.MetaSystemUser(time.Now())))
 	})
 }
 
-func policyDetach(ctx context.Context, credentialId string, policyId string, logger *log.Logger) error {
+func policyDetach(ctx context.Context, userID string, policyId string, logger *log.Logger) error {
 	creds, client, err := loadCreds(ctx, logger)
 	if err != nil {
 		return err
 	}
 
 	return creds.Reader.TransactWrite(ctx, func() error {
-		exists, err := credentialHasPolicyAttached(credentialId, policyId, creds.State)
+		exists, err := userHasPolicyAttached(userID, policyId, creds.State)
 		if err != nil {
 			return err
 		}
@@ -150,13 +151,13 @@ func policyDetach(ctx context.Context, credentialId string, policyId string, log
 			return fmt.Errorf(
 				"cannot detach because policy '%s' not attached to '%s'",
 				policyId,
-				credentialId)
+				userID)
 		}
 
 		return client.AppendAfter(
 			ctx,
 			creds.State.Version(),
-			ehcreddomain.NewCredentialPolicyDetached(credentialId, policyId, ehevent.MetaSystemUser(time.Now())))
+			ehcreddomain.NewUserPolicyDetached(userID, policyId, ehevent.MetaSystemUser(time.Now())))
 	})
 }
 
@@ -223,7 +224,7 @@ func policiesEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "attach [credentialId] [policyId]",
+		Use:   "attach [userID] [policyID]",
 		Short: "Attach policy to credential",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -238,7 +239,7 @@ func policiesEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "detach [credentialId] [policyId]",
+		Use:   "detach [userID] [policyID]",
 		Short: "Detach policy from credential",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -257,7 +258,7 @@ func policiesEntrypoint() *cobra.Command {
 
 func findPolicyById(id string, state *ehcred.Store) (*ehcred.Policy, error) {
 	for _, pol := range state.Policies() {
-		if pol.Id == id {
+		if pol.ID == id {
 			return &pol, nil
 		}
 	}
@@ -265,13 +266,13 @@ func findPolicyById(id string, state *ehcred.Store) (*ehcred.Policy, error) {
 	return nil, fmt.Errorf("policy by ID not found: %s", id)
 }
 
-func credentialHasPolicyAttached(credentialId string, policyId string, state *ehcred.Store) (bool, error) {
-	policyIds, err := state.CredentialAttachedPolicyIds(credentialId)
-	if err != nil {
-		return false, err
+func userHasPolicyAttached(userID string, policyID string, state *ehcred.Store) (bool, error) {
+	user := state.UserByID(userID)
+	if user == nil {
+		return false, fs.ErrNotExist
 	}
 
-	return sliceutil.ContainsString(policyIds, policyId), nil
+	return sliceutil.ContainsString(user.PolicyIDs, policyID), nil
 }
 
 func loadCreds(ctx context.Context, logger *log.Logger) (*ehcred.App, *ehclient.SystemClient, error) {

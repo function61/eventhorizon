@@ -19,6 +19,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/system/ehsettings"
 	"github.com/function61/gokit/crypto/envelopeenc"
 	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/net/http/httpauth"
 	"github.com/function61/gokit/net/http/httputils"
 	"github.com/function61/gokit/sync/taskrunner"
 	"github.com/gorilla/mux"
