@@ -7,7 +7,7 @@ import (
 )
 
 var Types = ehevent.Types{
-	"subscription.Activity": func() ehevent.Event { return &SubscriptionActivity{} },
+	"$subscription.Activity": func() ehevent.Event { return &SubscriptionActivity{} },
 }
 
 // ------
@@ -17,7 +17,7 @@ type SubscriptionActivity struct {
 	Heads []eh.CursorCompact
 }
 
-func (e *SubscriptionActivity) MetaType() string         { return "subscription.Activity" }
+func (e *SubscriptionActivity) MetaType() string         { return "$subscription.Activity" }
 func (e *SubscriptionActivity) Meta() *ehevent.EventMeta { return &e.meta }
 
 func NewSubscriptionActivity(
