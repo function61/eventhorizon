@@ -24,6 +24,8 @@ func subscriptionsEntrypoint() *cobra.Command {
 		Short: "Subscriptions management",
 	}
 
+	parentCmd.AddCommand(subscribersEntrypoint())
+
 	parentCmd.AddCommand(&cobra.Command{
 		Use:   "ls [stream]",
 		Short: "List subscriptions for a stream",
@@ -54,20 +56,6 @@ func subscriptionsEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "mk-subscriber [name]",
-		Short: "Create subscription stream",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			rootLogger := logex.StandardLogger()
-
-			osutil.ExitIfError(subscriptionCreateStream(
-				osutil.CancelOnInterruptOrTerminate(rootLogger),
-				args[0],
-				rootLogger))
-		},
-	})
-
-	parentCmd.AddCommand(&cobra.Command{
 		Use:   "rm [stream] [id]",
 		Short: "Unsubscribe from a stream",
 		Args:  cobra.ExactArgs(2),
@@ -78,6 +66,43 @@ func subscriptionsEntrypoint() *cobra.Command {
 				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				args[0],
 				args[1],
+				rootLogger))
+		},
+	})
+
+	return parentCmd
+}
+
+func subscribersEntrypoint()*cobra.Command{
+	parentCmd := &cobra.Command{
+		Use:   "subscriber",
+		Short: "Subscribers management",
+	}
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "ls",
+		Short: "List subscribers",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(listChildStreams(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				eh.SysSubscribers.String(),
+				rootLogger))
+		},
+	})
+
+	parentCmd.AddCommand(&cobra.Command{
+		Use:   "mk [name]",
+		Short: "Create subscription stream",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			rootLogger := logex.StandardLogger()
+
+			osutil.ExitIfError(subscriptionCreateStream(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
+				args[0],
 				rootLogger))
 		},
 	})
