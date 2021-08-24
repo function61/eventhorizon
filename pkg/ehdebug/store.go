@@ -9,8 +9,8 @@ import (
 
 	"github.com/function61/eventhorizon/pkg/eh"
 	"github.com/function61/eventhorizon/pkg/ehclient"
+	"github.com/function61/eventhorizon/pkg/ehencryption"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/eventhorizon/pkg/eheventencryption"
 )
 
 type entry struct {
@@ -115,7 +115,7 @@ var mapEventsToRawEvent = []ehclient.LogDataKindDeserializer{
 				return nil, err
 			}
 
-			eventsSerialized, err := eheventencryption.Decrypt(entry.Data.Raw, dek)
+			eventsSerialized, err := ehencryption.Decrypt(entry.Data.Raw, dek)
 			if err != nil {
 				return nil, err
 			}

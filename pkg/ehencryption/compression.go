@@ -1,4 +1,4 @@
-package eheventencryption
+package ehencryption
 
 import (
 	"bytes"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/function61/eventhorizon/pkg/eheventencryption"
+	"github.com/function61/eventhorizon/pkg/ehencryption"
 )
 
 // application-visible Snapshot. contrast this with PersistedSnapshot that is transparently
@@ -29,7 +29,7 @@ func (s *Snapshot) Unencrypted() *PersistedSnapshot {
 }
 
 func (s *Snapshot) Encrypted(dek []byte) (*PersistedSnapshot, error) {
-	ciphertext, err := eheventencryption.Encrypt(s.Data, dek)
+	ciphertext, err := ehencryption.Encrypt(s.Data, dek)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (e *PersistedSnapshot) DecryptIfRequired(loadDEKv0 func() ([]byte, error)) 
 			return nil, err
 		}
 
-		plaintextSnapshot, err := eheventencryption.Decrypt(e.RawData[1:], dek)
+		plaintextSnapshot, err := ehencryption.Decrypt(e.RawData[1:], dek)
 		if err != nil {
 			return nil, err
 		}

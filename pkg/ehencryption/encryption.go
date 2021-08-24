@@ -1,5 +1,5 @@
 // Encrypts (& maybe compresses) line-based (\n) data (usually "ehevent" serialization format) into a LogData item
-package eheventencryption
+package ehencryption
 
 import (
 	"bytes"
