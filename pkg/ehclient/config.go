@@ -23,7 +23,7 @@ import (
 // which depend on Reader interface). this is also the reason for "ehclientfactory" package
 // TODO: extract the interfaces the stores depend on, so we don't need this?
 type SystemConnector interface {
-	DEKEnvelopeForNewStream(context.Context, eh.StreamName) (*envelopeenc.EnvelopeBundle, error)
+	DEKv0EnvelopeForNewStream(context.Context, eh.StreamName) (*envelopeenc.EnvelopeBundle, error)
 	ResolveDEK(context.Context, eh.StreamName) ([]byte, error)
 }
 

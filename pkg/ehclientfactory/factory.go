@@ -67,7 +67,11 @@ func (d *sysConnection) ResolveDEK(ctx context.Context, stream eh.StreamName) ([
 	return keyServer.UnsealEnvelope(ctx, *dekEnvelope)
 }
 
-func (d *sysConnection) DEKEnvelopeForNewStream(
+// we're creating a new stream and it needs an encryption key (DEK).
+// generate DEK and put it in an envelope.
+// we'll need to use a KeyGroup to known which KEKs should be the envelope recipients
+// (KEKs control access to the stream's data via controlling access to the DEK).
+func (d *sysConnection) DEKv0EnvelopeForNewStream(
 	ctx context.Context,
 	stream eh.StreamName,
 ) (*envelopeenc.Envelope, error) {
@@ -111,8 +115,8 @@ func (d *sysConnection) DEKEnvelopeForNewStream(
 		return nil, fmt.Errorf("DekEnvelopeForStream: %w", err)
 	}
 
-	// Encrypt() asserts for len(slotEncrypters) > 0
-	return envelopeenc.Encrypt(dek, slotEncrypters, stream.ResourceName().String())
+	// internally asserts for len(recipients) > 0
+	return envelopeenc.EncryptDEK(stream.DEKResourceName(0).String(), dek, recipients...)
 }
 
 func (d *sysConnection) resolveDEKEnvelope(

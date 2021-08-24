@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/function61/eventhorizon/pkg/policy"
@@ -55,6 +56,10 @@ func (s StreamName) IsUnder(other StreamName) bool {
 
 func (s StreamName) ResourceName() policy.ResourceName {
 	return ResourceNameStream.Child(s.String())
+}
+
+func (s StreamName) DEKResourceName(dekVersion int) policy.ResourceName {
+	return resourceNameDEK.Child(s.String()).Child(strconv.Itoa(dekVersion))
 }
 
 // "/foo" => "/"

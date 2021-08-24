@@ -19,4 +19,5 @@ var (
 var (
 	ResourceNameStream   = policy.F61.Child("eventhorizon").Child("stream")   // f61:eventhorizon:stream
 	ResourceNameSnapshot = policy.F61.Child("eventhorizon").Child("snapshot") // f61:eventhorizon:snapshot
+	resourceNameDEK      = policy.F61.Child("eventhorizon").Child("dek")      // f61:eventhorizon:dek
 )

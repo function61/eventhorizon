@@ -74,10 +74,7 @@ func Bootstrap(ctx context.Context, e *Client) error {
 		}()
 
 		// TODO: make DEK envelope locally only for streams where we need to add encrypted data for
-		dekEnvelope, err := keyserver.MakeDekEnvelope(
-			dek,
-			streamToCreate.ResourceName(),
-			encrypters)
+		dekEnvelope, err := envelopeenc.EncryptDEK(streamToCreate.DEKResourceName(0).String(), dek, encrypters...)
 		if err != nil {
 			return err
 		}

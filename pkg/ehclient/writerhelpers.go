@@ -66,9 +66,9 @@ func (e *SystemClient) CreateStream(
 	// generate it b/c then the server could theoretically have access to the data. and we
 	// prefer the crypto service generate the whole envelope, so not even application
 	// servers have theoretically default un-audited access to the data.
-	dekEnvelope, err := e.sysConn.DEKEnvelopeForNewStream(ctx, stream)
+	dekEnvelope, err := e.sysConn.DEKv0EnvelopeForNewStream(ctx, stream)
 	if err != nil {
-		return nil, fmt.Errorf("DEKEnvelopeForNewStream: %w", err)
+		return nil, fmt.Errorf("DEKv0EnvelopeForNewStream: %w", err)
 	}
 
 	return e.EventLog.CreateStream(ctx, stream, *dekEnvelope, data)
