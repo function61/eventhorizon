@@ -82,7 +82,7 @@ func snapshotCat(
 	perspective string,
 	logger *log.Logger,
 ) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func snapshotPut(
 	encrypted bool,
 	logger *log.Logger,
 ) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func snapshotRm(
 	perspective string,
 	logger *log.Logger,
 ) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

@@ -26,7 +26,7 @@ import (
 )
 
 func Server(ctx context.Context, logger *log.Logger) error {
-	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	systemClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

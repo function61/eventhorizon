@@ -73,7 +73,7 @@ func subscriptionsEntrypoint() *cobra.Command {
 	return parentCmd
 }
 
-func subscribersEntrypoint()*cobra.Command{
+func subscribersEntrypoint() *cobra.Command {
 	parentCmd := &cobra.Command{
 		Use:   "subscriber",
 		Short: "Subscribers management",
@@ -113,7 +113,7 @@ func subscribersEntrypoint()*cobra.Command{
 func subscriptionCreateStream(ctx context.Context, name string, logger *log.Logger) error {
 	id := eh.NewSubscriberID(randomid.Short())
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func subscriptionCreateStream(ctx context.Context, name string, logger *log.Logg
 }
 
 func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func subscriptionsList(ctx context.Context, streamNameRaw string, logger *log.Lo
 func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriberID(idRaw)
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func subscriptionSubscribe(ctx context.Context, streamNameRaw string, idRaw stri
 func subscriptionUnsubscribe(ctx context.Context, streamNameRaw string, idRaw string, logger *log.Logger) error {
 	id := eh.NewSubscriberID(idRaw)
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

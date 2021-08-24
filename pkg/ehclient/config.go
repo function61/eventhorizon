@@ -138,7 +138,8 @@ func (s *SystemClient) GetServerUrl() string {
 
 type ConfigStringGetter func() (string, error)
 
-func ConfigFromEnv() (string, error) {
+// reads the config string from an environment variable
+func ConfigFromENV() (string, error) {
 	return osutil.GetenvRequired("EVENTHORIZON")
 }
 

@@ -92,7 +92,7 @@ func encEntrypoint() *cobra.Command {
 }
 
 func bootstrap(ctx context.Context, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

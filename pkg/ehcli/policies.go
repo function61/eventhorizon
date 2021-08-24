@@ -276,7 +276,7 @@ func userHasPolicyAttached(userID string, policyID string, state *ehcred.Store) 
 }
 
 func loadCreds(ctx context.Context, logger *log.Logger) (*ehcred.App, *ehclient.SystemClient, error) {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return nil, nil, err
 	}

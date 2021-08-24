@@ -88,7 +88,7 @@ func streamEntrypoint() *cobra.Command {
 }
 
 func listChildStreams(ctx context.Context, streamNameRaw string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func streamCreate(ctx context.Context, streamPath string, logger *log.Logger) er
 		return fmt.Errorf("please use subscription stream creation to create %s", stream.String())
 	}
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func streamCreate(ctx context.Context, streamPath string, logger *log.Logger) er
 }
 
 func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func streamReadDebug(ctx context.Context, streamNameRaw string, version int64, l
 }
 
 func streamAppend(ctx context.Context, streamNameRaw string, event string, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

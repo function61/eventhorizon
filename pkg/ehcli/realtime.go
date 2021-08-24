@@ -91,7 +91,7 @@ func mqttSubscribe(ctx context.Context, subscriptionIdRaw string, logger *log.Lo
 
 	logl := logex.Levels(logger)
 
-	ehClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	ehClient, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func mqttConfigUpdate(
 		return fmt.Errorf("X509KeyPair: %w", err)
 	}
 
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func mqttConfigUpdate(
 }
 
 func mqttConfigDisplay(ctx context.Context, logger *log.Logger) error {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return err
 	}

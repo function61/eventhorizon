@@ -62,7 +62,7 @@ func kekList(ctx context.Context, logger *log.Logger) error {
 }
 
 func loadSettings(ctx context.Context, logger *log.Logger) (*ehsettings.App, *ehclient.SystemClient, error) {
-	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
+	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromENV, logger)
 	if err != nil {
 		return nil, nil, err
 	}
