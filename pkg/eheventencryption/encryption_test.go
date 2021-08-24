@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/gokit/testing/assert"
 )
 
@@ -15,15 +16,12 @@ func TestEncryptDecrypt(t *testing.T) {
 	assert.Ok(t, err)
 
 	// IV is stored as prefix, which is now easy to spot as "AAA.."
-	assert.EqualJson(t, encryptedEvents, `{
-  "Kind": 2,
-  "Raw": "AAAAAAAAAAAAAAAAAAAAAAAAIj2JpVt10A=="
-}`)
+	assert.EqualJson(t, encryptedEvents, `"AAAAAAAAAAAAAAAAAAC4lgF7yr7in/fIpoTDpo73LRyLUZUP7g=="`)
 
-	events, err := Decrypt(*encryptedEvents, dek)
+	events, err := Decrypt(encryptedEvents, dek)
 	assert.Ok(t, err)
 
-	assert.EqualJson(t, PlaintextToLines(events), `[
+	assert.EqualJson(t, ehevent.DeserializeLines(events), `[
   "foo",
   "bar"
 ]`)
@@ -40,15 +38,12 @@ func TestCompression(t *testing.T) {
 
 	// remember the long "AAAA".. from earlier test? the difference below is for the
 	// CompressionMethod=deflate being specified in the header
-	assert.EqualJson(t, encryptedEvents, `{
-  "Kind": 2,
-  "Raw": "AQAAAAAAAAAAAAAAAAAAAAAADpnBsTkWorvMSQ=="
-}`)
+	assert.EqualJson(t, encryptedEvents, `"AQAAAAAAAAAAAAAAAACUMklvqN2QauCeURUKuRLzSLNiczWPUB8QjQ=="`)
 
-	events, err := Decrypt(*encryptedEvents, dek)
+	events, err := Decrypt(encryptedEvents, dek)
 	assert.Ok(t, err)
 
-	assert.EqualJson(t, ehevent.PlaintextToLines(events), `[
+	assert.EqualJson(t, ehevent.DeserializeLines(events), `[
   "fooooooooooooooooooooooooooooooooooooooooooo"
 ]`)
 }

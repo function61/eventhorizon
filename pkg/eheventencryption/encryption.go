@@ -4,13 +4,13 @@ package eheventencryption
 import (
 	"bytes"
 	"compress/flate"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // format is: <reserved 0x0> <compression method> <dek version> <iv> <ciphertextMaybeCompressed>
@@ -20,9 +20,20 @@ import (
 //            └- lowest 4 bits compression method (0x0 = uncompressed, 0x1 = deflate)
 // 1-n bytes  Reserved for DEK version (key rotation). N is defined by encoding/binary.Uvarint semantics
 // 16 bytes   IV
-// rest       AES256_CTR(plaintextMaybeCompressed, dek).
+// rest       chacha20poly1305(plaintextMaybeCompressed, dek).
 //
 // plaintext is multiple "ehevent" lines split by \n character.
+
+// AES256-GCM was considered for the AEAD due to its > 5x hardware-accelerated performance[^1] compared
+// to ChaCha20-Poly1305, but considering critique[^2] on it and WireGuard's[^3] (& age's) embrace,
+// ChaCha20-Poly1305 was selected.
+//
+// [^1]: https://www.bearssl.org/speed.html
+// [^2]: https://soatok.blog/2020/05/13/why-aes-gcm-sucks/
+// [^3]: https://www.wireguard.com/protocol/
+
+// Not using XChaCha20 because a single stream isn't expected to get > 2^32 log messages using the
+// same stream-specific key version (we have key rotation)
 
 type CompressionMethod byte
 
@@ -46,12 +57,7 @@ func encryptWithRand(plaintext []byte, dek []byte, cryptoRand io.Reader) ([]byte
 		return nil, err
 	}
 
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(cryptoRand, iv); err != nil {
-		return nil, err
-	}
-
-	aesCipher, err := aes.NewCipher(dek)
+	aead, err := chacha20poly1305.New(dek)
 	if err != nil {
 		return nil, err
 	}
@@ -62,13 +68,23 @@ func encryptWithRand(plaintext []byte, dek []byte, cryptoRand io.Reader) ([]byte
 
 	// the 0x00 for "reserved" semantics amount to high bit=varuint fits in 1 byte, and next
 	// 7 bits being zero signals that we use DEK v0 (i.e. this is not a rotated DEK)
-	raw := bytes.NewBuffer(append([]byte{header, 0x00}, iv...))
+	dekVersion := byte(0x00)
 
-	if err := encryptStream(raw, bytes.NewReader(plaintextMaybeCompressed), cipher.NewCTR(aesCipher, iv)); err != nil {
+	// ___________  header ______________
+	// <reserved 0x0> <compressionMethod> <DEK version> <nonce> <ciphertext> <authtag>
+	buffer := make([]byte, 2+aead.NonceSize()+len(plaintextMaybeCompressed)+aead.Overhead())
+	buffer[0] = header
+	buffer[1] = dekVersion // TODO: when implemented, length of this is dynamic
+
+	nonce := buffer[2 : 2+aead.NonceSize()]
+
+	if _, err := io.ReadFull(cryptoRand, nonce); err != nil {
 		return nil, err
 	}
 
-	return raw.Bytes(), nil
+	aead.Seal(buffer[2:2+aead.NonceSize()], nonce, plaintextMaybeCompressed, nil)
+
+	return buffer, nil
 }
 
 func Decrypt(ciphertext []byte, dek []byte) ([]byte, error) {
@@ -101,28 +117,33 @@ func Decrypt(ciphertext []byte, dek []byte) ([]byte, error) {
 		return nil, errors.New("Decrypt: DEK rotation not implemented")
 	}
 
-	// after reading IV, next reads contain only ciphertext
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(raw, iv); err != nil {
-		return nil, fmt.Errorf("Decrypt: read IV: %w", err)
+	// after reading nonce, next reads contain only ciphertext
+	nonce := make([]byte, chacha20poly1305.NonceSize)
+	if _, err := io.ReadFull(raw, nonce); err != nil {
+		return nil, fmt.Errorf("Decrypt: read nonce: %w", err)
 	}
 
-	aesCipher, err := aes.NewCipher(dek)
+	ciphertextAndAuthTag, err := io.ReadAll(raw)
 	if err != nil {
-		return nil, fmt.Errorf("Decrypt: %w", err)
+		return nil, err
 	}
 
-	plaintextMaybeCompressed := &cipher.StreamReader{
-		S: cipher.NewCTR(aesCipher, iv),
-		R: raw,
+	aead, err := chacha20poly1305.New(dek)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintextMaybeCompressed, err := aead.Open(ciphertextAndAuthTag[:0], nonce, ciphertextAndAuthTag, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	plaintextReader, err := func() (io.ReadCloser, error) {
 		switch compressionMethod {
 		case CompressionMethodNone:
-			return ioutil.NopCloser(plaintextMaybeCompressed), nil // as-is
+			return ioutil.NopCloser(bytes.NewReader(plaintextMaybeCompressed)), nil // as-is
 		case CompressionMethodDeflate:
-			return flate.NewReader(plaintextMaybeCompressed), nil
+			return flate.NewReader(bytes.NewReader(plaintextMaybeCompressed)), nil
 		default:
 			return nil, fmt.Errorf("unsupported CompressionMethod: %x", compressionMethod)
 		}
@@ -141,16 +162,4 @@ func Decrypt(ciphertext []byte, dek []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
-}
-
-func encryptStream(ciphertext io.Writer, plaintext io.Reader, cipherStream cipher.Stream) error {
-	ciphertextWriter := cipher.StreamWriter{
-		S: cipherStream,
-		W: ciphertext,
-	}
-	if _, err := io.Copy(ciphertextWriter, plaintext); err != nil {
-		return err
-	}
-
-	return ciphertextWriter.Close()
 }
