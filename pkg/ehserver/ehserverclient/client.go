@@ -52,7 +52,7 @@ func (s *serverClient) Read(
 	ctx context.Context,
 	after eh.Cursor,
 ) (*eh.ReadResult, error) {
-	s.logl.Debug.Printf("Read")
+	s.logl.Debug.Printf("Read %s", after.Serialize())
 
 	res := &eh.ReadResult{}
 	if _, err := ezhttp.Get(
@@ -140,26 +140,26 @@ func (s *serverClient) CreateStream(
 
 func (s *serverClient) ReadSnapshot(
 	ctx context.Context,
-	stream eh.StreamName,
-	perspective eh.SnapshotPerspective,
-) (*eh.PersistedSnapshot, error) {
-	s.logl.Debug.Printf("ReadSnapshot %s (%s)", stream.String(), perspective.String())
+	input eh.ReadSnapshotInput,
+) (*eh.ReadSnapshotOutput, error) {
+	s.logl.Debug.Printf("ReadSnapshot %s (%s)", input.Stream.String(), input.Perspective.String())
 
-	snap := &eh.PersistedSnapshot{}
+	output := &eh.ReadSnapshotOutput{}
+
 	if _, err := ezhttp.Get(
 		ctx,
-		s.baseUrl+"/snapshot?stream="+url.QueryEscape(stream.String())+"&perspective="+url.QueryEscape(perspective.String()),
+		s.baseUrl+"/snapshot?stream="+url.QueryEscape(input.Stream.String())+"&perspective="+url.QueryEscape(input.Perspective.String()),
 		ezhttp.AuthBearer(s.authToken),
-		ezhttp.RespondsJson(snap, false),
+		ezhttp.RespondsJson(output, false),
 	); err != nil {
 		if ezhttp.ErrorIs(err, http.StatusNotFound) {
 			return nil, os.ErrNotExist
 		} else {
-			return nil, fmt.Errorf("ReadSnapshot(%s, %s): %w", stream.String(), perspective.String(), err)
+			return nil, fmt.Errorf("ReadSnapshot(%s, %s): %w", input.Stream.String(), input.Perspective.String(), err)
 		}
 	}
 
-	return snap, nil
+	return output, nil
 }
 
 func (s *serverClient) WriteSnapshot(

@@ -93,13 +93,17 @@ func snapshotCat(
 	}
 
 	// the Beginning() is non-important, as the store only uses the stream component of Cursor
-	snapPersisted, err := client.SnapshotStore.ReadSnapshot(
+	snapOutput, err := client.SnapshotStore.ReadSnapshot(
 		ctx,
-		streamName,
-		eh.ParseSnapshotPerspective(perspective))
+		eh.ReadSnapshotInput{
+			Stream:      streamName,
+			Perspective: eh.ParseSnapshotPerspective(perspective),
+		})
 	if err != nil {
 		return err
 	}
+
+	snapPersisted := snapOutput.Snapshot
 
 	fmt.Fprintf(
 		os.Stderr,

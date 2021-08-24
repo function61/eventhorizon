@@ -261,7 +261,12 @@ func serverHandler(
 			return
 		}
 
-		snap, err := user.Snapshots.ReadSnapshot(r.Context(), stream, *perspective)
+		input := eh.ReadSnapshotInput{
+			Stream:      stream,
+			Perspective: *perspective,
+		}
+
+		snapOutput, err := user.Snapshots.ReadSnapshot(r.Context(), input)
 		if err != nil {
 			if os.IsNotExist(err) {
 				http.NotFound(w, r)
@@ -270,8 +275,20 @@ func serverHandler(
 			}
 			return
 		}
+		snap := snapOutput.Snapshot // we know there is nothing other interesting in the output structure
 
-		respondJson(w, snap)
+		// TODO: do this only if client requests so
+		eagerRead, err := user.Reader.Read(r.Context(), snap.Cursor)
+		if err != nil {
+			// TODO: ignore error and just return snapshot?
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		respondJson(w, eh.ReadSnapshotOutput{
+			Snapshot:  snap,
+			EagerRead: eagerRead,
+		})
 	}).Methods(http.MethodGet)
 
 	router.HandleFunc(prefix+"/snapshot", func(w http.ResponseWriter, r *http.Request) {

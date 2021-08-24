@@ -41,10 +41,21 @@ func (s *Snapshot) Encrypted(dek []byte) (*PersistedSnapshot, error) {
 	}, nil
 }
 
+type ReadSnapshotInput struct {
+	Stream          StreamName
+	Perspective     SnapshotPerspective
+	PreferEagerRead bool // requests EagerRead to be filled to optimize performance (contains events occurred after the snapshot)
+}
+
+type ReadSnapshotOutput struct {
+	Snapshot  *PersistedSnapshot
+	EagerRead *ReadResult // might be filled if PreferEagerRead=true requested
+}
+
 type SnapshotStore interface {
 	// NOTE: returns os.ErrNotExist if snapshot is not found (which MUST not be
 	//       considered an actual error)
-	ReadSnapshot(ctx context.Context, stream StreamName, perspective SnapshotPerspective) (*PersistedSnapshot, error)
+	ReadSnapshot(ctx context.Context, input ReadSnapshotInput) (*ReadSnapshotOutput, error)
 	WriteSnapshot(ctx context.Context, snapshot PersistedSnapshot) error
 	// returns os.ErrNotExist if snapshot-to-delete not found
 	DeleteSnapshot(ctx context.Context, stream StreamName, perspective SnapshotPerspective) error

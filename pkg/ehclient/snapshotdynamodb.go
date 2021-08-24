@@ -60,13 +60,12 @@ func NewDynamoDbSnapshotStore(opts ehdynamodb.DynamoDbOptions) (eh.SnapshotStore
 
 func (d *dynamoSnapshotStorage) ReadSnapshot(
 	ctx context.Context,
-	stream eh.StreamName,
-	perspective eh.SnapshotPerspective,
-) (*eh.PersistedSnapshot, error) {
+	input eh.ReadSnapshotInput,
+) (*eh.ReadSnapshotOutput, error) {
 	getResponse, err := d.dynamo.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		Key: dynamoutils.Record{
-			"s": dynamoutils.String(stream.String()),
-			"c": dynamoutils.String(perspective.String()),
+			"s": dynamoutils.String(input.Stream.String()),
+			"c": dynamoutils.String(input.Perspective.String()),
 		},
 		TableName: d.snapshotsTableName,
 	})
@@ -90,11 +89,13 @@ func (d *dynamoSnapshotStorage) ReadSnapshot(
 		return nil, err
 	}
 
-	return &eh.PersistedSnapshot{
-		Cursor:      streamName.At(dynamoSnapshot.Version),
-		RawData:     dynamoSnapshot.RawData,
-		Perspective: eh.ParseSnapshotPerspective(dynamoSnapshot.Perspective),
-	}, nil, nil
+	return &eh.ReadSnapshotOutput{
+		Snapshot: &eh.PersistedSnapshot{
+			Cursor:      streamName.At(dynamoSnapshot.Version),
+			RawData:     dynamoSnapshot.RawData,
+			Perspective: eh.ParseSnapshotPerspective(dynamoSnapshot.Perspective),
+		},
+	}, nil
 }
 
 func (d *dynamoSnapshotStorage) WriteSnapshot(ctx context.Context, snap eh.PersistedSnapshot) error {

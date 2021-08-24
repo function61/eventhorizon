@@ -110,9 +110,15 @@ func (r *Reader) loadUntilRealtime(ctx context.Context) error {
 		return err
 	}
 
+	// as a perf optimization, server might return eager read result when we load a snapshot, because
+	// the server knows that we're interested in changes that occurred after the snapshot was taken
+	var snapshotEagerRead *eh.ReadResult
+
 	// if we started from beginning, try to load a snapshot
 	if r.snapshotCapable && r.processorVersion.AtBeginning() {
-		if err := r.fetchAndInstallSnapshot(ctx); err != nil {
+		var err error
+
+		if snapshotEagerRead, err = r.fetchAndInstallSnapshot(ctx); err != nil {
 			r.logl.Error.Printf("fetchAndInstallSnapshot: %v", err)
 
 			// TODO: disable trying to write snapshots?
@@ -121,14 +127,24 @@ func (r *Reader) loadUntilRealtime(ctx context.Context) error {
 	}
 
 	for {
-		resp, err := r.client.EventLog.Read(ctx, *r.processorVersion)
+		readResult, err := func() (*eh.ReadResult, error) {
+			if snapshotEagerRead != nil {
+				r.logl.Info.Printf("got eager read with %d entrie(s)", len(snapshotEagerRead.Entries))
+
+				temp := snapshotEagerRead
+				snapshotEagerRead = nil
+				return temp, nil
+			} else { // no eager read => do explicit read
+				return r.client.EventLog.Read(ctx, *r.processorVersion)
+			}
+		}()
 		if err != nil {
 			return err
 		}
 
 		// each record is an event batch (could be transaction)
-		// TODO: make it opt-in to increase transaction batch size to all resp.Entries
-		for _, record := range resp.Entries {
+		// TODO: make it opt-in to increase transaction batch size to all readResult.Entries
+		for _, record := range readResult.Entries {
 			events, err := func() ([]ehevent.Event, error) {
 				deserializer, found := r.deserializers[record.Data.Kind]
 				if !found {
@@ -172,7 +188,7 @@ func (r *Reader) loadUntilRealtime(ctx context.Context) error {
 			r.processorVersion = &versionToCommit
 		}
 
-		if !resp.More {
+		if !readResult.More {
 			r.logl.Debug.Printf("reached realtime: %s", r.processorVersion.Serialize())
 
 			// store newer snapshot if we:
@@ -227,40 +243,43 @@ func (r *Reader) discoverProcessorVersion(ctx context.Context) error {
 
 // caller determined that processor needs to start from beginning. try to see if we have
 // a snapshot we could jumpstart from. (if not, just start from beginning.)
-func (r *Reader) fetchAndInstallSnapshot(ctx context.Context) error {
+func (r *Reader) fetchAndInstallSnapshot(ctx context.Context) (*eh.ReadResult, error) {
 	stream := r.processorVersion.Stream()
 
-	snapPersisted, err := r.client.SnapshotStore.ReadSnapshot(
+	output, err := r.client.SnapshotStore.ReadSnapshot(
 		ctx,
-		stream,
-		r.processor.Perspective())
+		eh.ReadSnapshotInput{
+			Stream:          stream,
+			Perspective:     r.processor.Perspective(),
+			PreferEagerRead: true,
+		})
 	if err != nil {
 		if err == os.ErrNotExist { // the snapshot just does not exist
 			r.logl.Info.Printf("no initial snapshot for %s", stream)
 
 			// not an error - we just need to continue fetching data from beginning
-			return nil
+			return nil, nil
 		} else { // some other error (these are not fatal though)
 			return nil, err
 		}
 	}
 
 	// convert to app-level snapshot by decrypting
-	snap, err := snapPersisted.DecryptIfRequired(func() ([]byte, error) {
+	snap, err := output.Snapshot.DecryptIfRequired(func() ([]byte, error) {
 		return r.client.LoadDEKv0(ctx, stream)
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := r.processor.InstallSnapshot(snap); err != nil {
-		return fmt.Errorf("InstallSnapshot: %w", err)
+		return nil, fmt.Errorf("InstallSnapshot: %w", err)
 	}
 
 	r.processorVersion = &snap.Cursor
 	r.snapshotVersion = &snap.Cursor
 
-	return nil
+	return output.EagerRead, nil
 }
 
 func (r *Reader) uploadNewerSnapshot(ctx context.Context) (*eh.Cursor, error) {

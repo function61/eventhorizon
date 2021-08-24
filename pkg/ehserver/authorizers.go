@@ -108,18 +108,17 @@ type authorizedSnapshotStore struct {
 
 func (a *authorizedSnapshotStore) ReadSnapshot(
 	ctx context.Context,
-	stream eh.StreamName,
-	perspective eh.SnapshotPerspective,
-) (*eh.PersistedSnapshot, error) {
-	if err := a.policy.Authorize(eh.ActionSnapshotRead, stream.ResourceName()); err != nil {
+	input eh.ReadSnapshotInput,
+) (*eh.ReadSnapshotOutput, error) {
+	if err := a.policy.Authorize(eh.ActionSnapshotRead, input.Stream.ResourceName()); err != nil {
 		return nil, err
 	}
 
-	if err := a.policy.Authorize(eh.ActionSnapshotRead, perspectiveToResourceName(perspective)); err != nil {
+	if err := a.policy.Authorize(eh.ActionSnapshotRead, perspectiveToResourceName(input.Perspective)); err != nil {
 		return nil, err
 	}
 
-	return a.inner.ReadSnapshot(ctx, stream, perspective)
+	return a.inner.ReadSnapshot(ctx, input)
 }
 
 func (a *authorizedSnapshotStore) WriteSnapshot(
