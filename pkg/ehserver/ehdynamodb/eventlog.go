@@ -70,10 +70,10 @@ func (e *Client) Read(ctx context.Context, lastKnown eh.Cursor) (*eh.ReadResult,
 	resp, err := e.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
 		TableName:              e.eventsTableName,
 		Limit:                  aws.Int64(100), // I don't see other max in docs except 1 MB result set size
-		KeyConditionExpression: aws.String("s = :s AND v > :v"),
+		KeyConditionExpression: aws.String("s = :stream AND v > :version"),
 		ExpressionAttributeValues: dynamoutils.Record{
-			":s": dynamoutils.String(lastKnown.Stream().String()),
-			":v": dynamoutils.Number(int(lastKnown.Version())),
+			":stream": dynamoutils.String(lastKnown.Stream().String()),
+			":version": dynamoutils.Number(int(lastKnown.Version())),
 		},
 	})
 	if err != nil {
@@ -251,9 +251,9 @@ func (e *Client) resolveStreamPosition(
 	// grab the most recent entry
 	mostRecent, err := e.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
 		TableName:              e.eventsTableName,
-		KeyConditionExpression: aws.String("s = :s"),
+		KeyConditionExpression: aws.String("s = :stream"),
 		ExpressionAttributeValues: dynamoutils.Record{
-			":s": dynamoutils.String(stream.String()),
+			":stream": dynamoutils.String(stream.String()),
 		},
 		Limit:            aws.Int64(1),
 		ScanIndexForward: aws.Bool(false),

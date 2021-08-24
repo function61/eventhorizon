@@ -27,7 +27,7 @@ type SnapshotVersion struct {
 
 type DynamoSnapshotItem struct {
 	Stream      string `json:"s"` // stream + perspective form the composite key
-	Perspective string `json:"c"` // different software can have different perspective for the same stream
+	Perspective string `json:"p"` // different software can have different perspective for the same stream
 	Version     int64  `json:"v"` // we conditionally put updates into DynamoDB as not to overwrite advanced state
 	RawData     []byte `json:"d"` // actual snapshot data, probably encrypted
 }
@@ -65,7 +65,7 @@ func (d *dynamoSnapshotStorage) ReadSnapshot(
 	getResponse, err := d.dynamo.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		Key: dynamoutils.Record{
 			"s": dynamoutils.String(input.Stream.String()),
-			"c": dynamoutils.String(input.Perspective.String()),
+			"p": dynamoutils.String(input.Perspective.String()),
 		},
 		TableName: d.snapshotsTableName,
 	})
@@ -138,7 +138,7 @@ func (d *dynamoSnapshotStorage) DeleteSnapshot(
 		ConditionExpression: aws.String("attribute_exists(s)"), // without this we don't get error if item does not exist
 		Key: dynamoutils.Record{
 			"s": dynamoutils.String(stream.String()),
-			"c": dynamoutils.String(perspective.String()),
+			"p": dynamoutils.String(perspective.String()),
 		},
 	})
 	if err != nil {
@@ -156,11 +156,11 @@ func (d *dynamoSnapshotStorage) DeleteSnapshot(
 func (d *dynamoSnapshotStorage) ListSnapshotsForStream(ctx context.Context, stream eh.StreamName) ([]SnapshotVersion, error) {
 	contextNames, err := d.dynamo.QueryWithContext(ctx, &dynamodb.QueryInput{
 		TableName:              d.snapshotsTableName,
-		KeyConditionExpression: aws.String("s = :s"),
+		KeyConditionExpression: aws.String("s = :stream"),
 		ExpressionAttributeValues: dynamoutils.Record{
-			":s": dynamoutils.String(stream.String()),
+			":stream": dynamoutils.String(stream.String()),
 		},
-		ProjectionExpression: aws.String("c,v"), // only fetch context and version (= don't bother fetching data)
+		ProjectionExpression: aws.String("p,v"), // only fetch context and version (= don't bother fetching data)
 	})
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (d *dynamoSnapshotStorage) ListSnapshotsForStream(ctx context.Context, stre
 		names = append(names, SnapshotVersion{
 			Snapshot: SnapshotReference{
 				Stream:      stream,
-				Perspective: eh.ParseSnapshotPerspective(*item["c"].S),
+				Perspective: eh.ParseSnapshotPerspective(*item["p"].S),
 			},
 			Version: ver,
 		})
