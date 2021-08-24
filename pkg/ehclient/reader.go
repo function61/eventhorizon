@@ -322,7 +322,7 @@ func (r *Reader) LoadUntilRealtimeIfStale(
 	defer syncutil.LockAndUnlock(&r.lastLoadMu)()
 
 	if time.Since(r.lastLoad) > staleDuration {
-		if err := r.loadUntilRealtime(ctx); err != nil {
+		if err := r.LoadUntilRealtime(ctx); err != nil {
 			return fmt.Errorf("LoadUntilRealtimeIfStale: %w", err)
 		}
 	}
