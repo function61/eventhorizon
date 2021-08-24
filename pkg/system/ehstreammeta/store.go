@@ -27,16 +27,15 @@ var (
 type stateFormat struct {
 	Created       time.Time
 	Subscriptions []eh.SubscriberID
-	DEK           *envelopeenc.Envelope
-	KeyGroupId    *string
-	ChildStreams  []string // child base names to conserve space
+	DEKv0         *envelopeenc.EnvelopeBundle // work has to be done once we implement key rotation
+	ChildStreams  []string                    // child base names to conserve space
 	TotalBytes    int64
 }
 
 func newStateFormat() stateFormat {
 	return stateFormat{
 		Subscriptions: []eh.SubscriberID{},
-		DEK:           nil,
+		DEKv0:         nil,
 		ChildStreams:  []string{},
 	}
 }
@@ -157,8 +156,7 @@ func (s *Store) processEvent(ev ehevent.Event) error {
 	switch e := ev.(type) {
 	case *eh.StreamStarted:
 		s.state.Created = e.Meta().Time()
-		s.state.DEK = &e.DEK
-		s.state.KeyGroupId = &e.KeyGroupId
+		s.state.DEKv0 = &e.DEKv0
 	case *eh.SubscriptionSubscribed:
 		s.state.Subscriptions = append(s.state.Subscriptions, e.ID)
 	case *eh.SubscriptionUnsubscribed:

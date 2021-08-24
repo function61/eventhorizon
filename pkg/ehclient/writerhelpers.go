@@ -19,7 +19,7 @@ func (e *SystemClient) Append(ctx context.Context, stream eh.StreamName, events 
 }
 
 func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, eventsSerialized []string) error {
-	dek, err := e.LoadDEK(ctx, stream)
+	dek, err := e.LoadDEKv0(ctx, stream)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (e *SystemClient) AppendStrings(ctx context.Context, stream eh.StreamName, 
 }
 
 func (e *SystemClient) AppendAfter(ctx context.Context, after eh.Cursor, events ...ehevent.Event) error {
-	dek, err := e.LoadDEK(ctx, after.Stream())
+	dek, err := e.LoadDEKv0(ctx, after.Stream())
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,8 @@ func (e *SystemClient) CreateStream(
 }
 
 // loads DEK (Data Encryption Key) for a given stream (by loading DEK envelope and decrypting it)
-func (e *SystemClient) LoadDEK(ctx context.Context, stream eh.StreamName) ([]byte, error) {
+// v0 in name to emphasize the fact that key rotation is not yet implemented.
+func (e *SystemClient) LoadDEKv0(ctx context.Context, stream eh.StreamName) ([]byte, error) {
 	// now that we're holding stream-specific mutex, we can without races read from DEK cache
 	// to determine if we have it cached or not, and fetch it to cache if needed (all inside a lock)
 	key := stream.String()

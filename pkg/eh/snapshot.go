@@ -81,12 +81,12 @@ func (e *PersistedSnapshot) Kind() PersistedSnapshotKind {
 	return PersistedSnapshotKind(e.RawData[0])
 }
 
-func (e *PersistedSnapshot) DecryptIfRequired(loadDEK func() ([]byte, error)) (*Snapshot, error) {
+func (e *PersistedSnapshot) DecryptIfRequired(loadDEKv0 func() ([]byte, error)) (*Snapshot, error) {
 	switch e.Kind() {
 	case PersistedSnapshotKindUnencrypted:
 		return NewSnapshot(e.Cursor, e.RawData[1:], e.Perspective), nil
 	case PersistedSnapshotKindEncrypted:
-		dek, err := loadDEK()
+		dek, err := loadDEKv0()
 		if err != nil {
 			return nil, err
 		}

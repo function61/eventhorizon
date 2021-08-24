@@ -133,7 +133,7 @@ func (d *sysConnection) resolveDEKEnvelope(
 		return nil, err
 	}
 
-	dekEnvelope := streamMeta.State.Data().DEK
+	dekEnvelope := streamMeta.State.Data().DEKv0
 	if dekEnvelope == nil {
 		return nil, fmt.Errorf("no DEK envelope for %s", stream.String())
 	}
