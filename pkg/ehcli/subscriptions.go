@@ -10,6 +10,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehclientfactory"
 	"github.com/function61/eventhorizon/pkg/ehevent"
+	"github.com/function61/eventhorizon/pkg/randomid"
 	"github.com/function61/eventhorizon/pkg/system/ehstreammeta"
 	"github.com/function61/eventhorizon/pkg/system/ehsubscription"
 	"github.com/function61/gokit/log/logex"
@@ -53,7 +54,7 @@ func subscriptionsEntrypoint() *cobra.Command {
 	})
 
 	parentCmd.AddCommand(&cobra.Command{
-		Use:   "mk-subscription-stream [id]",
+		Use:   "mk-subscriber [name]",
 		Short: "Create subscription stream",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -84,25 +85,19 @@ func subscriptionsEntrypoint() *cobra.Command {
 	return parentCmd
 }
 
-func subscriptionCreateStream(ctx context.Context, idRaw string, logger *log.Logger) error {
-	id := eh.NewSubscriberID(idRaw)
+func subscriptionCreateStream(ctx context.Context, name string, logger *log.Logger) error {
+	id := eh.NewSubscriberID(randomid.Short())
 
 	client, err := ehclientfactory.SystemClientFrom(ehclient.ConfigFromEnv, logger)
 	if err != nil {
 		return err
 	}
 
-	// subscribe to own stream, so that the subscriber gets realtime notifications not only
-	// of its subscribed streams, but its subscription activity as well.
-	subscribed := eh.NewSubscriptionSubscribed(id, ehevent.MetaSystemUser(time.Now()))
-
-	_, err = client.CreateStream(
-		ctx,
-		id.BackingStream(),
-		eh.LogDataMeta(subscribed),
-	); err != nil {
+	if _, err := client.CreateStream(ctx, id.BackingStream(), nil); err != nil {
 		return err
 	}
+
+	fmt.Println(id.String())
 
 	return nil
 }
