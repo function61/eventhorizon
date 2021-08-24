@@ -29,6 +29,10 @@ type LogEntryRaw struct {
 	Stream      string `json:"s"` // stream + version form the composite key
 	Version     int64  `json:"v"`
 	KindAndData []byte `json:"d"` // first byte is eh.LogDataKind, the rest is data (combined to save space)
+
+	// we can later implement offloading to S3 by detecting when query results have gaps (so in effect we can
+	// encode information in missing data), and if have consult stream metadata to find
+	// LogEntry range => stored file mapping to know from which file to dig for this information.
 }
 
 type DynamoDbOptions struct {
