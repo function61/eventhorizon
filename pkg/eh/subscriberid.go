@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+var (
+	AllSubscriberID = NewSubscriberID("$all") // subscriber that subscribes to all streams. useful for e.g. differential backups
+)
+
 // bare subscriber ID (without stream path)
 type SubscriberID struct {
 	id string

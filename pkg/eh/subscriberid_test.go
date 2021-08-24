@@ -7,7 +7,7 @@ import (
 )
 
 func TestSubscriberIDToStream(t *testing.T) {
-	assert.EqualString(t, NewSubscriberID("foo").StreamName().String(), "/_/sub/foo")
+	assert.EqualString(t, NewSubscriberID("foo").BackingStream().String(), "/$/sub/foo")
 }
 
 func TestSubscriberIDContainsSlash(t *testing.T) {

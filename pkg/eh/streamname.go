@@ -50,8 +50,8 @@ func (s StreamName) Equal(other StreamName) bool {
 	return s.name == other.name
 }
 
-func (s StreamName) IsUnder(other StreamName) bool {
-	return strings.HasPrefix(s.name, other.name)
+func (s StreamName) IsDescendantOf(other StreamName) bool {
+	return strings.HasPrefix(s.name+"/", other.name)
 }
 
 func (s StreamName) ResourceName() policy.ResourceName {

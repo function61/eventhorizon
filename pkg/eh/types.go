@@ -19,7 +19,9 @@ var (
 	SysSettings    = sysStreamAddToToCreate("settings")    // /$/settings
 	SysSubscribers = sysStreamAddToToCreate("sub")         // /$/sub
 
-	InternalStreamsToCreate = []StreamName{RootName, RootName.Child("$")} // above streams added here as well
+	SysAllSubscriber = sysStreamAddToToCreate("sub", "$all") // /$/sub/$all
+
+	InternalStreamsToCreate = []StreamName{RootName, RootName.Child("$")} // above *sysStreamAddToToCreate* streams added here as well
 )
 
 type AppendResult struct {
@@ -76,8 +78,12 @@ type MqttActivityNotification struct {
 	Activity []CursorCompact `json:"a"` // abbreviated to conserve space
 }
 
-func sysStreamAddToToCreate(name string) StreamName {
-	stream := RootName.Child("$").Child(name)
+func sysStreamAddToToCreate(name ...string) StreamName {
+	stream := RootName.Child("$")
+	for _, level := range name {
+		stream = stream.Child(level)
+	}
+
 	InternalStreamsToCreate = append(InternalStreamsToCreate, stream)
 	return stream
 }
