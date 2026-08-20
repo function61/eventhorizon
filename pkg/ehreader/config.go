@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/function61/eventhorizon/pkg/ehclient"
-	"github.com/function61/gokit/envvar"
+	"github.com/function61/gokit/os/osutil"
 )
 
 type Tenant struct {
@@ -22,7 +22,8 @@ func TenantId(id string) Tenant {
 }
 
 // ("/users")
-//   => "/t-314/users"
+//
+//	=> "/t-314/users"
 func (t Tenant) Stream(stream string) string {
 	return "/t-" + t.tenantId + stream
 }
@@ -94,7 +95,7 @@ func ClientFromConfig(conf *Config) *ehclient.Client {
 type configGetter func() (string, error)
 
 func ConfigFromEnv() (string, error) {
-	return envvar.Required("EVENTHORIZON")
+	return osutil.GetenvRequired("EVENTHORIZON")
 }
 
 type Config struct {
@@ -147,12 +148,12 @@ func GetConfig(getter configGetter) (*Config, error) {
 				"both accessKeyId and accessKeySecret must be empty or both must be set")
 		}
 
-		accessKeyId, err = envvar.Required("AWS_ACCESS_KEY_ID")
+		accessKeyId, err = osutil.GetenvRequired("AWS_ACCESS_KEY_ID")
 		if err != nil {
 			return nil, err
 		}
 
-		accessKeySecret, err = envvar.Required("AWS_SECRET_ACCESS_KEY")
+		accessKeySecret, err = osutil.GetenvRequired("AWS_SECRET_ACCESS_KEY")
 		if err != nil {
 			return nil, err
 		}

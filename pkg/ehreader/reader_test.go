@@ -13,7 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestReaderReadIntoProjection(t *testing.T) {
@@ -99,8 +99,8 @@ func TestTransactWriteSucceedsOnThirdTry(t *testing.T) {
 		return err
 	}))
 
-	assert.EqualString(t, logBuf.String(), `[DEBUG] ErrOptimisticLockingFailed, try 1: conflict: afterRequested=/chatrooms/offtopic@1 afterActual=/chatrooms/offtopic@2
-[DEBUG] ErrOptimisticLockingFailed, try 2: conflict: afterRequested=/chatrooms/offtopic@2 afterActual=/chatrooms/offtopic@3
+	assert.EqualString(t, logBuf.String(), `level=DEBUG msg=ErrOptimisticLockingFailed try=1 err="conflict: afterRequested=/chatrooms/offtopic@1 afterActual=/chatrooms/offtopic@2"
+level=DEBUG msg=ErrOptimisticLockingFailed try=2 err="conflict: afterRequested=/chatrooms/offtopic@2 afterActual=/chatrooms/offtopic@3"
 `)
 
 	assert.Ok(t, reader.LoadUntilRealtime(ctx))

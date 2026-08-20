@@ -4,20 +4,23 @@ package ehreader
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
-	"github.com/function61/gokit/logex"
 )
 
 var (
 	SuggestedPollingInterval = 10 * time.Second
 )
 
-/* encapsulates:
+/*
+	encapsulates:
 
 1) validate that current version is what we think it is
 2) process events (via callback)
@@ -56,7 +59,7 @@ type Reader struct {
 	snapCap         EventsProcessorSnapshotCapability
 	snapStore       SnapshotStore
 	snapshotVersion *ehclient.Cursor
-	logl            *logex.Leveled
+	logger          *slog.Logger
 }
 
 // "keep processor happy by feeding it from client"
@@ -68,7 +71,7 @@ func New(processor EventsProcessor, client ehclient.Reader, logger *log.Logger) 
 		snapCap:         nil,
 		snapStore:       nil,
 		snapshotVersion: nil,
-		logl:            logex.Levels(logger),
+		logger:          slogFromLogger(logger),
 	}
 }
 
@@ -85,8 +88,35 @@ func NewWithSnapshots(
 		snapCap:         processor,
 		snapStore:       snapStore,
 		snapshotVersion: nil,
-		logl:            logex.Levels(logger),
+		logger:          slogFromLogger(logger),
 	}
+}
+
+func slogFromLogger(logger *log.Logger) *slog.Logger {
+	var output io.Writer = io.Discard
+	if logger != nil {
+		output = loggerWriter{logger}
+	}
+
+	return slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
+			if len(groups) == 0 && attr.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+
+			return attr
+		},
+	}))
+}
+
+type loggerWriter struct {
+	logger *log.Logger
+}
+
+func (w loggerWriter) Write(message []byte) (int, error) {
+	err := w.logger.Output(2, strings.TrimSuffix(string(message), "\n"))
+	return len(message), err
 }
 
 // starts "realtime" sync. until we get pub/sub, we're stuck with polling. but this is the
@@ -95,9 +125,9 @@ func NewWithSnapshots(
 func (r *Reader) Synchronizer(
 	ctx context.Context,
 	pollInterval time.Duration,
-	logger *log.Logger,
+	logger_ *log.Logger,
 ) error {
-	logl := logex.Levels(logger)
+	logger := slogFromLogger(logger_)
 
 	pollIntervalTicker := time.NewTicker(pollInterval)
 
@@ -110,7 +140,7 @@ func (r *Reader) Synchronizer(
 			// but until then polling will do
 
 			if err := r.LoadUntilRealtime(ctx); err != nil {
-				logl.Error.Printf("LoadUntilRealtime: %v", err)
+				logger.ErrorContext(ctx, "LoadUntilRealtime", "err", err)
 			}
 		}
 	}
@@ -140,13 +170,13 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 		snap, err := r.snapStore.LoadSnapshot(ctx, nextRead)
 		if err != nil {
 			if err == os.ErrNotExist { // the snapshot just does not exist
-				r.logl.Info.Printf("LoadSnapshot: initial snapshot not found for %s", nextRead.Stream())
+				r.logger.InfoContext(ctx, "LoadSnapshot: initial snapshot not found", "stream", nextRead.Stream())
 
 				// using this to signal the logic at the end to take and store a new snapshot
 				snapshotVersion := ehclient.Beginning(nextRead.Stream())
 				r.snapshotVersion = &snapshotVersion
 			} else { // some other error (these are not fatal though)
-				r.logl.Error.Printf("LoadSnapshot: %v", err)
+				r.logger.ErrorContext(ctx, "LoadSnapshot", "err", err)
 
 				// this causes us to to not try saving snapshots
 				// TODO: is this a good idea?
@@ -224,13 +254,13 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 			if r.snapCap != nil && r.snapshotVersion != nil && r.snapshotVersion.Less(nextRead) {
 				snap, err := r.snapCap.Snapshot()
 				if err != nil {
-					r.logl.Error.Printf("EventsProcessor.Snapshot: %v", err)
+					r.logger.ErrorContext(ctx, "EventsProcessor.Snapshot", "err", err)
 				} else {
 					r.snapshotVersion = &snap.Cursor
 
 					// TODO: store this async?
 					if err := r.snapStore.StoreSnapshot(ctx, *snap); err != nil {
-						r.logl.Error.Printf("StoreSnapshot: %v", err)
+						r.logger.ErrorContext(ctx, "StoreSnapshot", "err", err)
 					}
 				}
 			}
@@ -241,7 +271,8 @@ func (r *Reader) LoadUntilRealtime(ctx context.Context) error {
 
 // wraps your AppendAfter() result with state-refreshed retries for ErrOptimisticLockingFailed
 // FIXME: currently this cannot be used along with Synchronizer(), because the Reader
-//        is not safe for concurrent use
+//
+//	is not safe for concurrent use
 func (r *Reader) TransactWrite(ctx context.Context, fn func() error) error {
 	maxTries := 4
 	var err error
@@ -256,7 +287,7 @@ func (r *Reader) TransactWrite(ctx context.Context, fn func() error) error {
 			return err // some other error
 		}
 
-		r.logl.Debug.Printf("ErrOptimisticLockingFailed, try %d: %v", i+1, err)
+		r.logger.DebugContext(ctx, "ErrOptimisticLockingFailed", "try", i+1, "err", err)
 
 		// reach realtime again, so we can try again
 		if err := r.LoadUntilRealtime(ctx); err != nil {

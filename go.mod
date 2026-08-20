@@ -1,17 +1,21 @@
 module github.com/function61/eventhorizon
 
-go 1.13
+go 1.21
 
 require (
 	github.com/aws/aws-lambda-go v1.14.0
 	github.com/aws/aws-sdk-go v1.29.0
-	github.com/boltdb/bolt v1.3.1
-	github.com/function61/gokit v0.0.0-20200608105953-12235c68c38b
-	github.com/jpillora/backoff v1.0.0
-	github.com/kr/pretty v0.2.0 // indirect
-	github.com/prometheus/client_golang v1.4.1
-	github.com/spf13/cobra v0.0.5
+	github.com/function61/gokit v0.0.0-20260109142558-7b125766c662
+	github.com/spf13/cobra v1.6.1
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
+	github.com/lmittmann/tint v1.0.5 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/pkg/xattr v0.4.4 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/yaml.v2 v2.2.7 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 )

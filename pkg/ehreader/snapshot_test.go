@@ -13,7 +13,7 @@ import (
 	"github.com/function61/eventhorizon/pkg/ehclient"
 	"github.com/function61/eventhorizon/pkg/ehevent"
 	"github.com/function61/eventhorizon/pkg/ehreader/ehreadertest"
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 var (
@@ -90,8 +90,8 @@ func TestDontMindSnapshotNotFoundOrStoreFails(t *testing.T) {
 	assert.EqualString(t, chatRoom.PrintChatLog(), `
 13:45:00 joonas: Hello`)
 
-	assert.EqualString(t, logBuffer.String(), `[INFO] LoadSnapshot: initial snapshot not found for /chatrooms/offtopic
-[ERROR] StoreSnapshot: too lazy to store /chatrooms/offtopic@0
+	assert.EqualString(t, logBuffer.String(), `level=INFO msg="LoadSnapshot: initial snapshot not found" stream=/chatrooms/offtopic
+level=ERROR msg=StoreSnapshot err="too lazy to store /chatrooms/offtopic@0"
 `)
 }
 
@@ -112,7 +112,7 @@ func TestLoadingSnapshotFails(t *testing.T) {
 	assert.EqualString(t, chatRoom.PrintChatLog(), `
 13:45:00 joonas: Hello`)
 
-	assert.EqualString(t, logBuffer.String(), "[ERROR] LoadSnapshot: transport error\n")
+	assert.EqualString(t, logBuffer.String(), "level=ERROR msg=LoadSnapshot err=\"transport error\"\n")
 }
 
 type countingSnapshotStore struct {
