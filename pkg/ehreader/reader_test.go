@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +52,7 @@ func TestTransactWriteFailsEachTry(t *testing.T) {
 	eventLog := ehreadertest.NewEventLog()
 	eventLog.AppendE(stream, NewChatMessage(1, "Testing first message", ehevent.Meta(t0, "joonas")))
 
-	reader := New(newChatRoomProjection(stream), eventLog, nil)
+	reader := New(newChatRoomProjection(stream), eventLog, slog.New(slog.DiscardHandler))
 
 	tryNumber := 0
 
@@ -78,7 +78,7 @@ func TestTransactWriteSucceedsOnThirdTry(t *testing.T) {
 
 	logBuf := &bytes.Buffer{}
 
-	reader := New(chatRoom, eventLog, log.New(logBuf, "", 0))
+	reader := New(chatRoom, eventLog, slog.New(slog.NewTextHandler(logBuf, nil)))
 
 	assert.Ok(t, reader.LoadUntilRealtime(ctx))
 

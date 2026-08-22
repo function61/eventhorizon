@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -83,7 +83,7 @@ func TestDontMindSnapshotNotFoundOrStoreFails(t *testing.T) {
 
 	logBuffer := &bytes.Buffer{}
 
-	reader := NewWithSnapshots(chatRoom, eventLog, &storingSnapshotFails{}, log.New(logBuffer, "", 0))
+	reader := NewWithSnapshots(chatRoom, eventLog, &storingSnapshotFails{}, slog.New(slog.DiscardHandler))
 
 	assert.Ok(t, reader.LoadUntilRealtime(context.Background()))
 
@@ -105,7 +105,7 @@ func TestLoadingSnapshotFails(t *testing.T) {
 
 	logBuffer := &bytes.Buffer{}
 
-	reader := NewWithSnapshots(chatRoom, eventLog, &loadingSnapshotFails{}, log.New(logBuffer, "", 0))
+	reader := NewWithSnapshots(chatRoom, eventLog, &loadingSnapshotFails{}, slog.New(slog.DiscardHandler))
 
 	assert.Ok(t, reader.LoadUntilRealtime(context.Background()))
 

@@ -4,7 +4,6 @@ package ehreader
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -63,7 +62,7 @@ type Reader struct {
 }
 
 // "keep processor happy by feeding it from client"
-func New(processor EventsProcessor, client ehclient.Reader, logger *log.Logger) *Reader {
+func New(processor EventsProcessor, client ehclient.Reader, logger *slog.Logger) *Reader {
 	return &Reader{
 		client:          client,
 		eventTypes:      processor.GetEventTypes(),
@@ -71,7 +70,7 @@ func New(processor EventsProcessor, client ehclient.Reader, logger *log.Logger) 
 		snapCap:         nil,
 		snapStore:       nil,
 		snapshotVersion: nil,
-		logger:          slogFromLogger(logger),
+		logger:          logger,
 	}
 }
 
@@ -79,7 +78,7 @@ func NewWithSnapshots(
 	processor EventsProcessorWithSnapshots,
 	client ehclient.Reader,
 	snapStore SnapshotStore,
-	logger *log.Logger,
+	logger *slog.Logger,
 ) *Reader {
 	return &Reader{
 		client:          client,
@@ -88,26 +87,8 @@ func NewWithSnapshots(
 		snapCap:         processor,
 		snapStore:       snapStore,
 		snapshotVersion: nil,
-		logger:          slogFromLogger(logger),
+		logger:          logger,
 	}
-}
-
-func slogFromLogger(logger *log.Logger) *slog.Logger {
-	var output io.Writer = io.Discard
-	if logger != nil {
-		output = loggerWriter{logger}
-	}
-
-	return slog.New(slog.NewTextHandler(output, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
-			if len(groups) == 0 && attr.Key == slog.TimeKey {
-				return slog.Attr{}
-			}
-
-			return attr
-		},
-	}))
 }
 
 type loggerWriter struct {
@@ -125,10 +106,8 @@ func (w loggerWriter) Write(message []byte) (int, error) {
 func (r *Reader) Synchronizer(
 	ctx context.Context,
 	pollInterval time.Duration,
-	logger_ *log.Logger,
+	logger *slog.Logger,
 ) error {
-	logger := slogFromLogger(logger_)
-
 	pollIntervalTicker := time.NewTicker(pollInterval)
 
 	for {
